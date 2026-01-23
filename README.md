@@ -27,25 +27,40 @@ Components declare which schemas they accept in `meta.js`. Data matching these s
 | `opportunity` | Jobs, grants, calls for proposals |
 | `publication` | Academic papers, research documents |
 
+## Installation
+
+```bash
+pnpm add @uniweb/schemas
+```
+
 ## Usage
 
 ### In meta.js
 
-Reference standard schemas by name:
+Import and use standard schemas in your foundation components:
 
 ```js
-// components/TeamGrid/meta.js
+// foundation/src/components/TeamGrid/meta.js
+import { person } from '@uniweb/schemas'
+
 export default {
   title: 'Team Grid',
+  category: 'showcase',
 
+  // Use standard schema - the build extracts a lean runtime version
   schemas: {
-    person: {
-      min: 1,
-      max: 20,
-    },
+    team: person,
   },
+
+  // Opt into receiving cascaded data from page/site fetches
+  inheritData: ['team'],
 }
 ```
+
+The foundation build automatically:
+- Tree-shakes unused schemas from the bundle
+- Extracts only the fields needed at runtime (strips metadata like `name`, `version`, `description`)
+- Creates a lean schema with `type`, `default`, and `options`
 
 ### In markdown (tagged blocks)
 
@@ -162,17 +177,28 @@ export default {
 
 ## API
 
-```js
-import { schemas, validate, applyDefaults } from '@uniweb/schemas'
+### Schema Imports
 
-// Get a schema definition
+```js
+// Import individual schemas (tree-shakeable)
+import { person, article, event } from '@uniweb/schemas'
+
+// Import all schemas
+import { schemas } from '@uniweb/schemas'
 const personSchema = schemas.person
+```
+
+### Utilities
+
+```js
+import { validateAgainstSchema, applyDefaults } from '@uniweb/schemas'
 
 // Validate data against a schema
-const { valid, errors } = validate(data, 'person')
+const { valid, errors } = validateAgainstSchema(data, person)
+// errors: [{ path: 'email', message: 'Invalid email format' }]
 
-// Apply default values
-const dataWithDefaults = applyDefaults(data, 'person')
+// Apply default values from schema
+const dataWithDefaults = applyDefaults(data, person)
 ```
 
 ## License

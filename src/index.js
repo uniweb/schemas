@@ -12,13 +12,14 @@ import event from './standard/event.js'
 import project from './standard/project.js'
 import opportunity from './standard/opportunity.js'
 import publication from './standard/publication.js'
+import nav from './standard/nav.js'
 
 // Utilities
 import { validateAgainstSchema } from './utils/validate.js'
 import { applySchemaDefaults, getSchemaDefaults } from './utils/defaults.js'
 
 // Export individual schemas
-export { person, article, event, project, opportunity, publication }
+export { person, article, event, project, opportunity, publication, nav }
 
 /**
  * Registry of all standard schemas
@@ -31,6 +32,7 @@ export const schemas = {
   project,
   opportunity,
   publication,
+  nav,
 }
 
 /**

@@ -40,7 +40,7 @@ pnpm add @uniweb/schemas
 Import and use standard schemas in your foundation components:
 
 ```js
-// foundation/src/components/TeamGrid/meta.js
+// foundation/src/sections/TeamGrid/meta.js
 import { person } from '@uniweb/schemas'
 
 export default {

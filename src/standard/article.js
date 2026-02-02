@@ -15,6 +15,7 @@ export default {
     },
     slug: {
       type: 'string',
+      translatable: false,
       description: 'URL-friendly identifier',
     },
     excerpt: {

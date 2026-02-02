@@ -42,10 +42,12 @@ export default {
     email: {
       type: 'string',
       format: 'email',
+      translatable: false,
       description: 'Email address',
     },
     phone: {
       type: 'string',
+      translatable: false,
       description: 'Phone number',
     },
     location: {
@@ -62,11 +64,11 @@ export default {
       type: 'object',
       description: 'Social media profiles',
       fields: {
-        twitter: { type: 'string', description: 'Twitter/X handle' },
-        linkedin: { type: 'string', description: 'LinkedIn profile URL' },
-        github: { type: 'string', description: 'GitHub username' },
-        mastodon: { type: 'string', description: 'Mastodon handle' },
-        bluesky: { type: 'string', description: 'Bluesky handle' },
+        twitter: { type: 'string', translatable: false, description: 'Twitter/X handle' },
+        linkedin: { type: 'string', translatable: false, description: 'LinkedIn profile URL' },
+        github: { type: 'string', translatable: false, description: 'GitHub username' },
+        mastodon: { type: 'string', translatable: false, description: 'Mastodon handle' },
+        bluesky: { type: 'string', translatable: false, description: 'Bluesky handle' },
       },
     },
 

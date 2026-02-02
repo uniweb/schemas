@@ -39,6 +39,7 @@ export default {
     // Visual
     icon: {
       type: 'string',
+      translatable: false,
       description: 'Path to SVG icon (e.g., /icons/home.svg)',
     },
 
@@ -56,10 +57,12 @@ export default {
     // Link
     href: {
       type: 'string',
+      translatable: false,
       description: 'Link destination (URL or path)',
     },
     target: {
       type: 'string',
+      translatable: false,
       description: 'Link target (_self, _blank)',
       default: '_self',
     },

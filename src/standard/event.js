@@ -38,6 +38,7 @@ export default {
     },
     timezone: {
       type: 'string',
+      translatable: false,
       description: 'Timezone (e.g., America/New_York)',
     },
     allDay: {
@@ -114,7 +115,7 @@ export default {
       description: 'Event organizer',
       fields: {
         name: { type: 'string' },
-        email: { type: 'string', format: 'email' },
+        email: { type: 'string', format: 'email', translatable: false },
         url: { type: 'url' },
       },
     },

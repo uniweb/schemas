@@ -15,6 +15,7 @@ export default {
     },
     slug: {
       type: 'string',
+      translatable: false,
       description: 'URL-friendly identifier',
     },
 
@@ -27,7 +28,7 @@ export default {
           name: { type: 'string', required: true },
           affiliation: { type: 'string' },
           corresponding: { type: 'boolean', default: false },
-          orcid: { type: 'string', description: 'ORCID identifier' },
+          orcid: { type: 'string', translatable: false, description: 'ORCID identifier' },
         },
       },
       required: true,
@@ -52,9 +53,9 @@ export default {
       fields: {
         name: { type: 'string', description: 'Journal, conference, or publisher' },
         type: { type: 'string', enum: ['journal', 'conference', 'book', 'preprint', 'thesis', 'report'] },
-        volume: { type: 'string' },
-        issue: { type: 'string' },
-        pages: { type: 'string' },
+        volume: { type: 'string', translatable: false },
+        issue: { type: 'string', translatable: false },
+        pages: { type: 'string', translatable: false },
         publisher: { type: 'string' },
       },
     },
@@ -77,18 +78,22 @@ export default {
     // Identifiers
     doi: {
       type: 'string',
+      translatable: false,
       description: 'Digital Object Identifier',
     },
     arxiv: {
       type: 'string',
+      translatable: false,
       description: 'arXiv identifier',
     },
     isbn: {
       type: 'string',
+      translatable: false,
       description: 'ISBN for books',
     },
     pmid: {
       type: 'string',
+      translatable: false,
       description: 'PubMed ID',
     },
 
@@ -167,6 +172,7 @@ export default {
     // Citation
     bibtex: {
       type: 'string',
+      translatable: false,
       description: 'BibTeX citation',
     },
   },

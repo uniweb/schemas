@@ -15,6 +15,7 @@ export default {
     },
     slug: {
       type: 'string',
+      translatable: false,
       description: 'URL-friendly identifier',
     },
 
@@ -82,7 +83,7 @@ export default {
       description: 'Compensation details',
       fields: {
         salary: { type: 'string', description: 'Salary or range' },
-        currency: { type: 'string', default: 'USD' },
+        currency: { type: 'string', translatable: false, default: 'USD' },
         period: { type: 'string', enum: ['hour', 'month', 'year', 'total'], default: 'year' },
         benefits: { type: 'array', items: { type: 'string' } },
       },
@@ -110,7 +111,7 @@ export default {
       description: 'How to apply',
       fields: {
         url: { type: 'url', description: 'Application URL' },
-        email: { type: 'string', format: 'email', description: 'Application email' },
+        email: { type: 'string', format: 'email', translatable: false, description: 'Application email' },
         instructions: { type: 'string', description: 'Application instructions' },
         materials: {
           type: 'array',
@@ -150,8 +151,8 @@ export default {
       description: 'Contact for questions',
       fields: {
         name: { type: 'string' },
-        email: { type: 'string', format: 'email' },
-        phone: { type: 'string' },
+        email: { type: 'string', format: 'email', translatable: false },
+        phone: { type: 'string', translatable: false },
       },
     },
   },

@@ -1,21 +1,19 @@
 /**
  * Nav schema - navigation menus, sidebars, hierarchical link structures
  *
- * Use cases:
- * - Navbar menus with dropdowns
- * - Sidebar navigation
- * - Footer link columns
- * - Table of contents
- * - Sitemap structures
+ * A navigation is a `multi`, `nestable` section: many items, and any item may
+ * carry a reserved `children:` list of the same items (recursion). The schema
+ * declares only an item's fields; authors supply `children` per item.
+ *
+ * Use cases: navbar menus with dropdowns, sidebars, footer link columns,
+ * tables of contents, sitemaps.
  *
  * Example:
- * ```yaml
  * ```yaml:nav
- * - icon: /icons/home.svg
+ * - icon: lu-home
  *   label: Home
  *   href: /
- * - icon: /icons/products.svg
- *   label: Products
+ * - label: Products
  *   href: /products
  *   text: Browse our catalog
  *   children:
@@ -24,69 +22,64 @@
  *     - label: Gadgets
  *       href: /products/gadgets
  * ```
- * ```
  */
 export default {
   name: 'nav',
   version: '1.0.0',
   description: 'Navigation menu or hierarchical link structure',
 
-  // This schema is for arrays of nav items
-  type: 'array',
+  sections: {
+    items: {
+      kind: 'multi',
+      nestable: true, // items may carry a reserved `children:` list (recursion)
+      fields: {
+        // Visual
+        icon: {
+          type: 'string',
+          translatable: false,
+          description: 'Icon (library ref like lu-home, or a path)',
+        },
 
-  // Each item in the array has these fields
-  fields: {
-    // Visual
-    icon: {
-      type: 'string',
-      translatable: false,
-      description: 'Path to SVG icon (e.g., /icons/home.svg)',
-    },
+        // Text
+        label: {
+          type: 'string',
+          required: true,
+          description: 'Primary text label',
+        },
+        text: {
+          type: 'string',
+          description: 'Secondary text (description, subtitle)',
+        },
 
-    // Text
-    label: {
-      type: 'string',
-      required: true,
-      description: 'Primary text label',
-    },
-    text: {
-      type: 'string',
-      description: 'Secondary text (description, subtitle)',
-    },
+        // Link
+        href: {
+          type: 'string',
+          translatable: false,
+          description: 'Link destination (URL or path)',
+        },
+        target: {
+          type: 'string',
+          translatable: false,
+          default: '_self',
+          description: 'Link target (_self, _blank)',
+        },
 
-    // Link
-    href: {
-      type: 'string',
-      translatable: false,
-      description: 'Link destination (URL or path)',
-    },
-    target: {
-      type: 'string',
-      translatable: false,
-      description: 'Link target (_self, _blank)',
-      default: '_self',
-    },
-
-    // Hierarchy
-    children: {
-      type: 'nav',
-      description: 'Nested navigation items (recursive)',
-    },
-
-    // Metadata
-    order: {
-      type: 'number',
-      description: 'Display order',
-    },
-    hidden: {
-      type: 'boolean',
-      default: false,
-      description: 'Hide this item from display',
-    },
-    current: {
-      type: 'boolean',
-      default: false,
-      description: 'Mark as current/active page',
+        // Metadata
+        order: {
+          type: 'int',
+          description: 'Display order',
+        },
+        hidden: {
+          type: 'bool',
+          default: false,
+          description: 'Hide this item from display',
+        },
+        current: {
+          type: 'bool',
+          default: false,
+          description: 'Mark as current/active page',
+        },
+      },
     },
   },
 }

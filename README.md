@@ -20,7 +20,7 @@ export default {
 
   data: {
     team:    '@/member',                                  // named ref (this foundation)
-    authors: '@uniweb/person',                            // named ref (shared standard)
+    authors: '@std/person',                               // named ref (shared standard)
     specs:   { cpu: { type: 'string', default: '' } },    // inline field map
     signup:  { fields: [{ id: 'email', type: 'text' }] }, // inline rich-form (editor form)
   },
@@ -43,12 +43,12 @@ A ref points at a schema module on disk, resolved at build time (no network). Re
 | Ref | Namespace | Resolves to |
 |---|---|---|
 | `@/member` | **self** — this foundation | `foundation/schemas/member.{js,json,yml,yaml}` |
-| `@uniweb/person` | **shared standards** | the matching standard schema shipped in this package |
-| `@acme/event` | **another publisher** | that publisher's schema, where available locally |
+| `@std/person` | **shared standards** | the matching standard schema, shipped in the `@uniweb/schemas` package |
+| `@acme/event` | **an org** (publisher) | that org's schema, from its `@acme/schemas` package (a workspace package locally; a registry scope once published) |
 
-The empty scope in `@/member` means "this foundation." Because the org name lives only at publish time (and can differ per publisher), a foundation **never writes its own org name in source** — `@/`-refs are portable and travel with the foundation.
+The empty scope in `@/member` means "this foundation." Because an org scope is assigned only at publish time, a foundation **never writes its own org name in source** — `@/`-refs are portable and travel with the foundation, and the build resolves them to a real org scope when published.
 
-`@uniweb/person` names the **shared standards namespace**, not a literal import path. A ref names a namespace, never a package; the build maps `@uniweb/<name>` to the bundled standard. Use the namespace form (`@uniweb/person`), not a deeper path.
+A ref names a **namespace, never a package path**. `@std/<name>` maps to the standard schema shipped in `@uniweb/schemas`; `@org/<name>` maps to that org's `@org/schemas` package — so a team can define schemas once and reference them across foundations, locally, with no backend. (`@uniweb` is reserved for the platform system namespace and is not a data-schema source — use `@std` for shared standards.)
 
 ### 2. Inline field map
 
@@ -88,16 +88,16 @@ See [Component Metadata](https://github.com/uniweb/docs/blob/main/reference/comp
 
 | Schema | Ref | Description |
 |--------|-----|-------------|
-| `person` | `@uniweb/person` | Team members, authors, contacts |
-| `article` | `@uniweb/article` | Blog posts, news items, documentation |
-| `event` | `@uniweb/event` | Calendar events, conferences, webinars |
-| `project` | `@uniweb/project` | Portfolio items, case studies |
-| `opportunity` | `@uniweb/opportunity` | Jobs, grants, calls for proposals |
-| `publication` | `@uniweb/publication` | Academic papers, research documents |
+| `person` | `@std/person` | Team members, authors, contacts |
+| `article` | `@std/article` | Blog posts, news items, documentation |
+| `event` | `@std/event` | Calendar events, conferences, webinars |
+| `project` | `@std/project` | Portfolio items, case studies |
+| `opportunity` | `@std/opportunity` | Jobs, grants, calls for proposals |
+| `publication` | `@std/publication` | Academic papers, research documents |
 
 ## Installation
 
-Add the package wherever a `@uniweb/<name>` ref is used:
+Add this package wherever a `@std/<name>` ref is used:
 
 ```bash
 pnpm add @uniweb/schemas
@@ -208,7 +208,7 @@ const filled = applyDefaults(data, person)
 const blanks = getDefaults('person')
 ```
 
-These are utilities for tooling — they are not required to use a schema in a foundation. In a foundation you reference a standard schema by its namespace ref (`@uniweb/person`) in `meta.js`, and the build does the resolution and default application for you.
+These are utilities for tooling — they are not required to use a schema in a foundation. In a foundation you reference a standard schema by its namespace ref (`@std/person`) in `meta.js`, and the build does the resolution and default application for you.
 
 ## License
 

@@ -25,7 +25,8 @@ export default {
 
     // Content
     body: {
-      type: 'markdown',
+      type: 'json',
+      format: 'prosemirror',
       description: 'Full article content',
     },
 

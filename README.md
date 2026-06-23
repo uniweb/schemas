@@ -60,7 +60,7 @@ data: {
     name:        { type: 'string', required: true },
     price:       { type: 'number', required: true },
     period:      { type: 'string', default: 'month' },
-    features:    { type: 'array', of: 'string' },
+    features:    { type: 'array', items: { type: 'string' } },
     highlighted: { type: 'boolean', default: false },
   },
 }
@@ -94,6 +94,8 @@ See [Component Metadata](https://github.com/uniweb/docs/blob/main/reference/comp
 | `project` | `@std/project` | Portfolio items, case studies |
 | `opportunity` | `@std/opportunity` | Jobs, grants, calls for proposals |
 | `publication` | `@std/publication` | Academic papers, research documents |
+| `nav` | `@std/nav` | Navigation menus (nestable items) |
+| `scene` | `@std/scene` | Visual scene composition (rendered by `@uniweb/scene`) |
 
 ## Installation
 
@@ -118,7 +120,7 @@ export default {
   fields: {
     name:       { type: 'string', required: true },
     role:       { type: 'string', default: '' },
-    rank:       { type: 'string', options: ['assistant', 'associate', 'full'], default: 'assistant' },
+    rank:       { type: 'string', enum: ['assistant', 'associate', 'full'], default: 'assistant' },
     tenured:    { type: 'boolean', default: false },
     start_year: { type: 'number' },
   },
@@ -135,7 +137,7 @@ description: A research group member
 fields:
   name:       { type: string, required: true }
   role:       { type: string, default: '' }
-  rank:       { type: string, options: [assistant, associate, full], default: assistant }
+  rank:       { type: string, enum: [assistant, associate, full], default: assistant }
   tenured:    { type: boolean, default: false }
   start_year: { type: number }
 ```
@@ -147,16 +149,21 @@ The `name` and `version` are the schema's identity — they record *which* named
 | Type | Description |
 |------|-------------|
 | `string` | Plain text |
-| `number` | Numeric value |
-| `boolean` | True/false |
-| `markdown` | Rich text with markdown formatting |
-| `image` | Image reference (path or URL) |
+| `text` | Long-form plain text; carries a rich-content `format` (see below) |
+| `number` | Numeric value (folds to `decimal`) |
+| `boolean` | True/false (folds to `bool`) |
+| `markdown` | A `text` field with `format: markdown` |
+| `html` | A `text` field with `format: html` |
+| `image` | Image reference (folds to `file`) |
 | `date` | ISO date string |
 | `datetime` | ISO datetime string |
-| `url` | URL string |
-| `email` | Email address |
+| `url` | A `string` with `format: url` |
+| `email` | A `string` with `format: email` |
 | `object` | Nested object with `fields` |
-| `array` | Array with `of` item type |
+| `array` | List; item type declared with `items` |
+| `json` | Opaque structured value; carries `format: prosemirror` or `format: scene` |
+
+> Friendly type names fold to the canonical kinds the build stores: `number → decimal`, `boolean → bool`, `image → file`, `markdown`/`html → text` + `format`, `url`/`email → string` + `format`. Rich-content `format` markers are type-bound: `markdown`/`html` are valid only on `text`; `prosemirror`/`scene` only on `json`.
 
 ### Field Options
 
@@ -166,10 +173,12 @@ The `name` and `version` are the schema's identity — they record *which* named
 | `required` | boolean | Field must have a value |
 | `default` | any | Default value if not provided |
 | `description` | string | Human-readable description |
-| `format` | string | Validation format (email, url, etc.) |
-| `options` | array | Allowed values (enum) |
+| `format` | string | Content/validation format — `email`/`url` (validation); `markdown`/`html` (on `text`); `prosemirror`/`scene` (on `json`) |
+| `enum` | array | Inline list of allowed values |
+| `options` | string | A `@/<name>` ref to a curated options schema (an item reference) |
+| `translatable` | boolean | Set `false` to opt a text field out of localization |
 | `fields` | object | Nested fields for `object` type |
-| `of` | string or object | Item type for `array` type |
+| `items` | object | Item definition for `array` type |
 
 ## Collections always arrive as arrays
 

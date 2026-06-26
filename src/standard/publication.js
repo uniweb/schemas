@@ -21,18 +21,16 @@ export default {
 
     // Authors
     authors: {
-      type: 'array',
-      items: {
-        type: 'object',
-        fields: {
-          name: { type: 'string', required: true },
-          affiliation: { type: 'string' },
-          corresponding: { type: 'boolean', default: false },
-          orcid: { type: 'string', translatable: false, description: 'ORCID identifier' },
-        },
-      },
+      type: 'object',
+      many: true,
       required: true,
       description: 'Publication authors',
+      fields: {
+        name: { type: 'string', required: true },
+        affiliation: { type: 'string' },
+        corresponding: { type: 'boolean', default: false },
+        orcid: { type: 'string', translatable: false, description: 'ORCID identifier' },
+      },
     },
 
     // Content
@@ -41,8 +39,8 @@ export default {
       description: 'Abstract or summary',
     },
     keywords: {
-      type: 'array',
-      items: { type: 'string' },
+      type: 'string',
+      many: true,
       description: 'Keywords',
     },
 
@@ -141,8 +139,8 @@ export default {
       description: 'Research area or category',
     },
     tags: {
-      type: 'array',
-      items: { type: 'string' },
+      type: 'string',
+      many: true,
       description: 'Tags or topics',
     },
 

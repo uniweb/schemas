@@ -85,19 +85,19 @@ export default {
         salary: { type: 'string', description: 'Salary or range' },
         currency: { type: 'string', translatable: false, default: 'USD' },
         period: { type: 'string', enum: ['hour', 'month', 'year', 'total'], default: 'year' },
-        benefits: { type: 'array', items: { type: 'string' } },
+        benefits: { type: 'string', many: true },
       },
     },
 
     // Requirements
     requirements: {
-      type: 'array',
-      items: { type: 'string' },
+      type: 'string',
+      many: true,
       description: 'Required qualifications',
     },
     preferred: {
-      type: 'array',
-      items: { type: 'string' },
+      type: 'string',
+      many: true,
       description: 'Preferred qualifications',
     },
     experience: {
@@ -114,8 +114,8 @@ export default {
         email: { type: 'string', format: 'email', translatable: false, description: 'Application email' },
         instructions: { type: 'string', description: 'Application instructions' },
         materials: {
-          type: 'array',
-          items: { type: 'string' },
+          type: 'string',
+          many: true,
           description: 'Required materials (CV, cover letter, etc.)',
         },
       },
@@ -127,8 +127,8 @@ export default {
       description: 'Category or field',
     },
     tags: {
-      type: 'array',
-      items: { type: 'string' },
+      type: 'string',
+      many: true,
       description: 'Tags or keywords',
     },
 

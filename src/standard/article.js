@@ -15,7 +15,6 @@ export default {
   sections: {
     // The card — what hydrates into an entity_ref reference.
     article: {
-      kind: 'single',
       brief: true,
       fields: {
         title: {
@@ -41,8 +40,8 @@ export default {
           description: 'Featured/hero image',
         },
         tags: {
-          type: 'array',
-          items: { type: 'string' },
+          type: 'string',
+          many: true,
           description: 'Tags or keywords',
         },
       },
@@ -50,7 +49,6 @@ export default {
 
     // The full record — not pulled into reference cards.
     article_body: {
-      kind: 'single',
       fields: {
         // Content — a ProseMirror document on the wire (md authoring side).
         content: {

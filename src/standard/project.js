@@ -43,8 +43,8 @@ export default {
       description: 'Thumbnail for listings',
     },
     gallery: {
-      type: 'array',
-      items: { type: 'image' },
+      type: 'image',
+      many: true,
       description: 'Project image gallery',
     },
     video: {
@@ -76,8 +76,8 @@ export default {
       description: 'Your role in the project',
     },
     team: {
-      type: 'array',
-      items: { type: 'string' },
+      type: 'string',
+      many: true,
       description: 'Team members',
     },
 
@@ -97,8 +97,8 @@ export default {
 
     // Technical
     technologies: {
-      type: 'array',
-      items: { type: 'string' },
+      type: 'string',
+      many: true,
       description: 'Technologies and tools used',
     },
     category: {
@@ -106,21 +106,19 @@ export default {
       description: 'Project category',
     },
     tags: {
-      type: 'array',
-      items: { type: 'string' },
+      type: 'string',
+      many: true,
       description: 'Tags or keywords',
     },
 
     // Results
     results: {
-      type: 'array',
+      type: 'object',
+      many: true,
       description: 'Key results or metrics',
-      items: {
-        type: 'object',
-        fields: {
-          metric: { type: 'string', description: 'What was measured' },
-          value: { type: 'string', description: 'The result' },
-        },
+      fields: {
+        metric: { type: 'string', description: 'What was measured' },
+        value: { type: 'string', description: 'The result' },
       },
     },
     testimonial: {

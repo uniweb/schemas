@@ -30,8 +30,8 @@ export default {
 
   sections: {
     items: {
-      kind: 'multi',
-      nestable: true, // items may carry a reserved `children:` list (recursion)
+      many: true,
+      tree: true, // items may carry a reserved `children:` list (recursion)
       fields: {
         // Visual
         icon: {

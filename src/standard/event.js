@@ -91,8 +91,8 @@ export default {
       description: 'Event category',
     },
     tags: {
-      type: 'array',
-      items: { type: 'string' },
+      type: 'string',
+      many: true,
       description: 'Tags or keywords',
     },
 

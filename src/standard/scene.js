@@ -35,8 +35,8 @@ export default {
       description: 'Brief description of the visual intent',
     },
     tags: {
-      type: 'array',
-      items: { type: 'string' },
+      type: 'string',
+      many: true,
       translatable: false,
       description: 'Freeform tags for categorization',
     },

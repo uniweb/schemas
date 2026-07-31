@@ -36,13 +36,14 @@
  * likeliest authoring slip, since the NORMALIZED shape is an array — see
  * `mapToFields` in `@uniweb/core/src/schemas.js`), and a non-string `title`.
  *
- * Not caught: anything about an individual field. Our data-schema vocabulary can
- * describe an object's NAMED keys (`type: object` + `fields`) and every element
- * of an array (`type: array` + `items`), but it has no construct for *a map
- * whose values all conform to X* — and a form's field names are the author's, so
- * a map is exactly what this is. The per-field grammar below is therefore
- * documented rather than enforced. Closing that gap needs an `items`-for-objects
- * construct in the vocabulary; raised with the editor team 2026-07-31.
+ * Also caught, since `values:` landed: a field with no `type`, and a per-field
+ * key holding the wrong kind of value (`required: "yes"`, `enum: "a,b"`).
+ *
+ * Not caught, deliberately: an unknown per-field key, and an unknown `type`
+ * word. A form may carry keys this builder cannot author — hand-written, or
+ * from a newer editor — and the boundary passes them through; the producer
+ * states as much via `fieldKeysAreNotExhaustive`. Rejecting them would fail
+ * builds on good content, which is worse than not checking.
  *
  * ── The per-field grammar (documentation, not enforcement) ──
  *
@@ -102,10 +103,35 @@ export default {
       type: 'object',
       required: true,
       translatable: false,
-      description:
-        'The form controls, as a map keyed by field name. Values follow the ' +
-        'per-field grammar in this file\'s header; the map is not validated ' +
-        'per-value because the vocabulary has no construct for an open map.',
+      description: 'The form controls, as a map keyed by field name',
+      // An OPEN MAP: the keys are the author's field names, every value is a
+      // field spec. `values` is to an object what `items` is to an array; it
+      // was added to the vocabulary for exactly this shape.
+      //
+      // Deliberately PERMISSIVE. Only `type` is required, and unknown keys pass
+      // — a form may legitimately carry per-field keys this builder cannot
+      // author (hand-written, or from a newer editor), and the editor's
+      // boundary passes them through untouched. `fieldKeysAreNotExhaustive` in
+      // the shared fixture states this from the producer's side. A stricter
+      // check would fail builds on good content, which is worse than no check.
+      //
+      // `enum` is an untyped array on purpose: a choice is EITHER a bare string
+      // or `{ value, label }`, and both may appear in one list, which no single
+      // `items` type can express.
+      values: {
+        type: 'object',
+        fields: {
+          type: { type: 'string', required: true, description: 'Control kind — string, text, number, bool, date, file' },
+          label: { type: 'string', description: 'What the visitor sees' },
+          description: { type: 'string', description: 'Help text under the control' },
+          placeholder: { type: 'string', description: 'Ghost text inside the control' },
+          required: { type: 'bool', description: 'The visitor must answer' },
+          format: { type: 'string', description: 'Refines a string — `email` today' },
+          enum: { type: 'array', description: 'Choices — bare strings and/or { value, label }' },
+          accept: { type: 'string', description: 'File fields — the HTML accept attribute' },
+          multiple: { type: 'bool', description: 'File fields — the HTML multiple attribute' },
+        },
+      },
     },
   },
 }

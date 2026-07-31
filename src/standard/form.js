@@ -46,30 +46,43 @@
  *
  * ── The per-field grammar (documentation, not enforcement) ──
  *
+ * Diffed against `collab/context/std-form-shape.json` — a GENERATED fixture the
+ * editor derives from its own builder and re-asserts on drift. That file is the
+ * authority on what a form definition actually contains; this comment tracks it
+ * and is not an independent claim. Re-diff rather than hand-syncing.
+ *
  * `fields` is a map keyed by field name. Each value carries:
  *
+ *   type         string   REQUIRED. What the builder emits today:
+ *                         string · text · number · bool · date · file
  *   label        string   what the visitor sees
- *   type         string   string · text · int · integer · decimal · number ·
- *                         bool · boolean · date · datetime · file · image ·
- *                         object · array
- *   required     bool     the visitor must answer (absent means false)
- *   format       string   value refinement on a string — email · url · tel
- *   enum         array    choices; either `{ value, label }` or a bare string
- *                         when the two are the same
- *   default      any      pre-filled value
  *   description  string   help text under the control
- *   accept       string   `type: file` only — the HTML accept attribute
- *   multiple     bool     `type: file` only — the HTML multiple attribute
- *   items        object   `type: array` only — element spelling
+ *   required     bool     the visitor must answer
+ *   format       string   refines a string. Emitted today: `email` only
+ *   enum         array    choices; either `{ value, label }` or a bare string
+ *                         when the two are the same. BOTH spellings may appear
+ *                         in one list
+ *   accept       string   file fields only — the HTML accept attribute
+ *   multiple     bool     file fields only — the HTML multiple attribute
+ *
+ * A validator must accept MORE than this list, not exactly it: the wire carries
+ * the framework's authoring vocabulary, so `int`, `datetime`, `image`, `url` and
+ * the rest are legal in a hand-written form even though the builder has no
+ * control that emits them. The list above is what the only current PRODUCER
+ * emits, which is a narrower thing and the one that can drift.
+ *
+ * Absent is normal, not missing: `label: ""`, `required: false`, `multiple:
+ * false` and friends are dropped on the way out rather than written empty.
+ * `condition` never appears — conditional visibility is an editor-only concern
+ * (`@uniweb/core/src/schemas.js:14`).
  *
  * A long answer is `type: text` and a date is `type: date`, in the framework's
  * own spelling — not `format: multiline` / `format: date`. Both spellings were
  * briefly written; the editor canonicalized on 2026-07-31 and still reads the
  * old ones so existing blocks open. A renderer branches on one.
  *
- * Kept deliberately in step with what the editor's builder produces. If this
- * needs to change, tell them rather than diverging — the two are one contract
- * with two implementations.
+ * Kept deliberately in step with the editor's builder. If this needs to change,
+ * tell them rather than diverging — one contract, two implementations.
  */
 export default {
   name: 'form',

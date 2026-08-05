@@ -212,7 +212,23 @@ fields:
   title: { type: string }                        # translatable by default
   body:  { type: markdown }                      # translatable by default
   sku:   { type: string, translatable: false }   # one value across all locales
+  tags:  { type: string, many: true, translatable: false }   # a grouping key
 ```
+
+⚠️ **A human-readable string can still be the wrong thing to translate.** The opt-out is not only
+for opaque tokens — it is for any value that is **compared** rather than read: tags, keywords,
+categories, technology names. Those look like prose and are not, and the default is exactly wrong
+for them.
+
+Translating a grouping key **forks the vocabulary**: the `en` and `es` sides of one site end up
+filtering on different values, and *"everything tagged `research`"* stops being a single query.
+Worse, a `many` field that is translatable is an array of *per-language objects* — so a list authored
+as `["design", "craft"]` is not merely untranslated, it is **invalid**, and a locale with no
+translation renders **no tags at all** rather than the original ones.
+
+⇒ Ask **"would two locales ever need different values here, or the same value shown differently?"**
+The second is a canonical key plus a localized label — two fields, not one translatable field.
+(`@std`'s `tags`, `keywords` and `technologies` are all `translatable: false` for this reason.)
 
 Fields constrained by `enum:`, and strings carrying a value-validator `format` (`email` / `url`), are treated as machine values and are not translated. A *content* format (`markdown` / `html` / `prosemirror`) still translates.
 

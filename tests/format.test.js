@@ -19,7 +19,9 @@ import {
   flatRecordFields,
   parseSchemaRef,
   SCALAR_KINDS,
+  STRUCTURAL_KINDS,
   FORMAT_TYPES,
+  AUTHORING_TYPES,
 } from '../src/index.js'
 import { schemas, getSchemaNames } from '../src/index.js'
 
@@ -30,6 +32,41 @@ describe('the format is exported from this package', () => {
     expect(SCALAR_KINDS.has('decimal')).toBe(true)
     expect(SCALAR_KINDS.has('richtext')).toBe(false) // an alias, never a kind
     expect(FORMAT_TYPES.has('richtext')).toBe(true)
+  })
+
+  it('AUTHORING_TYPES is the whole vocabulary, and is derived from it', () => {
+    // Derived rather than listed, so adding a kind cannot leave a copy behind.
+    // It exists because the set had only ever been an expression inside the
+    // "unknown type" error — meaning anything else that wanted it (a schema
+    // constraining a `type` field, a doc, a tool) had to restate it.
+    for (const kind of SCALAR_KINDS) expect(AUTHORING_TYPES.has(kind)).toBe(true)
+    for (const kind of STRUCTURAL_KINDS) expect(AUTHORING_TYPES.has(kind)).toBe(true)
+    for (const alias of FORMAT_TYPES) expect(AUTHORING_TYPES.has(alias)).toBe(true)
+    // The friendly aliases are not separately exported; assert the folding words.
+    for (const alias of ['number', 'integer', 'boolean', 'image']) {
+      expect(AUTHORING_TYPES.has(alias)).toBe(true)
+    }
+    expect(AUTHORING_TYPES.has('richtext')).toBe(true) // an alias, never a kind
+  })
+
+  it('every word in it is actually accepted by the normalizer', () => {
+    // The set would be worthless if it advertised a word the normalizer rejects.
+    for (const word of AUTHORING_TYPES) {
+      const spec = word === 'object' ? { type: word, fields: { a: 'string' } }
+        : word === 'ref' ? { type: word, ref: '@/x' }
+        : { type: word }
+      expect(() => validateAndNormalizeSchema({ fields: { f: spec } }, '@/x'), `type: ${word}`).not.toThrow()
+    }
+  })
+
+  it('the unknown-type error lists the set rather than a copy of it', () => {
+    let message = ''
+    try {
+      validateAndNormalizeSchema({ fields: { f: { type: 'nonsense' } } }, '@/x')
+    } catch (e) {
+      message = e.message
+    }
+    for (const word of AUTHORING_TYPES) expect(message).toContain(word)
   })
 
   it('parses refs by namespace', () => {

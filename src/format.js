@@ -75,6 +75,27 @@ export const FORMAT_TYPES = new Set(['url', 'email', 'markdown', 'html', 'richte
 export const SECTION_KINDS = new Set(['single', 'multi', 'binder'])
 
 /**
+ * Every word valid as a `type:` — the canonical kinds plus every alias that folds
+ * into one. This is the complete authoring type vocabulary.
+ *
+ * DERIVED, never hand-listed, and that is the point. It used to exist only as an
+ * expression inside the "unknown type" error message, which meant anything else
+ * wanting the set — a schema constraining a `type` field, a doc, a tool — had to
+ * restate it and would drift the first time a kind was added. Adding a kind above
+ * now updates the error hint, this set, and every consumer at once.
+ *
+ * A schema that describes something schema-SHAPED is the obvious consumer:
+ * `@std/form`'s controls carry a `type` drawn from exactly this vocabulary, so it
+ * can close that set against this rather than against a copy.
+ */
+export const AUTHORING_TYPES = new Set([
+  ...SCALAR_KINDS,
+  ...STRUCTURAL_KINDS,
+  ...Object.keys(TYPE_ALIASES),
+  ...FORMAT_TYPES,
+])
+
+/**
  * Parse a data-schema ref into `{ scope, name }`.
  *   '@/member'       → { scope: '',    name: 'member' }   (self namespace)
  *   '@std/person'    → { scope: 'std', name: 'person' }
@@ -100,20 +121,6 @@ export function parseSchemaRef(ref) {
   return { scope, name }
 }
 
-/**
- * `label` and `description` are plain strings, at every tier.
- *
- * They are carried inline as the SOURCE-LOCALE string; the other locales live in
- * translation rows. So an inline per-locale object — `label: { en: 'Name' }` — is
- * not a shorthand for anything, it is a different shape, and the registry rejects
- * it. Catching it here means the author sees it at their own screen rather than as
- * a publish failure much later.
- *
- * This is a type check in our OWN format (`label` is documented as a string),
- * which is why it belongs at build time alongside the checks on `many`, `tree`,
- * `enum` and `options` — unlike a rule that merely reflects what the registry has
- * no slot for.
- */
 /**
  * `tree` / `append_only` on a FIELD — the same flags `normalizeSection` accepts,
  * validated the same way, because a section-shaped field becomes a section.
@@ -153,6 +160,20 @@ function normalizeSectionFlags(node, ref, path, isRecordList) {
   if (node.append_only !== true) delete node.append_only
 }
 
+/**
+ * `label` and `description` are plain strings, at every tier.
+ *
+ * They are carried inline as the SOURCE-LOCALE string; the other locales live in
+ * translation rows. So an inline per-locale object — `label: { en: 'Name' }` — is
+ * not a shorthand for anything, it is a different shape, and the registry rejects
+ * it. Catching it here means the author sees it at their own screen rather than as
+ * a publish failure much later.
+ *
+ * This is a type check in our OWN format (`label` is documented as a string),
+ * which is why it belongs at build time alongside the checks on `many`, `tree`,
+ * `enum` and `options` — unlike a rule that merely reflects what the registry has
+ * no slot for.
+ */
 function assertProseStrings(node, ref, path) {
   for (const k of ['label', 'description']) {
     if (node[k] !== undefined && typeof node[k] !== 'string') {
@@ -424,7 +445,7 @@ function normalizeField(field, ref, path) {
   if (!SCALAR_KINDS.has(out.type) && !STRUCTURAL_KINDS.has(out.type)) {
     throw new Error(
       `Data schema '${ref}': field '${path}' has unknown type '${rawType}'. ` +
-        `Known: ${[...SCALAR_KINDS, ...STRUCTURAL_KINDS, ...Object.keys(TYPE_ALIASES), ...FORMAT_TYPES].sort().join(', ')}.`
+        `Known: ${[...AUTHORING_TYPES].sort().join(', ')}.`
     )
   }
 

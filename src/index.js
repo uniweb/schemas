@@ -40,6 +40,7 @@ export {
   STRUCTURAL_KINDS,
   FORMAT_TYPES,
   SECTION_KINDS,
+  AUTHORING_TYPES,
   SCHEMA_EXTENSIONS,
   parseSchemaRef,
   validateAndNormalizeSchema,

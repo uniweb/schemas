@@ -291,7 +291,7 @@ The flat `fields:` form is the common case. Reach for `sections:` only when you 
 |---|---|
 | `fields` | The section's fields |
 | `sections` | Child sections (a section carrying only these is a grouping container) |
-| `brief` | This section is the card a reference to this type hydrates into. At most one per schema, and it must be a single record (not `many`) |
+| `brief` | This section is the card a reference to this type hydrates into. **Optional** — at most one per schema, and it must be a single record (not `many`). Without one the type simply isn't referenceable; see [A schema whose root is a list](#a-schema-whose-root-is-a-list) |
 | `many` | A repeating list of records rather than one |
 | `tree` | A `many` section whose records nest **under each other**. `nestable` is the lower-level spelling |
 | `append_only` | A `many` section whose records are insert-only — added, never edited or deleted |
@@ -300,6 +300,40 @@ The flat `fields:` form is the common case. Reach for `sections:` only when you 
 ### The brief
 
 The **brief** is the section that represents the whole record when something references it — the card. At most one section may be marked `brief: true`, and it must be a single record. A schema with no brief is not referenceable as a target (there's no card to show), which is fine for types that are pure lists — `@std/nav` is exactly that.
+
+### A schema whose root is a list
+
+Some content isn't a record with parts — it *is* a list. A navigation menu is a list of items; a form is a list of controls. Declare that as **one `many: true` section and nothing else**:
+
+```yaml
+# @std/nav, in full
+name: nav
+sections:
+  items:
+    many: true
+    tree: true
+    fields:
+      label: { type: string, required: true }
+      href:  { type: string, translatable: false }
+```
+
+The content is then a bare list, with no wrapping key:
+
+````markdown
+```yaml:nav
+- label: Home
+  href: /
+- label: Docs
+  href: /docs
+```
+````
+
+Two consequences worth knowing:
+
+- **No brief, and that's correct.** There's no single record to be the card, so the schema isn't referenceable as an `entity_ref` target. `uniweb validate` and the runtime treat this as a normal shape, not a missing one.
+- **Exactly one section.** Two `many` sections and no single one would leave "which one is the value?" unanswerable, so it isn't treated as a root list — nothing would be checked.
+
+Everything else works the same: `validate` checks each record and names its index (`[1].label`), and `applyDefaults` fills each entry's defaults.
 
 ### Tree sections
 

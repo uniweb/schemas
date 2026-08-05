@@ -121,14 +121,22 @@ export default {
       values: {
         type: 'object',
         fields: {
-          type: { type: 'string', required: true, description: 'Control kind — string, text, number, bool, date, file' },
+          // `translatable: false` on the machine tokens. A string field is localized
+          // by DEFAULT — right for anything the visitor reads, wrong for a token a
+          // renderer branches on. Translating `type: number` to `type: numéro`, or
+          // `accept: image/*`, produces a form that silently stops working in that
+          // locale, and the per-locale copies make it look deliberate.
+          //
+          // The test is who consumes the value: the visitor (`label`,
+          // `description`, `placeholder` — and `enum`'s choice labels) or the code.
+          type: { type: 'string', required: true, translatable: false, description: 'Control kind — string, text, number, bool, date, file' },
           label: { type: 'string', description: 'What the visitor sees' },
           description: { type: 'string', description: 'Help text under the control' },
           placeholder: { type: 'string', description: 'Ghost text inside the control' },
           required: { type: 'bool', description: 'The visitor must answer' },
-          format: { type: 'string', description: 'Refines a string — `email` today' },
+          format: { type: 'string', translatable: false, description: 'Refines a string — `email` today' },
           enum: { type: 'array', description: 'Choices — bare strings and/or { value, label }' },
-          accept: { type: 'string', description: 'File fields — the HTML accept attribute' },
+          accept: { type: 'string', translatable: false, description: 'File fields — the HTML accept attribute' },
           multiple: { type: 'bool', description: 'File fields — the HTML multiple attribute' },
         },
       },

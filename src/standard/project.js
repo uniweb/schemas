@@ -99,6 +99,7 @@ export default {
     technologies: {
       type: 'string',
       many: true,
+      translatable: false, // a grouping key, not prose — see `slug`
       description: 'Technologies and tools used',
     },
     category: {
@@ -108,6 +109,7 @@ export default {
     tags: {
       type: 'string',
       many: true,
+      translatable: false, // a grouping key, not prose — see `slug`
       description: 'Tags or keywords',
     },
 

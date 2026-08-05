@@ -42,6 +42,7 @@ export default {
         tags: {
           type: 'string',
           many: true,
+          translatable: false, // a grouping key, not prose — see `slug`
           description: 'Tags or keywords',
         },
       },

@@ -104,13 +104,57 @@ export function validateBound(schema, value) {
     if (!Array.isArray(value)) {
       return [violation('', 'type', `expected a list of records, got ${typeName(value)}`)]
     }
-    const out = []
-    value.forEach((record, i) => out.push(...validateFields(list.fields, record, `[${i}]`)))
-    return out
+    return validateRecords(list, value, '')
   }
   const fields = flatRecordFields(schema)
   if (!fields) return []
   return validateFields(fields, value, '')
+}
+
+/**
+ * The key a `tree` section's records nest under.
+ *
+ * A self-nesting section declares no parent/child field — the link is internal to
+ * the registry (`parent_item_id`) — so on the authoring side the recursion is a
+ * reserved key on each record, and this is it. The convention is stated in
+ * `@std/nav`, which is the shape's original user; naming it here rather than
+ * inlining the string is what lets the checker walk it.
+ */
+const TREE_CHILDREN_KEY = 'children'
+
+/**
+ * Check a list of records against a section, descending into a `tree` section's
+ * children.
+ *
+ * The descent is the point. `tree: true` says the records nest under each other,
+ * and until this existed the checker walked only the top level — so a nav two
+ * levels deep had its whole second level unverified, and `tree` bought the wire
+ * shape while buying nothing from validation. A finding names its full path
+ * (`[1].children[0].label`) because "a label is missing" is unactionable on a
+ * menu with thirty entries.
+ *
+ * Only a `nestable` section recurses. On any other section a `children` key is
+ * just an undeclared field, and undeclared fields are ignored — the same
+ * tolerance every other record gets.
+ */
+function validateRecords(section, records, prefix) {
+  const out = []
+  records.forEach((record, i) => {
+    const path = `${prefix}[${i}]`
+    out.push(...validateFields(section.fields, record, path))
+
+    if (!section.nestable || !isPlainObject(record)) return
+    const children = record[TREE_CHILDREN_KEY]
+    if (children === undefined || children === null) return
+
+    const childPath = `${path}.${TREE_CHILDREN_KEY}`
+    if (!Array.isArray(children)) {
+      out.push(violation(childPath, 'type', `expected array, got ${typeName(children)}`))
+      return
+    }
+    out.push(...validateRecords(section, children, childPath))
+  })
+  return out
 }
 
 /**

@@ -23,7 +23,17 @@ export default {
     authors: {
       type: 'object',
       many: true,
-      required: true,
+      // `required: true` used to sit here and did nothing: a list of records
+      // becomes a section, and `required` binds the record that is WRITTEN — it
+      // cannot force a record to exist. `min_items` is the rule that carries:
+      // a delete may not take the section below one author.
+      //
+      // Scope it honestly, in both directions. It is a WRITE guarantee, not a
+      // fill requirement — nothing yet forces an author to populate this before
+      // publishing. And it is never a RENDER guarantee: a component still handles
+      // an empty list, because the same schema is renderable by a foundation that
+      // never saw this constraint.
+      constraints: [{ kind: 'min_items', value: 1 }],
       description: 'Publication authors',
       fields: {
         name: { type: 'string', required: true },

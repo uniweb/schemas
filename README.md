@@ -144,7 +144,7 @@ fields:
 
 Collection-level metadata (`required`, `default`, `label`, `help`, `description`) rides on the **list**; the type-bearing keys (`type`, `ref`, `options`, `enum`, `fields`, `items`, `format`) describe **each item**.
 
-> **One limit worth knowing about `required`.** It is enforced on a list of *values* — `{ type: string, many: true, required: true }` — and on a list of references. It is **not** enforced on a list of *records*, or on a nested `object`: those become sections when the schema is registered, and a section carries no `required`. Put the flag on a field *inside* the record instead, where it holds.
+> **One limit worth knowing about `required`.** It is enforced on a list of *values* — `{ type: string, many: true, required: true }` — and on a list of references. It is **not** enforced on a list of *records*, or on a nested `object`: those become sections when the schema is registered, and `required` binds the record that is *written* — it cannot force a record to *exist*. Put the flag on a field *inside* the record, where it holds, and reach for `min_items` below when you mean "don't let this become empty".
 
 ### Nested records and open maps
 
@@ -235,6 +235,29 @@ Fields constrained by `enum:`, and strings carrying a value-validator `format` (
 | `values` | object | Value shape of an open map — `object` type |
 | `items` | object | Item definition — `array` type (or use `many:`) |
 | `ref` | string | Target schema — `ref` type |
+| `constraints` | array | Rules for the section this field becomes — `object` and `many`-of-`object` only (see below) |
+
+### Constraints
+
+A nested record and a list of records become **sections** when a schema is registered, and a section can carry rules a single field can't express. Declare them with `constraints:` — on the section in the `sections:` form, or on the field itself:
+
+```yaml
+fields:
+  authors:
+    type: object
+    many: true
+    constraints:
+      - { kind: min_items, value: 1 }
+    fields:
+      name: { type: string, required: true }
+```
+
+`min_items` is the common one, and it is worth reading precisely:
+
+- **It is a delete floor, not a fill requirement.** It refuses a delete that would take the section below N. It does *not* force an author to populate the section in the first place.
+- **It is a write guarantee, never a render guarantee.** Your component still handles an empty list — the same schema can be rendered by a foundation that never saw the constraint, so content and code stay independent.
+
+Constraints on a plain leaf field are ignored: a leaf narrows with `enum` and `format` instead. They take effect once the schema is [registered](#registering-schemas); for file-based collections there is no write step.
 
 ---
 

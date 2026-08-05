@@ -106,10 +106,14 @@ describe('validate', () => {
     expect(() => validate({}, { name: 'x' })).toThrow(/must declare 'fields' or 'sections'/)
   })
 
-  it('has nothing to say about a schema with no flat-record surface', () => {
-    // `@std/nav` is a list, not a record. Reporting findings against a record
-    // shape it never claimed to have would be inventing the shape.
-    expect(validate({ anything: true }, 'nav')).toEqual({ valid: true, errors: [] })
+  it('checks a schema whose root is a LIST against the list it declared', () => {
+    // This used to assert the opposite — that `@std/nav` had nothing to say —
+    // on the reasoning that checking it against a record shape would be
+    // inventing one. True as far as it went, and it hid the real gap: nav
+    // never claimed a record shape, it claimed a LIST, and nothing checked
+    // that either. See conform.test.js for the rule.
+    expect(validate({ anything: true }, 'nav').errors.map((e) => e.rule)).toEqual(['type'])
+    expect(validate([{ label: 'Home' }], 'nav')).toEqual({ valid: true, errors: [] })
   })
 })
 

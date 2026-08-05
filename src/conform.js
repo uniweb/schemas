@@ -47,8 +47,70 @@ export function validateItem(schema, item) {
   if (!schema || typeof schema !== 'object') return []
   if (schema.fields) return validateFields(schema.fields, item, '')
   // `sections`-form schemas are deferred upstream (rich model — not reproducible
-  // from a flat file); this is a no-op safety net.
+  // from a flat file); this is a no-op safety net. For a schema whose root is a
+  // LIST rather than a record, use `validateBound` — see below for why that is a
+  // separate entry point rather than a widening of this one.
   return []
+}
+
+/**
+ * The section whose records ARE the whole value — i.e. the schema's root is a
+ * LIST, not a record.
+ *
+ * `@std/nav` is the shape: one `many` section, no singles, no brief, and the
+ * authored content is a bare array of items. `@std/form` is the same shape once a
+ * form's title and description move out of the data block and into the section's
+ * markdown, where they belong.
+ *
+ * Requires EXACTLY ONE section, and that it be `multi`. Two multi sections and no
+ * singles would leave "which one is the value?" unanswerable, so it is not a
+ * root-list — better to check nothing than to guess.
+ *
+ * @param {Object} schema - a normalized data schema
+ * @returns {Object|null} the section, or null when the root is not a list
+ */
+export function rootListSection(schema) {
+  if (!schema || typeof schema !== 'object' || !schema.sections) return null
+  const entries = Object.entries(schema.sections)
+  if (entries.length !== 1) return null
+  const section = entries[0][1]
+  return section && section.kind === 'multi' && section.fields ? section : null
+}
+
+/**
+ * Validate the whole value bound to a `content.data` key — a record OR a list.
+ *
+ * This is the entry point a caller holding an entire authored value wants: a
+ * tagged data block (```` ```yaml:nav ````), or anything else delivered under one
+ * key. It dispatches on the schema's root shape:
+ *
+ *   root is a LIST    → the value is an array of that section's records
+ *   root is a RECORD  → the value is one record (`flatRecordFields`)
+ *
+ * WHY THIS IS NOT `validateItem`, and why `isStaticallyCheckable` is untouched.
+ * Both of those answer "does ONE RECORD match this schema?", and callers rely on
+ * exactly that: `@uniweb/build` checks each concept-block item and each collection
+ * record with them. Teaching them about root-lists would make a root-list schema
+ * apply per-item, which is the opposite of what it says — the list is the whole
+ * value, not each element of some outer one. Two questions, two functions.
+ *
+ * @param {Object} schema - a normalized data schema
+ * @param {*} value - the whole bound value
+ * @returns {Array<{ field: string, rule: string, message: string }>}
+ */
+export function validateBound(schema, value) {
+  const list = rootListSection(schema)
+  if (list) {
+    if (!Array.isArray(value)) {
+      return [violation('', 'type', `expected a list of records, got ${typeName(value)}`)]
+    }
+    const out = []
+    value.forEach((record, i) => out.push(...validateFields(list.fields, record, `[${i}]`)))
+    return out
+  }
+  const fields = flatRecordFields(schema)
+  if (!fields) return []
+  return validateFields(fields, value, '')
 }
 
 /**

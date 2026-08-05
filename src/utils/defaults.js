@@ -13,7 +13,7 @@
  */
 
 import { validateAndNormalizeSchema } from '../format.js'
-import { flatRecordFields } from '../conform.js'
+import { flatRecordFields, rootListSection } from '../conform.js'
 
 /**
  * Apply a schema's declared defaults to a record, without overwriting values the
@@ -26,6 +26,13 @@ import { flatRecordFields } from '../conform.js'
  * @returns {object} the record with defaults filled in
  */
 export function applySchemaDefaults(data, schema) {
+  // A schema whose root is a LIST (`@std/nav`) declares its defaults per record,
+  // so applying them means applying them to each element — the same dispatch
+  // `validateAgainstSchema` makes.
+  const list = listItemFields(schema)
+  if (list) {
+    return Array.isArray(data) ? data.map((record) => applyFieldDefaults(record || {}, list)) : data
+  }
   const fields = recordFields(schema)
   if (!fields) return data
   return applyFieldDefaults(data, fields)
@@ -38,15 +45,27 @@ export function applySchemaDefaults(data, schema) {
  * @returns {object} defaults, nested to match the record shape
  */
 export function getSchemaDefaults(schema) {
-  const fields = recordFields(schema)
+  // For a root-list schema these are the defaults of EACH record — there is no
+  // record-level shape to report them against, because the value is the list.
+  const fields = listItemFields(schema) || recordFields(schema)
   if (!fields) return {}
   return extractDefaults(fields)
 }
 
-function recordFields(schema) {
+function normalized(schema) {
   if (!schema || typeof schema !== 'object') return null
   const label = typeof schema.name === 'string' ? `@/${schema.name}` : '(schema)'
-  return flatRecordFields(validateAndNormalizeSchema(schema, label))
+  return validateAndNormalizeSchema(schema, label)
+}
+
+function recordFields(schema) {
+  const n = normalized(schema)
+  return n && flatRecordFields(n)
+}
+
+function listItemFields(schema) {
+  const n = normalized(schema)
+  return n && rootListSection(n)?.fields
 }
 
 // --- the walk (normalized shape) --------------------------------------------

@@ -45,7 +45,7 @@ export {
   validateAndNormalizeSchema,
   collectNestedRefs,
 } from './format.js'
-export { validateItem, isStaticallyCheckable, flatRecordFields } from './conform.js'
+export { validateItem, isStaticallyCheckable, flatRecordFields, rootListSection, validateBound } from './conform.js'
 
 /**
  * Registry of all standard schemas

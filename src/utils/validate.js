@@ -14,7 +14,7 @@
  */
 
 import { validateAndNormalizeSchema } from '../format.js'
-import { validateItem, flatRecordFields } from '../conform.js'
+import { validateBound } from '../conform.js'
 
 /**
  * Validate one record against a schema.
@@ -35,13 +35,10 @@ export function validateAgainstSchema(data, schema) {
   const label = typeof schema?.name === 'string' ? `@/${schema.name}` : '(schema)'
   const normalized = validateAndNormalizeSchema(schema, label)
 
-  // The surface one flat record can populate. Null means the schema declares no
-  // such surface at all (e.g. `@std/nav`, whose only section is a list) — there
-  // is nothing a single record could be checked against, so nothing to report.
-  const fields = flatRecordFields(normalized)
-  if (!fields) return { valid: true, errors: [] }
-
-  const findings = validateItem({ fields }, data)
+  // Dispatches on the schema's root shape — a record, or a LIST (`@std/nav`, and
+  // `@std/form` once a form's prose moves to markdown). A schema with neither
+  // reports nothing rather than inventing a shape to check against.
+  const findings = validateBound(normalized, data)
   return {
     valid: findings.length === 0,
     errors: findings.map((f) => ({ path: f.field, rule: f.rule, message: f.message })),

@@ -60,6 +60,23 @@
  * blocks, so no form content is offered for translation today. The
  * `translatable: false` markers below are what that work will read when it is
  * scheduled. Do not describe this schema as "localizes choices".
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * ⚠️ PROVISIONAL UNTIL A HUMAN HAS DRAWN A FORM
+ *
+ * v2 is validated against a derived example and hand-built ones. Nobody has
+ * opened the v2 builder in a browser. The editor's own observation, worth keeping
+ * because it is the more useful half of a green suite: **every trap in this
+ * feature's history was found by looking at what renders or what is stored, and
+ * none by a test.**
+ *
+ * So treat this as settled-by-agreement, not settled-by-evidence. When someone
+ * first draws a form, expect what breaks to be something neither suite covers.
+ *
+ * There is deliberately NO migration path from v1 and there will not be one, even
+ * if a form-rendering component ships. That is a decision (Diego, 2026-08-05:
+ * breaking authored content on this lane is acceptable), not an omission — reopen
+ * it only if the lane goes live.
  */
 
 import { AUTHORING_TYPES } from '../format.js'

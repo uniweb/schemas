@@ -236,6 +236,10 @@ Fields constrained by `enum:`, and strings carrying a value-validator `format` (
 | `items` | object | Item definition — `array` type (or use `many:`) |
 | `ref` | string | Target schema — `ref` type |
 | `constraints` | array | Rules for the section this field becomes — `object` and `many`-of-`object` only (see below) |
+| `tree` | boolean | The records nest under each other — a `many`-of-`object` field only |
+| `append_only` | boolean | The records are insert-only — a `many`-of-`object` field only |
+
+`tree` and `append_only` describe how a *list of records* behaves, so they need one: a `many: true` field whose items are objects, or a `many: true` section. On a single object or a list of plain values they're rejected rather than ignored — they'd be stating something that can't be true. Both are documented under [Structured types](#structured-types--sections), and mean the same thing wherever you declare them.
 
 ### Constraints
 
@@ -303,7 +307,7 @@ The **brief** is the section that represents the whole record when something ref
 
 This is what separates `tree:` from child `sections:`. A child section nests one *named* section inside another — a fixed shape you spell out. `tree:` lets records of a **single** section nest under one another, so the shape is decided by the author as they write.
 
-`tree:` is only valid on a `many: true` section.
+`tree:` is only valid on a `many: true` section — but "section" includes a **nested** one, and a list of records authored as a *field* (`chapters: { type: object, many: true, tree: true }`) works the same way.
 
 ### Append-only sections
 

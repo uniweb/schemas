@@ -114,6 +114,45 @@ export function parseSchemaRef(ref) {
  * `enum` and `options` — unlike a rule that merely reflects what the registry has
  * no slot for.
  */
+/**
+ * `tree` / `append_only` on a FIELD — the same flags `normalizeSection` accepts,
+ * validated the same way, because a section-shaped field becomes a section.
+ *
+ * Both describe how a *list of records* behaves, so they need one: a `many: true`
+ * field whose items are objects. On anything else — a single object, a list of
+ * plain values — they describe nothing, and were previously carried partway and
+ * then silently discarded. Rejecting is right here (unlike `constraints` on a
+ * leaf, which is well-formed authoring the registry merely has no slot for):
+ * `tree: true` on a single object is not a declaration the wire can't take, it is
+ * a statement that cannot be true.
+ *
+ * Rewrites the friendly `tree` to the IR's `nestable`, so the lowering reads the
+ * one key `normalizeSection` also emits.
+ */
+function normalizeSectionFlags(node, ref, path, isRecordList) {
+  const flags = [
+    ['tree', node.tree !== undefined ? node.tree : node.nestable],
+    ['append_only', node.append_only],
+  ]
+  for (const [name, value] of flags) {
+    if (value === undefined) continue
+    if (typeof value !== 'boolean') {
+      throw new Error(`Data schema '${ref}': field '${path}' '${name}' must be a boolean.`)
+    }
+    if (value && !isRecordList) {
+      throw new Error(
+        `Data schema '${ref}': field '${path}' is '${name}: true', which describes a list of records — ` +
+          `declare it on a 'many: true' field whose items are objects, or on a 'many: true' section.`
+      )
+    }
+  }
+  const tree = node.tree !== undefined ? node.tree : node.nestable
+  delete node.tree
+  if (tree === true) node.nestable = true
+  else delete node.nestable
+  if (node.append_only !== true) delete node.append_only
+}
+
 function assertProseStrings(node, ref, path) {
   for (const k of ['label', 'description']) {
     if (node[k] !== undefined && typeof node[k] !== 'string') {
@@ -325,11 +364,16 @@ function normalizeField(field, ref, path) {
         else out[k] = v
       }
       out.items = normalizeField(item, ref, `${path}[]`)
+      // A list of records becomes a section, so it accepts the section flags.
+      normalizeSectionFlags(out, ref, path, out.items.type === 'object')
       return out
     }
     const { many, ...rest } = field // many: false → a single value
     field = rest
   }
+  // Not a list — so `tree` / `append_only` cannot apply. Validate before the
+  // carry-through so the author is told, rather than having them vanish.
+  normalizeSectionFlags({ ...field }, ref, path, false)
 
   // Sugar: infer `type` from `ref:`/`options:` when omitted — `{ ref: '@/x' }` is a
   // reference; `{ options: '@/x' }` is a curated picklist value.

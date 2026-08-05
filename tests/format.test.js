@@ -113,6 +113,43 @@ describe('constraints', () => {
   })
 })
 
+/**
+ * `tree` / `append_only` on a field are validated the way `normalizeSection`
+ * validates them, because a section-shaped field becomes a section.
+ *
+ * These reject rather than drop — and the distinction from `constraints` on a leaf
+ * is deliberate. A leaf constraint is well-formed authoring the registry has no
+ * slot for, so failing a build over it would punish a project that never
+ * registers. `tree: true` on a single object is not that: it is a statement that
+ * cannot be true at any tier, so saying so is the only useful response.
+ */
+describe('tree and append_only describe a list of records', () => {
+  const norm = (f) => () => validateAndNormalizeSchema({ fields: { f } }, '@/x')
+  const ok = (f) => validateAndNormalizeSchema({ fields: { f } }, '@/x').fields.f
+
+  it('normalizes the friendly `tree` to the IR `nestable`', () => {
+    expect(ok({ type: 'object', many: true, tree: true, fields: { a: 'string' } }).nestable).toBe(true)
+    expect(ok({ type: 'object', many: true, nestable: true, fields: { a: 'string' } }).nestable).toBe(true)
+  })
+
+  it('rejects them on a single object — it cannot nest under itself', () => {
+    expect(norm({ type: 'object', tree: true, fields: { a: 'string' } })).toThrow(/describes a list of records/)
+    expect(norm({ type: 'object', append_only: true, fields: { a: 'string' } })).toThrow(/describes a list of records/)
+  })
+
+  it('rejects them on a list of plain values', () => {
+    expect(norm({ type: 'string', many: true, tree: true })).toThrow(/describes a list of records/)
+  })
+
+  it('rejects a non-boolean', () => {
+    expect(norm({ type: 'object', many: true, tree: 'yes', fields: { a: 'string' } })).toThrow(/must be a boolean/)
+  })
+
+  it('leaves `false` as the no-op it is', () => {
+    expect(ok({ type: 'object', many: true, tree: false, fields: { a: 'string' } })).not.toHaveProperty('nestable')
+  })
+})
+
 describe('flatRecordFields — the surface one source file can populate', () => {
   it('is the field map itself for a fields-form schema', () => {
     const norm = validateAndNormalizeSchema({ fields: { a: 'string' } }, '@/x')

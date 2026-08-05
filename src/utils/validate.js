@@ -1,178 +1,51 @@
 /**
- * Schema validation utilities
+ * Schema validation — a thin adapter over the shared conformance checker.
+ *
+ * This file used to hold a SECOND reader of the schema format, written when the
+ * real one was locked inside `@uniweb/build`. It drifted, as a second reader
+ * does: it never learned `many:`, `values:`, or the `sections:` form, and it knew
+ * only the friendly type words — so `{ type: 'string', many: true }` given a
+ * perfectly good array reported "Expected string, got object", and a
+ * `sections:`-form schema silently returned valid no matter what you passed it.
+ *
+ * There is now one implementation. `format.js` normalizes, `conform.js` checks,
+ * and `@uniweb/build` re-exports both — so `uniweb validate` and this function
+ * run the same code over the same normalized shape.
  */
 
+import { validateAndNormalizeSchema } from '../format.js'
+import { validateItem, flatRecordFields } from '../conform.js'
+
 /**
- * Validate data against a schema
- * @param {object} data - Data to validate
- * @param {object} schema - Schema definition
- * @returns {{ valid: boolean, errors: Array<{ path: string, message: string }> }}
+ * Validate one record against a schema.
+ *
+ * The schema is normalized first, so the friendly authoring vocabulary works:
+ * `many:`, `number`/`boolean`/`image`, `markdown`/`richtext`, `{ ref: '@/x' }`,
+ * and both the `fields:` and `sections:` forms.
+ *
+ * **Throws** when the schema itself is malformed — a bad schema is a programming
+ * error, and the normalizer's message names the offending field. Invalid *data*
+ * is what this reports; an invalid *schema* is not something to report as valid.
+ *
+ * @param {object} data - the record to check
+ * @param {object} schema - a schema definition, as authored
+ * @returns {{ valid: boolean, errors: Array<{ path: string, rule: string, message: string }> }}
  */
 export function validateAgainstSchema(data, schema) {
-  const errors = []
+  const label = typeof schema?.name === 'string' ? `@/${schema.name}` : '(schema)'
+  const normalized = validateAndNormalizeSchema(schema, label)
 
-  if (!schema || !schema.fields) {
-    return { valid: true, errors: [] }
-  }
+  // The surface one flat record can populate. Null means the schema declares no
+  // such surface at all (e.g. `@std/nav`, whose only section is a list) — there
+  // is nothing a single record could be checked against, so nothing to report.
+  const fields = flatRecordFields(normalized)
+  if (!fields) return { valid: true, errors: [] }
 
-  validateFields(data, schema.fields, '', errors)
-
+  const findings = validateItem({ fields }, data)
   return {
-    valid: errors.length === 0,
-    errors,
+    valid: findings.length === 0,
+    errors: findings.map((f) => ({ path: f.field, rule: f.rule, message: f.message })),
   }
-}
-
-/**
- * Validate fields recursively
- */
-function validateFields(data, fields, path, errors) {
-  if (!data || typeof data !== 'object') {
-    if (Object.values(fields).some(f => f.required)) {
-      errors.push({
-        path: path || '(root)',
-        message: 'Expected an object',
-      })
-    }
-    return
-  }
-
-  for (const [fieldName, fieldDef] of Object.entries(fields)) {
-    const fieldPath = path ? `${path}.${fieldName}` : fieldName
-    const value = data[fieldName]
-
-    // Check required
-    if (fieldDef.required && (value === undefined || value === null || value === '')) {
-      errors.push({
-        path: fieldPath,
-        message: 'Required field is missing',
-      })
-      continue
-    }
-
-    // Skip if no value and not required
-    if (value === undefined || value === null) {
-      continue
-    }
-
-    // Type validation
-    const typeError = validateType(value, fieldDef, fieldPath)
-    if (typeError) {
-      errors.push(typeError)
-      continue
-    }
-
-    // Enum validation
-    if (fieldDef.enum && !fieldDef.enum.includes(value)) {
-      errors.push({
-        path: fieldPath,
-        message: `Value must be one of: ${fieldDef.enum.join(', ')}`,
-      })
-    }
-
-    // Format validation
-    if (fieldDef.format) {
-      const formatError = validateFormat(value, fieldDef.format, fieldPath)
-      if (formatError) {
-        errors.push(formatError)
-      }
-    }
-
-    // Nested object validation
-    if (fieldDef.type === 'object' && fieldDef.fields) {
-      validateFields(value, fieldDef.fields, fieldPath, errors)
-    }
-
-    // Array validation
-    if (fieldDef.type === 'array' && fieldDef.items && Array.isArray(value)) {
-      value.forEach((item, index) => {
-        const itemPath = `${fieldPath}[${index}]`
-        if (fieldDef.items.type === 'object' && fieldDef.items.fields) {
-          validateFields(item, fieldDef.items.fields, itemPath, errors)
-        } else {
-          const itemError = validateType(item, fieldDef.items, itemPath)
-          if (itemError) {
-            errors.push(itemError)
-          }
-        }
-      })
-    }
-  }
-}
-
-/**
- * Validate a value's type
- */
-function validateType(value, fieldDef, path) {
-  const type = fieldDef.type
-
-  switch (type) {
-    case 'string':
-    case 'markdown':
-    case 'image':
-    case 'url':
-    case 'email':
-    case 'date':
-    case 'datetime':
-      if (typeof value !== 'string') {
-        return { path, message: `Expected string, got ${typeof value}` }
-      }
-      break
-
-    case 'number':
-      if (typeof value !== 'number' || isNaN(value)) {
-        return { path, message: `Expected number, got ${typeof value}` }
-      }
-      break
-
-    case 'boolean':
-      if (typeof value !== 'boolean') {
-        return { path, message: `Expected boolean, got ${typeof value}` }
-      }
-      break
-
-    case 'object':
-      if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-        return { path, message: `Expected object, got ${Array.isArray(value) ? 'array' : typeof value}` }
-      }
-      break
-
-    case 'array':
-      if (!Array.isArray(value)) {
-        return { path, message: `Expected array, got ${typeof value}` }
-      }
-      break
-  }
-
-  return null
-}
-
-/**
- * Validate value format
- */
-function validateFormat(value, format, path) {
-  if (typeof value !== 'string') return null
-
-  switch (format) {
-    case 'email':
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-        return { path, message: 'Invalid email format' }
-      }
-      break
-
-    case 'url':
-      try {
-        new URL(value)
-      } catch {
-        // Allow relative URLs
-        if (!value.startsWith('/')) {
-          return { path, message: 'Invalid URL format' }
-        }
-      }
-      break
-  }
-
-  return null
 }
 
 export default validateAgainstSchema

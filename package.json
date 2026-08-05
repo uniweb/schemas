@@ -1,17 +1,25 @@
 {
   "name": "@uniweb/schemas",
   "version": "0.2.5",
-  "description": "Standard schema definitions for Uniweb components",
+  "description": "The Uniweb data-schema format and its standard schema definitions",
   "type": "module",
   "main": "src/index.js",
   "exports": {
     ".": "./src/index.js",
+    "./format": "./src/format.js",
+    "./conform": "./src/conform.js",
     "./standard/*": "./src/standard/*.js",
     "./utils/*": "./src/utils/*.js"
   },
   "files": [
     "src"
   ],
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.7"
+  },
   "keywords": [
     "uniweb",
     "schemas",

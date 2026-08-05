@@ -1,8 +1,17 @@
 /**
  * @uniweb/schemas
  *
- * Standard schema definitions for Uniweb components.
- * These schemas define common content types that components can consume.
+ * Two things, and it is worth knowing which you are reaching for:
+ *
+ *   the FORMAT    the data-schema language itself — the type vocabulary, the
+ *                 normalizer that folds its friendly aliases to canonical kinds,
+ *                 and the conformance checker. `@uniweb/build` re-exports these,
+ *                 so `uniweb validate` and this package run one implementation.
+ *                 → `./format`, `./conform`
+ *
+ *   the STANDARDS the shared `@std/*` schema definitions — person, article,
+ *                 event, and the rest — written in that format.
+ *                 → `./standard/*`, or the named exports below
  */
 
 // Standard schemas
@@ -22,6 +31,21 @@ import { applySchemaDefaults, getSchemaDefaults } from './utils/defaults.js'
 
 // Export individual schemas
 export { person, article, event, project, opportunity, publication, nav, scene, form }
+
+// The format itself — normalization and conformance. Also available as the
+// `@uniweb/schemas/format` and `@uniweb/schemas/conform` subpaths, which is what
+// `@uniweb/build` imports.
+export {
+  SCALAR_KINDS,
+  STRUCTURAL_KINDS,
+  FORMAT_TYPES,
+  SECTION_KINDS,
+  SCHEMA_EXTENSIONS,
+  parseSchemaRef,
+  validateAndNormalizeSchema,
+  collectNestedRefs,
+} from './format.js'
+export { validateItem, isStaticallyCheckable, flatRecordFields } from './conform.js'
 
 /**
  * Registry of all standard schemas
@@ -66,10 +90,16 @@ export function getSchemaNames() {
 }
 
 /**
- * Validate data against a schema
+ * Validate one record against a schema.
+ *
+ * Accepts the schema as authored — the friendly vocabulary (`many:`, `number`,
+ * `richtext`, `{ ref: '@/x' }`) and both the `fields:` and `sections:` forms are
+ * normalized first. Throws when the *schema* is malformed; invalid *data* comes
+ * back as findings.
+ *
  * @param {object} data - Data to validate
  * @param {string|object} schema - Schema name or definition
- * @returns {{ valid: boolean, errors: Array<{ path: string, message: string }> }}
+ * @returns {{ valid: boolean, errors: Array<{ path: string, rule: string, message: string }> }}
  */
 export function validate(data, schema) {
   const schemaDef = typeof schema === 'string' ? schemas[schema] : schema

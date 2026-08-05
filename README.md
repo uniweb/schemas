@@ -1,14 +1,21 @@
 # @uniweb/schemas
 
-Standard schema definitions for Uniweb components. These schemas define common content types — people, articles, events, projects — that components can consume from various data sources.
+Two things, and it helps to know which one you're reaching for:
 
-## Overview
+- **The data-schema format** — the language schemas are written in: its type vocabulary, the normalizer that folds friendly type names to canonical kinds, and the conformance checker that validates a record against a schema.
+- **The standard schemas** — a shared vocabulary of common content types (`person`, `article`, `event`, …) written in that format, referenced as `@std/<name>`.
 
-A data schema describes a structured content type: its fields, their types, and their defaults. Components declare which schema each `content.data` key follows; the build applies the schema's field defaults at runtime and carries the resolved schema in the foundation's published metadata.
+A data schema describes a structured content type: its fields, their types, their defaults. Write the shape once and it does three jobs — `uniweb validate` **checks** your data before it ships, the runtime **delivers** each record with defaults applied, and the visual editor renders a **form** authors fill in.
 
-This package ships the **shared standard schemas** — a common vocabulary (`person`, `article`, `event`, …) that any foundation can reference by name. Foundations can also define their own schemas locally and reference them, or declare a schema inline in `meta.js`.
+```bash
+pnpm add @uniweb/schemas
+```
 
-## The `data:` declaration
+Add it wherever a `@std/<name>` ref is used. Foundations that only use `@/`-refs (their own schema files) or inline schemas don't need it.
+
+---
+
+## Binding a schema
 
 A foundation component declares its structured-data shape with a single `data:` key in `meta.js`. Each entry maps a `content.data` key to a schema:
 
@@ -16,7 +23,6 @@ A foundation component declares its structured-data shape with a single `data:` 
 // foundation/sections/TeamGrid/meta.js
 export default {
   title: 'Team Grid',
-  category: 'showcase',
 
   data: {
     team:    '@/member',                                  // named ref (this foundation)
@@ -27,107 +33,51 @@ export default {
 }
 ```
 
-- The **key** (`team`) is the `content.data` key — where the data lands and where the schema's field defaults are applied. The site, author, or editor decides *how* that key gets filled (a fetched collection, a tagged code block, an editor form); the schema is the same regardless of source.
-- The **value** is one of three forms: a **named ref**, an **inline field map**, or an **inline rich-form**.
+- The **key** (`team`) is the `content.data` key — where the data lands and where the schema's defaults are applied. The site, author, or editor decides *how* that key gets filled (a fetched collection, a tagged code block, an editor form); the schema is the same regardless of source.
+- The **value** is a **named ref**, an **inline field map**, or an **inline rich-form** (distinguished by a `fields` **array** rather than a keyed object — it drives the editor's form UI).
 
-A `data:` declaration is a hint — it tells the editor and the runtime what shape to expect and which defaults to apply. It is **not** a delivery gate: data delivery is default-on, so a component receives `content.data` whether or not it declares `data:`. A component that should receive no ambient data at all declares `data: false`.
+A `data:` declaration is a hint, **not a delivery gate**: delivery is default-on, so a component receives `content.data` whether or not it declares `data:`. A component that should receive no ambient data declares `data: false`.
 
-There is no separate `schemas:` key, no `entity:` field, and no `inheritData` — they have all been folded into this one `data:` surface.
+There is no separate `schemas:` key, no `entity:` field, and no `inheritData` — all folded into this one `data:` surface.
 
-## The three `data:` value forms
+---
 
-### 1. Named ref
+## Three namespaces
 
-A ref points at a schema module on disk, resolved at build time (no network). Refs use **Uniweb namespacing**, not npm package paths:
+A ref names a **namespace, never a package path**:
 
 | Ref | Namespace | Resolves to |
 |---|---|---|
 | `@/member` | **self** — this foundation | `foundation/schemas/member.{js,json,yml,yaml}` |
-| `@std/person` | **shared standards** | the matching standard schema, shipped in the `@uniweb/schemas` package |
-| `@acme/event` | **an org** (publisher) | that org's schema, from its `@acme/schemas` package (a workspace package locally; a registry scope once published) |
+| `@std/person` | **shared standards** | the matching standard in this package |
+| `@acme/event` | **an org** | that org's `@acme/schemas` package (a workspace package locally; a registry scope once published) |
 
 The empty scope in `@/member` means "this foundation." Because an org scope is assigned only at publish time, a foundation **never writes its own org name in source** — `@/`-refs are portable and travel with the foundation, and the build resolves them to a real org scope when published.
 
-A ref names a **namespace, never a package path**. `@std/<name>` maps to the standard schema shipped in `@uniweb/schemas`; `@org/<name>` maps to that org's `@org/schemas` package — so a team can define schemas once and reference them across foundations, locally, with no backend. (`@uniweb` is reserved for the platform system namespace and is not a data-schema source — use `@std` for shared standards.)
+`@uniweb` is reserved for the platform system namespace and is **not** a data-schema source — use `@std` for shared standards.
 
-### 2. Inline field map
+Refs resolve **on disk at build time**. Nothing is fetched.
 
-A flat keyed object of field definitions, written directly in `meta.js`. Good for one-off, foundation-local shapes that don't warrant a shared schema file:
+### Routing a scope elsewhere — `schemas.config.js`
 
-```js
-data: {
-  pricing: {
-    name:        { type: 'string', required: true },
-    price:       { type: 'number', required: true },
-    period:      { type: 'string', default: 'month' },
-    features:    { type: 'array', items: { type: 'string' } },
-    highlighted: { type: 'boolean', default: false },
-  },
-}
-```
-
-### 3. Inline rich-form
-
-An editor form, distinguished by a `fields` **array** (rather than a keyed object). A rich-form drives the editor's form UI for non-technical authors *and* supplies runtime defaults:
+A foundation can point a scope at a plain folder of schema files, or override a single schema to an exact file — no package, no install:
 
 ```js
-data: {
-  signup: {
-    name: 'Signup form',
-    fields: [
-      { id: 'email', type: 'text', label: 'Email', required: true },
-      { id: 'plan',  type: 'select', options: ['free', 'pro'], default: 'free' },
-    ],
-  },
-}
-```
-
-See [Component Metadata](https://github.com/uniweb/docs/blob/main/reference/component-metadata.md) for the full rich-form field reference (field types, conditions, localized labels, composite arrays).
-
-## Standard Schemas
-
-| Schema | Ref | Description |
-|--------|-----|-------------|
-| `person` | `@std/person` | Team members, authors, contacts |
-| `article` | `@std/article` | Blog posts, news items, documentation |
-| `event` | `@std/event` | Calendar events, conferences, webinars |
-| `project` | `@std/project` | Portfolio items, case studies |
-| `opportunity` | `@std/opportunity` | Jobs, grants, calls for proposals |
-| `publication` | `@std/publication` | Academic papers, research documents |
-| `nav` | `@std/nav` | Navigation menus (nestable items) |
-| `scene` | `@std/scene` | Visual scene composition (rendered by `@uniweb/scene`) |
-
-## Installation
-
-Add this package wherever a `@std/<name>` ref is used:
-
-```bash
-pnpm add @uniweb/schemas
-```
-
-Foundations that only use `@/`-refs (their own schema files) or inline schemas don't need this dependency.
-
-## Schema File Format
-
-A foundation-local schema file's default export (or a standard schema in this package) uses one canonical shape:
-
-```js
-// foundation/schemas/member.js   — referenced as '@/member'
+// <foundation>/schemas.config.js
 export default {
-  name: 'member',          // schema identity (for the published metadata) — NOT a runtime key
-  version: '1.0.0',
-  description: 'A research group member',
-  fields: {
-    name:       { type: 'string', required: true },
-    role:       { type: 'string', default: '' },
-    rank:       { type: 'string', enum: ['assistant', 'associate', 'full'], default: 'assistant' },
-    tenured:    { type: 'boolean', default: false },
-    start_year: { type: 'number' },
-  },
+  '@agency':        '../shared/agency-schemas',    // scope  → a directory
+  '@agency/person': './schemas/agency-person.yml', // schema → an exact file
+  '@brand':         process.env.BRAND_SCHEMAS,     // machine-specific, via env
 }
 ```
 
-Schema files may be authored as `.js`, `.json`, `.yml`, or `.yaml` — the build loads any of them. The YAML form of the same schema:
+Most specific wins: **file › directory › package**. Relative paths resolve against the foundation source dir; a key whose value is null/undefined (an unset env var) is skipped and falls through to the next source. A routed scope does **not** fall back to the `@org/schemas` package — failing loudly beats silently loading a different definition. `@/` and `@uniweb` are never routable.
+
+---
+
+## Writing a schema
+
+A schema file lives in your foundation's `schemas/` folder and may be `.js`, `.json`, `.yml`, or `.yaml`. It declares **either** `fields:` (one flat record — the common case) **or** `sections:` (a structured type), never both.
 
 ```yaml
 # foundation/schemas/member.yml   — referenced as '@/member'
@@ -137,87 +87,321 @@ description: A research group member
 fields:
   name:       { type: string, required: true }
   role:       { type: string, default: '' }
-  rank:       { type: string, enum: [assistant, associate, full], default: assistant }
+  rank:       { type: string, enum: [assistant, associate, full] }
   tenured:    { type: boolean, default: false }
   start_year: { type: number }
 ```
 
-The `name` and `version` are the schema's identity — they record *which* named schema at *which* version a foundation depends on. They are not `content.data` keys; the `content.data` key is whatever the section's `data:` binding names it.
+`name` and `version` are the schema's **identity** — which named schema at which version a foundation depends on. They are not `content.data` keys; the `content.data` key is whatever the section's `data:` binding names it.
 
-### Field Types
+| Schema key | Meaning |
+|---|---|
+| `name` | Schema identity (short name) |
+| `version` | Schema version |
+| `description` | Human-readable description |
+| `fields` | A flat record's fields — **xor** `sections` |
+| `sections` | Named sections of a structured type — **xor** `fields` |
+| `sort_date` | Names a **date field** records sort by (see [The sort axis](#the-sort-axis)). `sortDate` is an accepted alias |
 
-| Type | Description |
-|------|-------------|
-| `string` | Plain text |
-| `text` | Long-form plain text; carries a rich-content `format` (see below) |
-| `number` | Numeric value (folds to `decimal`) |
-| `boolean` | True/false (folds to `bool`) |
-| `markdown` | A `text` field with `format: markdown` |
-| `html` | A `text` field with `format: html` |
-| `image` | Image reference (folds to `file`) |
-| `date` | ISO date string |
-| `datetime` | ISO datetime string |
-| `url` | A `string` with `format: url` |
-| `email` | A `string` with `format: email` |
-| `object` | Nested object with `fields` |
-| `array` | List; item type declared with `items` |
-| `json` | Opaque structured value; carries `format: prosemirror` or `format: scene` |
+### Field types
 
-> Friendly type names fold to the canonical kinds the build stores: `number → decimal`, `boolean → bool`, `image → file`, `markdown`/`html → text` + `format`, `url`/`email → string` + `format`. Rich-content `format` markers are type-bound: `markdown`/`html` are valid only on `text`; `prosemirror`/`scene` only on `json`.
+The friendly type you write folds to a small set of **canonical kinds**. Write the word that fits the content — or write the canonical kind directly; both work.
 
-### Field Options
+| You write | Canonical kind | Holds |
+|---|---|---|
+| `string` | `string` | A short, single-line value |
+| `text` | `text` | Long-form text |
+| `number` | `decimal` | A number |
+| `integer` | `int` | A whole number |
+| `boolean` | `bool` | `true` / `false` |
+| `date` / `datetime` | `date` / `datetime` | An ISO-8601 date / timestamp |
+| `image` | `file` | A path or URL to a file |
+| `url` / `email` | `string` + `format` | A validated string |
+| `markdown` / `html` | `text` + `format` | A rich-content body (a source string) |
+| `richtext` | `json` + `format: prosemirror` | A rich document edited in the visual app |
+| `json` | `json` | An opaque structured value |
+| `object` | `object` | A nested record — declare `fields:` or `values:` |
+| `array` | `array` | A list — declare `items:` (or just use `many:`) |
+| `ref` | `ref` | A reference to another schema — `{ ref: '@/person' }` |
+
+A bare type string is shorthand for `{ type: … }`: `title: string` is `title: { type: string }`.
+
+### Lists — `many: true`
+
+Any field or section becomes a list by adding `many: true`. This is the idiom to reach for; `array` + `items` is the lower-level form it normalizes to.
+
+```yaml
+fields:
+  tags:    { type: string, many: true }          # a list of strings
+  courses: { ref: '@/course', many: true }       # a list of references
+  results:                                       # a list of records
+    type: object
+    many: true
+    fields:
+      metric: { type: string }
+      value:  { type: string }
+```
+
+Collection-level metadata (`required`, `default`, `label`, `help`, `description`) rides on the **list**; the type-bearing keys (`type`, `ref`, `options`, `enum`, `fields`, `items`, `format`) describe **each item**.
+
+### Nested records and open maps
+
+An `object` field describes its shape one of two ways, and they answer different questions:
+
+```yaml
+fields:
+  address:                          # KNOWN keys
+    type: object
+    fields:
+      street: { type: string }
+      city:   { type: string }
+
+  controls:                         # an OPEN MAP — keys belong to the author
+    type: object
+    values:
+      type: object
+      fields:
+        type:  { type: string, required: true }
+        label: { type: string }
+```
+
+- **`fields:`** — the object's known keys.
+- **`values:`** — a map whose keys are the author's and whose values all conform to one shape. `values` is to an object what `items` is to an array.
+
+Declaring both is an error. `values:` is what `@std/form` is built on: a form's controls are keyed by the field names the author invented, which no `fields:` list could enumerate.
+
+### References and picklists
+
+```yaml
+fields:
+  author:  { ref: '@/person' }                                   # a reference
+  status:  { type: string, enum: [draft, published, archived] }  # inline choices
+  country: { type: string, options: '@/countries' }              # curated, shared
+```
+
+- **`ref:`** — a reference to another schema. `type: ref` is inferred, so `{ ref: '@/person' }` is enough.
+- **`enum:`** — an **inline** list of allowed values. Best for a short, fixed set that belongs to the type.
+- **`options:`** — a **`@/<name>` ref** to a curated options schema. Best when the choices are a managed list reused across fields.
+
+An inline array always belongs on `enum:`; `options:` always takes a ref.
+
+### Rich content — `format`
+
+`format` marks a field as carrying rich content, and it is **type-bound** — a mismatch is rejected when the schema is read:
+
+| `format` | Valid on | Use it for |
+|---|---|---|
+| `markdown` | `text` | A markdown body that round-trips as plain source |
+| `html` | `text` | An HTML body |
+| `prosemirror` | `json` | A rich document edited through a structured editor |
+| `scene` | `json` | A visual scene composition (rendered by `@uniweb/scene`) |
+| `email`, `url` | `string` | Value validation, not rich content |
+
+The friendly aliases set these for you: `type: markdown` is exactly `type: text, format: markdown`, and `type: richtext` is exactly `type: json, format: prosemirror`.
+
+**Use `richtext` for a rich body edited in the visual app** — it's the editor's native, lossless document. Use `markdown` / `html` for a **source body** authored as text (file-based projects, or content you want readable as raw source). Don't reach for `markdown` just because it's the familiar word.
+
+### Translatable fields
+
+Text and rich-content fields are **translatable by default** — one value per locale. Set `translatable: false` to opt out: an ID, a slug, a machine token that's identical in every language.
+
+```yaml
+fields:
+  title: { type: string }                        # translatable by default
+  body:  { type: markdown }                      # translatable by default
+  sku:   { type: string, translatable: false }   # one value across all locales
+```
+
+Fields constrained by `enum:`, and strings carrying a value-validator `format` (`email` / `url`), are treated as machine values and are not translated. A *content* format (`markdown` / `html` / `prosemirror`) still translates.
+
+### Field options
 
 | Option | Type | Description |
-|--------|------|-------------|
-| `type` | string | Field type (required) |
-| `required` | boolean | Field must have a value |
-| `default` | any | Default value if not provided |
+|---|---|---|
+| `type` | string | The field type (required, unless inferred from `ref:` or `options:`) |
+| `many` | boolean | Make it a list; the other keys describe each item |
+| `required` | boolean | The field must have a value |
+| `default` | any | Value used when none is supplied |
+| `label` | string | Short human-readable name (editor UI) |
 | `description` | string | Human-readable description |
-| `format` | string | Content/validation format — `email`/`url` (validation); `markdown`/`html` (on `text`); `prosemirror`/`scene` (on `json`) |
+| `help` | string | Additional guidance (editor UI) |
+| `format` | string | Content or validation format — see [Rich content](#rich-content--format) |
 | `enum` | array | Inline list of allowed values |
-| `options` | string | A `@/<name>` ref to a curated options schema (an item reference) |
+| `options` | string | A `@/<name>` ref to a curated options schema |
 | `translatable` | boolean | Set `false` to opt a text field out of localization |
-| `fields` | object | Nested fields for `object` type |
-| `items` | object | Item definition for `array` type |
+| `fields` | object | Nested fields — `object` type |
+| `values` | object | Value shape of an open map — `object` type |
+| `items` | object | Item definition — `array` type (or use `many:`) |
+| `ref` | string | Target schema — `ref` type |
 
-## Collections always arrive as arrays
+---
+
+## Structured types — `sections:`
+
+When a single flat record genuinely can't express the content, declare named `sections:` instead of `fields:`. Each section is one record by default, or a repeating list with `many: true`.
+
+```yaml
+# foundation/schemas/handbook.yml
+name: handbook
+sections:
+  identity:
+    brief: true                    # the card shown when this type is referenced
+    fields:
+      title: { type: string, required: true }
+  chapters:
+    many: true                     # a repeating list of records
+    tree: true                     # …that can nest under each other
+    fields:
+      title: { type: string }
+      body:  richtext
+```
+
+The flat `fields:` form is the common case. Reach for `sections:` only when you need one of the capabilities below.
+
+| Section key | Meaning |
+|---|---|
+| `fields` | The section's fields |
+| `sections` | Child sections (a section carrying only these is a grouping container) |
+| `brief` | This section is the card a reference to this type hydrates into. At most one per schema, and it must be a single record (not `many`) |
+| `many` | A repeating list of records rather than one |
+| `tree` | A `many` section whose records nest **under each other**. `nestable` is the lower-level spelling |
+| `append_only` | A `many` section whose records are insert-only — added, never edited or deleted |
+| `constraints` | Cross-cutting write rules for the section |
+
+### The brief
+
+The **brief** is the section that represents the whole record when something references it — the card. At most one section may be marked `brief: true`, and it must be a single record. A schema with no brief is not referenceable as a target (there's no card to show), which is fine for types that are pure lists — `@std/nav` is exactly that.
+
+### Tree sections
+
+`tree: true` lets a `many` section's records nest under one another — a chapter tree, a category hierarchy, a threaded discussion. **There is no field to declare** for the parent/child link and no ID to wire up.
+
+This is what separates `tree:` from child `sections:`. A child section nests one *named* section inside another — a fixed shape you spell out. `tree:` lets records of a **single** section nest under one another, so the shape is decided by the author as they write.
+
+`tree:` is only valid on a `many: true` section.
+
+### Append-only sections
+
+`append_only: true` marks a `many` section insert-only: records may be added, but never edited or deleted. Because the rule lives in the content type rather than in a form, it holds for every writer — which makes such a section **tamper-evident**. Reach for it for activity logs, submissions, and audit trails.
+
+`append_only:` is only valid on a `many: true` section, and takes effect once the schema is registered (file-based collections have no write step).
+
+### The sort axis
+
+`sort_date` is a **schema-level** key naming a **date field** — the axis a feed, an archive, or a "latest first" listing orders on:
+
+```yaml
+name: post
+sort_date: published_on          # names a date field below
+fields:
+  title:        { type: string, required: true }
+  published_on: { type: date }
+```
+
+Its value is a field *name*, not `true`/`false`, and it doesn't go on the field itself. With the `sections:` form, name a field in the **brief** section; a schema with no brief has no sort axis. (`sortDate` is an accepted alias.)
+
+### How a source file maps onto sections
+
+One source file — a `.md` with frontmatter, a `.yml`, one `.json` object — carries the fields of **every single section**, flat. Field names are unique across a schema's sections, so there's no prefixing. `many` sections are skipped: a repeating list can't be expressed by one flat record.
+
+That's why `@std/article` splits `article` (the card) from `article_body` (the heavy body) and a single markdown file still populates both.
+
+---
+
+## The standard schemas
+
+| Schema | Ref | Description |
+|---|---|---|
+| `person` | `@std/person` | Team members, authors, contacts |
+| `article` | `@std/article` | Blog posts, news items, documentation |
+| `event` | `@std/event` | Calendar events, conferences, webinars |
+| `project` | `@std/project` | Portfolio items, case studies |
+| `opportunity` | `@std/opportunity` | Jobs, grants, calls for proposals |
+| `publication` | `@std/publication` | Academic papers, research documents |
+| `nav` | `@std/nav` | Navigation menus (a nestable list) |
+| `scene` | `@std/scene` | Visual scene composition (rendered by `@uniweb/scene`) |
+| `form` | `@std/form` | A form **designed by an author** — the fields a visitor will be asked |
+
+Reach for one of these before inventing your own, the same way you'd pull a well-known type off the shelf.
+
+> **`@std/form` describes a form *definition*, not a *submission*.** A component that renders an authored form is the inverse of every other component: it doesn't declare the fields, it *receives* them and draws whatever it's given. So it can't declare the author's field names — it declares `data: { form: '@std/form' }`, which asks the only answerable question: *is this a well-formed form?* What a visitor actually answers arrives at runtime and is not knowable when the foundation is written.
+
+---
+
+## How bound data arrives
 
 A `data:` binding describes the shape of *each item*. The runtime delivers a bound collection key as an **array**, always:
 
 - A list page receives the full collection.
-- A dynamic `[slug]` detail page receives a **single-element array** — the route-matched record — under the same collection key. A detail section reads the focused record with `content.data.<key>[0]`.
+- A dynamic `[slug]` detail page receives a **single-element array** — the route-matched record — under the same collection key. A detail section reads `content.data.<key>[0]`.
 - A detail page where nothing matches receives an empty array `[]`.
 
 The runtime never coerces an array to a single object and never synthesizes a separate singular key. Reshaping a collection to a single record is the foundation's job — read `[0]`, or reshape `content.data` once via a foundation `handlers.data` hook.
 
-## What's published
+---
 
-When a foundation is built, every distinct ref across all section bindings is resolved and loaded into its canonical `{ name, version, fields }` form, and emitted into the foundation's published metadata under a top-level `dataSchemas` map keyed by the ref. A consumer of that metadata has every data schema inline and versioned, with no refs left to resolve. The lean runtime entry carries only the field defaults per key — not the full schema metadata.
+## What gets published
+
+When a foundation is built, every distinct ref across all section bindings is resolved and loaded into its canonical form — `{ name, version, description?, fields }` for a flat schema, or `{ name, version, description?, sections }` for a structured one — and emitted into the foundation's published metadata under a top-level `dataSchemas` map keyed by the ref. A consumer of that metadata has every data schema inline and versioned, with no refs left to resolve.
+
+The lean runtime entry carries only what the runtime needs to apply defaults and shape data — `type`, `default`, `enum`, `options`, and nested `fields`/`items`. Descriptions, labels, and other editor hints stay in the full schema.
+
+---
 
 ## Programmatic API
 
-The package also exposes the standard schema objects and helpers for code that needs to work with schemas directly (validation tooling, scripts):
+The format itself is exported, so tooling can read a schema the same way the framework does. `@uniweb/build` re-exports these, so `uniweb validate` and this package run **one** implementation.
 
 ```js
-// Import standard schema objects (tree-shakeable)
+// Standard schema objects (tree-shakeable)
 import { person, article, event } from '@uniweb/schemas'
 
-// Or look them up by name
-import { schemas, getSchema, isStandardSchema } from '@uniweb/schemas'
-const personSchema = schemas.person
+// …or look them up by name
+import { schemas, getSchema, getSchemaNames, isStandardSchema } from '@uniweb/schemas'
 
-// Validate data against a schema (name or object)
+// Validate a record against a schema (name or object)
 import { validate } from '@uniweb/schemas'
 const { valid, errors } = validate(data, 'person')
-// errors: [{ path: 'email', message: 'Invalid email format' }]
+// errors: [{ path: 'email', rule: 'format', message: '"x" is not a valid email' }]
 
-// Apply a schema's defaults to data
+// Apply a schema's defaults
 import { applyDefaults, getDefaults } from '@uniweb/schemas'
 const filled = applyDefaults(data, person)
 const blanks = getDefaults('person')
 ```
 
-These are utilities for tooling — they are not required to use a schema in a foundation. In a foundation you reference a standard schema by its namespace ref (`@std/person`) in `meta.js`, and the build does the resolution and default application for you.
+`validate` and `applyDefaults` accept a schema **as authored** — the friendly vocabulary (`many:`, `number`, `richtext`, `{ ref: '@/x' }`) and both schema forms are normalized first. They check a record against the flat surface described in [How a source file maps onto sections](#how-a-source-file-maps-onto-sections), so a `sections:`-form schema works too.
+
+They **throw** when the *schema* is malformed — a bad schema is a programming error, and the message names the offending field. Invalid *data* comes back as findings.
+
+Lower-level entry points, for tooling that needs the format directly:
+
+```js
+import { validateAndNormalizeSchema, parseSchemaRef, collectNestedRefs } from '@uniweb/schemas/format'
+import { validateItem, isStaticallyCheckable, flatRecordFields } from '@uniweb/schemas/conform'
+```
+
+| Export | Does |
+|---|---|
+| `validateAndNormalizeSchema(schema, ref)` | Validates the authoring format and returns the normalized schema (friendly aliases folded to canonical kinds). Throws, naming the offending field |
+| `parseSchemaRef(ref)` | `'@std/person'` → `{ scope: 'std', name: 'person' }` |
+| `collectNestedRefs(schema)` | Every `ref`/`options` target a normalized schema depends on |
+| `validateItem(schema, item)` | Findings for one record against a **normalized** schema |
+| `flatRecordFields(schema)` | The field map one flat source file is checked against |
+| `SCALAR_KINDS`, `FORMAT_TYPES`, … | The type vocabulary |
+
+These are utilities for tooling — none is required to use a schema in a foundation. There you reference a schema by its namespace ref in `meta.js` and the build does the resolution and default application for you.
+
+---
+
+## See also
+
+- **Data Schemas** — the authoring guide, with worked examples: `development/data-schemas.md`
+- **Designing Data Schemas** — modeling decisions across related types: `development/designing-data-schemas.md`
+- **Schemas in Practice** — where a schema file lives, and how a second project consumes it: `development/schemas-in-practice.md`
+- **Component Metadata** — the full `data:` binding reference: `reference/component-metadata.md`
+
+Full documentation index: <https://www.uniweb.io/llms.txt>
 
 ## License
 

@@ -121,7 +121,7 @@ The friendly type you write folds to a small set of **canonical kinds**. Write t
 | `richtext` | `json` + `format: prosemirror` | A rich document edited in the visual app |
 | `json` | `json` | An opaque structured value |
 | `object`, `group` | `object` | A nested record — declare `fields:` or `values:`. `group` is the author-facing spelling |
-| `array` | `array` | A list — declare `items:` (or just use `many:`) |
+| `array` | `array` | A list — declare `items:` (or just use `many:`). Without `items:` the element type is genuinely unknown, and a registered schema records it as opaque `json` rather than guessing |
 | `ref` | `ref` | A reference to another schema — `{ ref: '@/person' }` |
 
 A bare type string is shorthand for `{ type: … }`: `title: string` is `title: { type: string }`.
@@ -296,6 +296,7 @@ The flat `fields:` form is the common case. Reach for `sections:` only when you 
 | `tree` | A `many` section whose records nest **under each other**. `nestable` is the lower-level spelling |
 | `append_only` | A `many` section whose records are insert-only — added, never edited or deleted |
 | `constraints` | Cross-cutting write rules for the section |
+| `label`, `description` | Display prose for the section itself. Plain strings — translations live in `locales/`, never as an inline `{ en: … }` object |
 
 ### The brief
 
@@ -340,6 +341,18 @@ Everything else works the same: `validate` checks each record and names its inde
 `tree: true` lets a `many` section's records nest under one another — a chapter tree, a category hierarchy, a threaded discussion. **There is no field to declare** for the parent/child link and no ID to wire up.
 
 This is what separates `tree:` from child `sections:`. A child section nests one *named* section inside another — a fixed shape you spell out. `tree:` lets records of a **single** section nest under one another, so the shape is decided by the author as they write.
+
+Authors nest records under a reserved **`children:`** key — the schema declares only one record's fields, and `children` holds more of the same:
+
+```yaml
+- label: Products
+  href: /products
+  children:
+    - label: Widgets
+      href: /products/widgets
+```
+
+You never declare `children`; declaring `tree: true` is what makes it meaningful. `uniweb validate` descends into it to any depth and names the full path — `[1].children[0].label` — so a deep entry is findable in a large tree.
 
 `tree:` is only valid on a `many: true` section — but "section" includes a **nested** one, and a list of records authored as a *field* (`chapters: { type: object, many: true, tree: true }`) works the same way.
 
@@ -449,8 +462,11 @@ import { validateItem, isStaticallyCheckable, flatRecordFields } from '@uniweb/s
 | `validateAndNormalizeSchema(schema, ref)` | Validates the authoring format and returns the normalized schema (friendly aliases folded to canonical kinds). Throws, naming the offending field |
 | `parseSchemaRef(ref)` | `'@std/person'` → `{ scope: 'std', name: 'person' }` |
 | `collectNestedRefs(schema)` | Every `ref`/`options` target a normalized schema depends on |
-| `validateItem(schema, item)` | Findings for one record against a **normalized** schema |
+| `validateItem(schema, item)` | Findings for one **record** against a normalized schema |
+| `validateBound(schema, value)` | Findings for a whole bound **value** — a record or a list. Dispatches on the schema's root shape and descends into a `tree`'s children |
 | `flatRecordFields(schema)` | The field map one flat source file is checked against |
+| `rootListSection(schema)` | The section whose records *are* the value, when the root is a list |
+| `AUTHORING_TYPES` | Every word valid as a `type:` — derived from the vocabulary, so it never drifts |
 | `SCALAR_KINDS`, `FORMAT_TYPES`, … | The type vocabulary |
 
 These are utilities for tooling — none is required to use a schema in a foundation. There you reference a schema by its namespace ref in `meta.js` and the build does the resolution and default application for you.

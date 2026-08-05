@@ -101,6 +101,33 @@ export function parseSchemaRef(ref) {
 }
 
 /**
+ * `label` and `description` are plain strings, at every tier.
+ *
+ * They are carried inline as the SOURCE-LOCALE string; the other locales live in
+ * translation rows. So an inline per-locale object — `label: { en: 'Name' }` — is
+ * not a shorthand for anything, it is a different shape, and the registry rejects
+ * it. Catching it here means the author sees it at their own screen rather than as
+ * a publish failure much later.
+ *
+ * This is a type check in our OWN format (`label` is documented as a string),
+ * which is why it belongs at build time alongside the checks on `many`, `tree`,
+ * `enum` and `options` — unlike a rule that merely reflects what the registry has
+ * no slot for.
+ */
+function assertProseStrings(node, ref, path) {
+  for (const k of ['label', 'description']) {
+    if (node[k] !== undefined && typeof node[k] !== 'string') {
+      const got = Array.isArray(node[k]) ? 'a list' : `an ${typeof node[k]}`.replace(/^an ([^aeiou])/, 'a $1')
+      throw new Error(
+        `Data schema '${ref}': '${k}' on '${path}' must be a plain string, got ${got}. ` +
+          `Write the source-locale text inline; translations live in the locales/ folder, ` +
+          `not as a per-locale object.`
+      )
+    }
+  }
+}
+
+/**
  * Validate a schema definition against the authoring format and return a
  * normalized copy (type aliases folded to canonical kinds). Pure — no I/O.
  * Throws an Error naming the schema + the offending field/section.
@@ -192,6 +219,7 @@ function normalizeSection(section, ref, path, briefState) {
   for (const k of ['label', 'description']) {
     if (section[k] !== undefined) out[k] = section[k]
   }
+  assertProseStrings(out, ref, path)
 
   if (section.brief === true) {
     if (kind !== 'single') {
@@ -219,7 +247,12 @@ function normalizeSection(section, ref, path, briefState) {
       out.sections[n] = normalizeSection(s, ref, `${path}.sections.${n}`, childBrief)
     }
   }
-  if (section.constraints !== undefined) out.constraints = section.constraints
+  if (section.constraints !== undefined) {
+    if (!Array.isArray(section.constraints)) {
+      throw new Error(`Data schema '${ref}': section '${path}' 'constraints' must be a list of rules.`)
+    }
+    out.constraints = section.constraints
+  }
 
   // `tree: true` (friendly) / `nestable: true` (lower-level) — a list section whose
   // records form a tree among themselves. Carried into the IR so the lowering maps
@@ -312,8 +345,26 @@ function normalizeField(field, ref, path) {
 
   const out = {}
   // Carry-through metadata (render hints / flags / value).
-  for (const k of ['required', 'default', 'label', 'help', 'description', 'translatable', 'format']) {
+  //
+  // `constraints` rides here so a SECTION-SHAPED field (an `object`, or a list of
+  // records) can carry the section rules it lowers into — `min_items` on
+  // `authors: { type: object, many: true }` is the motivating case, and it was
+  // unreachable while only the `sections:` form could declare them. A `many:`
+  // field already carried them by accident, because the `many` expansion copies
+  // every non-item key onto the array; this makes the non-`many` object case work
+  // too, deliberately rather than as a side effect.
+  //
+  // On a LEAF they are carried and then dropped by the lowering: the wire has no
+  // slot for them (`constraints` is a section key), and a leaf narrows with
+  // `enum` / `format` instead. Not an error — it is well-formed authoring that
+  // only the registry has no home for, and failing a build over it would break a
+  // project that never registers at all.
+  for (const k of ['required', 'default', 'label', 'help', 'description', 'translatable', 'format', 'constraints']) {
     if (field[k] !== undefined) out[k] = field[k]
+  }
+  assertProseStrings(out, ref, path)
+  if (out.constraints !== undefined && !Array.isArray(out.constraints)) {
+    throw new Error(`Data schema '${ref}': field '${path}' 'constraints' must be a list of rules.`)
   }
 
   // Resolve the type: format-aliases (url/email → string; markdown/html → text;

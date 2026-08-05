@@ -54,6 +54,65 @@ describe('every shipped standard is valid in this format', () => {
   })
 })
 
+/**
+ * `label` and `description` are plain strings at every tier.
+ *
+ * They are carried inline as the SOURCE-LOCALE string; other locales live in
+ * translation rows. So `label: { en: 'Name' }` is not a shorthand — it is a
+ * different shape, and the registry rejects it. Catching it here is the whole
+ * point: the author sees it at their own screen rather than as a publish failure.
+ *
+ * This belongs at build time because it is a type check in our OWN format — the
+ * same class as the checks on `many`, `tree`, `enum` and `options` — rather than a
+ * rule that merely reflects what a downstream consumer has no slot for. Those are
+ * deliberately NOT build errors, because a project that never registers should
+ * still build.
+ */
+describe('label and description must be plain strings', () => {
+  const norm = (s) => () => validateAndNormalizeSchema(s, '@/x')
+
+  it('rejects a per-locale object on a field', () => {
+    expect(norm({ fields: { a: { type: 'string', label: { en: 'Name' } } } })).toThrow(
+      /'label' on 'a' must be a plain string, got an object/
+    )
+  })
+
+  it('rejects one on a section, which carries prose too', () => {
+    expect(norm({ sections: { s: { label: { en: 'Identity' }, fields: { a: 'string' } } } })).toThrow(
+      /'label' on 'sections.s' must be a plain string/
+    )
+  })
+
+  it('rejects a list, and says where translations actually live', () => {
+    expect(norm({ fields: { a: { type: 'string', description: ['x'] } } })).toThrow(/got a list/)
+    expect(norm({ fields: { a: { type: 'string', description: ['x'] } } })).toThrow(/locales\/ folder/)
+  })
+
+  it('accepts a plain string, which is the whole supported shape', () => {
+    const out = validateAndNormalizeSchema({ fields: { a: { type: 'string', label: 'Name' } } }, '@/x')
+    expect(out.fields.a.label).toBe('Name')
+  })
+})
+
+describe('constraints', () => {
+  it('are carried on a field, for the section it lowers into', () => {
+    const out = validateAndNormalizeSchema(
+      { fields: { a: { type: 'object', constraints: [{ kind: 'min_items', value: 1 }], fields: { b: 'string' } } } },
+      '@/x'
+    )
+    expect(out.fields.a.constraints).toEqual([{ kind: 'min_items', value: 1 }])
+  })
+
+  it('must be a list, on a field and on a section alike', () => {
+    expect(() =>
+      validateAndNormalizeSchema({ fields: { a: { type: 'object', constraints: 'min_items', fields: { b: 'string' } } } }, '@/x')
+    ).toThrow(/'constraints' must be a list/)
+    expect(() =>
+      validateAndNormalizeSchema({ sections: { s: { constraints: {}, fields: { a: 'string' } } } }, '@/x')
+    ).toThrow(/'constraints' must be a list/)
+  })
+})
+
 describe('flatRecordFields — the surface one source file can populate', () => {
   it('is the field map itself for a fields-form schema', () => {
     const norm = validateAndNormalizeSchema({ fields: { a: 'string' } }, '@/x')

@@ -170,7 +170,7 @@ fields:
 - **`fields:`** — the object's known keys.
 - **`values:`** — a map whose keys are the author's and whose values all conform to one shape. `values` is to an object what `items` is to an array.
 
-Declaring both is an error. `values:` is what `@std/form` is built on: a form's controls are keyed by the field names the author invented, which no `fields:` list could enumerate.
+Declaring both is an error. Reach for `values:` whenever the keys are the author's rather than yours — a set of per-region overrides, a bag of feature flags, anything a `fields:` list could not enumerate because the names do not exist until someone writes them. No standard schema uses it today (`@std/form` did until it became a list of controls), so it is a construct waiting for the shape rather than a description of one.
 
 ### References and picklists
 
@@ -396,11 +396,11 @@ That's why `@std/article` splits `article` (the card) from `article_body` (the h
 | `publication` | `@std/publication` | Academic papers, research documents |
 | `nav` | `@std/nav` | Navigation menus (a nestable list) |
 | `scene` | `@std/scene` | Visual scene composition (rendered by `@uniweb/scene`) |
-| `form` | `@std/form` | A form **designed by an author** — the fields a visitor will be asked |
+| `form` | `@std/form` | A form **designed by an author** — a list of the controls a visitor will be asked to fill |
 
 Reach for one of these before inventing your own, the same way you'd pull a well-known type off the shelf.
 
-> **`@std/form` describes a form *definition*, not a *submission*.** A component that renders an authored form is the inverse of every other component: it doesn't declare the fields, it *receives* them and draws whatever it's given. So it can't declare the author's field names — it declares `data: { form: '@std/form' }`, which asks the only answerable question: *is this a well-formed form?* What a visitor actually answers arrives at runtime and is not knowable when the foundation is written.
+> **`@std/form` describes a form *definition*, not a *submission*.** A component that renders an authored form is the inverse of every other component: it doesn't declare the fields, it *receives* them and draws whatever it's given. So it can't declare the author's control names — it declares `data: { form: '@std/form' }`, which asks the only answerable question: *is this a well-formed form?* The block carries the controls and nothing else; a form's heading and intro are the section's own markdown. What a visitor actually answers arrives at runtime and is not knowable when the foundation is written.
 
 ---
 

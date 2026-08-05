@@ -19,6 +19,17 @@ import { validate, applyDefaults, getDefaults, schemas } from '../src/index.js'
 
 const paths = (result) => result.errors.map((e) => `${e.path}:${e.rule}`)
 
+/** A map whose keys belong to the author — the shape `values:` exists for. */
+const OPEN_MAP = {
+  name: 'open',
+  fields: {
+    m: {
+      type: 'object',
+      values: { type: 'object', fields: { type: { type: 'string', required: true }, required: { type: 'bool' } } },
+    },
+  },
+}
+
 describe('regressions — answers this API used to get wrong', () => {
   it('a `many: true` field accepts a list (was: "Expected string, got object")', () => {
     // The old reader never learned `many:`, so it checked the LIST against the
@@ -52,12 +63,14 @@ describe('regressions — answers this API used to get wrong', () => {
   })
 
   it('an open map validates each entry (was: unvisited)', () => {
-    // `values:` is what `@std/form` is built on — `fields` keyed by the author's
-    // own field names. The old reader only descended into `fields`, so a form
-    // with a typeless control passed.
-    expect(paths(validate({ fields: { a: { label: 'nameless' } } }, 'form'))).toEqual([
-      'fields.a.type:required',
-    ])
+    // `values:` describes a map whose keys belong to the author. The old reader
+    // only descended into `fields`, so every entry of such a map went unchecked.
+    //
+    // Uses a schema of its own rather than a standard: this was written against
+    // `@std/form` v1, which was built on `values:` — and v2 is a list of controls,
+    // so borrowing it made a test of the CONSTRUCT depend on one schema's shape.
+    // `values:` is still in the vocabulary; it just has no standard using it today.
+    expect(paths(validate({ m: { a: { label: 'nameless' } } }, OPEN_MAP))).toEqual(['m.a.type:required'])
   })
 })
 
@@ -89,9 +102,9 @@ describe('validate', () => {
   })
 
   it('names the entry in an open map, not just the field', () => {
-    // A twenty-field form with "expected string" and no key is unactionable.
-    expect(paths(validate({ fields: { email: { type: 'string', required: 'yes' } } }, 'form'))).toEqual([
-      'fields.email.required:type',
+    // "expected string" with no key is unactionable on a map of twenty entries.
+    expect(paths(validate({ m: { email: { type: 'string', required: 'yes' } } }, OPEN_MAP))).toEqual([
+      'm.email.required:type',
     ])
   })
 

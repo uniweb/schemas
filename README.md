@@ -144,6 +144,8 @@ fields:
 
 Collection-level metadata (`required`, `default`, `label`, `help`, `description`) rides on the **list**; the type-bearing keys (`type`, `ref`, `options`, `enum`, `fields`, `items`, `format`) describe **each item**.
 
+> **One limit worth knowing about `required`.** It is enforced on a list of *values* — `{ type: string, many: true, required: true }` — and on a list of references. It is **not** enforced on a list of *records*, or on a nested `object`: those become sections when the schema is registered, and a section carries no `required`. Put the flag on a field *inside* the record instead, where it holds.
+
 ### Nested records and open maps
 
 An `object` field describes its shape one of two ways, and they answer different questions:

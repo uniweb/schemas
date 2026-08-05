@@ -204,10 +204,16 @@ export default {
         // Deriving it means it cannot go stale. Add a kind to the vocabulary and
         // this closes over it in the same commit; there is no list to forget.
         //
-        // What this buys is the typo. `strng`, `checkbox`, `group`, `select` — all
-        // silently accepted before, all a finding now, reported as a warning by
+        // What this buys is the typo. `strng`, `checkbox`, `select`, `textarea` —
+        // all silently accepted before, all a finding now, reported as a warning by
         // default (`uniweb validate` is warn-unless-`--strict`), which is the
         // proportionate response to an editor that has moved ahead of us.
+        //
+        // (`group` was listed here as a typo until 2026-08-05 and is NOT one — it
+        // is in `TYPE_ALIASES`, folding to `object`. Caught by the frontend reading
+        // `format.js` rather than trusting this comment, which is the right
+        // instinct and the reason the enum derives from the vocabulary instead of
+        // from a list someone maintains by hand.)
         //
         // ⚠️ It also forced a question v1 could dodge — a CONTAINER control's type —
         // and the answer changed the vocabulary rather than this schema. `object`

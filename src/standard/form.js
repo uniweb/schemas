@@ -30,22 +30,10 @@
  *
  * No envelope: a form's heading and intro are the SECTION's own content, written
  * as markdown and read from `content.title` / `content.paragraphs` like any other
- * section. v1 carried `title` and `description` inside the block, which gave a
- * section two titles — one editable as content and one buried in a data block,
- * with nothing to say which won.
- *
- * That makes this the shape `@std/nav` has always had: one `many` section, no
- * brief, and the content is a bare list.
- *
- * Agreed with the editor in channel `framework-frontend-204a` (2026-08-05), which
- * also settled that the list is the builder's NATIVE shape — v1's map was a
- * conversion on the way out, adopted to mimic how foundations spell `fields:`.
- * A v1 block is still read by the editor and upgrades on save, dropping the two
- * strings; breaking authored content on this lane was authorized by Diego, and
- * nothing in the workspace binds `@std/form` today.
+ * section.
  *
  * ─────────────────────────────────────────────────────────────────────────────
- * THE UNION CEILING — named and ACCEPTED
+ * THE UNION CEILING
  *
  * A control is a DISCRIMINATED UNION on `type`: `enum` means something only for a
  * select, `accept`/`multiple` only for a file, `format` only for a string,
@@ -65,11 +53,7 @@
  * against the row's own siblings. `condition` is editor-only and never written.
  *
  * ─────────────────────────────────────────────────────────────────────────────
- * STILL OPEN, and not this schema's to answer
- *
- * `default` is declared here; WHO HONORS IT at render time is not settled. Kit's
- * `useFormValues` seeds it into a form's initial state, which is the intended
- * home — a foundation should not have to know it was a question.
+ * STILL OPEN
  *
  * Localizing a choice `label` is possible now that the split exists, and is not
  * yet delivered: the editor's translation traversal deliberately excludes data
@@ -115,37 +99,6 @@ export default {
         },
 
         // CLOSED, against the authoring vocabulary itself.
-        //
-        // v1 left this open, reasoning that the wire "carries the framework's
-        // whole authoring vocabulary, wider than the builder's controls and wider
-        // than any list current when someone reads this file". The first half is
-        // right and is exactly why the set must not be the builder's six controls.
-        // The second half does not survive contact: the set is not unknowable, it
-        // is `AUTHORING_TYPES`, and the normalizer already enumerates it — to tell
-        // an author what is valid when they get one wrong.
-        //
-        // Deriving it means it cannot go stale. Add a kind to the vocabulary and
-        // this closes over it in the same commit; there is no list to forget.
-        //
-        // What this buys is the typo. `strng`, `checkbox`, `select`, `textarea` —
-        // all silently accepted before, all a finding now, reported as a warning by
-        // default (`uniweb validate` is warn-unless-`--strict`), which is the
-        // proportionate response to an editor that has moved ahead of us.
-        //
-        // (`group` was listed here as a typo until 2026-08-05 and is NOT one — it
-        // is in `TYPE_ALIASES`, folding to `object`. Caught by the frontend reading
-        // `format.js` rather than trusting this comment, which is the right
-        // instinct and the reason the enum derives from the vocabulary instead of
-        // from a list someone maintains by hand.)
-        //
-        // ⚠️ It also forced a question v1 could dodge — a CONTAINER control's type —
-        // and the answer changed the vocabulary rather than this schema. `object`
-        // is the canonical nested-record kind, but it is a STORAGE word, and a form
-        // is authored in YAML by people who are not always developers. So `group`
-        // was added as its friendly alias, exactly as `image` is `file`'s and
-        // `number` is `decimal`'s. A fieldset is `type: group` + `children`; a
-        // repeating group is `type: group` + `multiple`. Both fold to `object`
-        // before anything downstream sees them.
         type: {
           type: 'string',
           required: true,
@@ -174,12 +127,6 @@ export default {
         // indistinguishable from here. Getting it wrong the other way — a token
         // translated per locale — silently breaks the control, which is the
         // failure mode `type`/`format`/`accept` are already protected from.
-        //
-        // WHO HONORS IT is a real question and not this schema's to answer: the
-        // foundation rendering the form can seed each control, or kit's
-        // `useFormSubmit` / `submitForm` could seed the payload so a control the
-        // visitor never touches still submits its default. Worth settling before
-        // this ships, because "the default did nothing" is the obvious first bug.
         default: { type: 'json', description: 'Value the control starts with' },
 
         // Refines a string — `email` today. A value-validator format, so it is

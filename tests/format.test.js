@@ -51,12 +51,31 @@ describe('the format is exported from this package', () => {
 
   it('every word in it is actually accepted by the normalizer', () => {
     // The set would be worthless if it advertised a word the normalizer rejects.
+    //
+    // Supplies every structural companion at once rather than special-casing the
+    // words that need one — a structural kind reads the one it needs and a scalar
+    // reads none of them. Listing "the words that need `fields`" would be the same
+    // hand-maintained copy this set exists to eliminate, and it would go stale the
+    // moment an alias is added. (It did: `group` was added and a special-cased
+    // version of this test failed, which is the mechanism working.)
+    const companions = { fields: { a: 'string' }, items: { type: 'string' }, ref: '@/x' }
     for (const word of AUTHORING_TYPES) {
-      const spec = word === 'object' ? { type: word, fields: { a: 'string' } }
-        : word === 'ref' ? { type: word, ref: '@/x' }
-        : { type: word }
-      expect(() => validateAndNormalizeSchema({ fields: { f: spec } }, '@/x'), `type: ${word}`).not.toThrow()
+      expect(
+        () => validateAndNormalizeSchema({ fields: { f: { type: word, ...companions } } }, '@/x'),
+        `type: ${word}`
+      ).not.toThrow()
     }
+  })
+
+  it('`group` is the author-facing spelling of `object`, and folds to it', () => {
+    // The aliases exist because the canonical kinds are storage words. `group` is
+    // the same move as `image` → `file`: who has to understand the word decides
+    // which word is offered, and schemas are written by people who are not always
+    // developers.
+    const asGroup = validateAndNormalizeSchema({ fields: { a: { type: 'group', fields: { b: 'string' } } } }, '@/x')
+    const asObject = validateAndNormalizeSchema({ fields: { a: { type: 'object', fields: { b: 'string' } } } }, '@/x')
+    expect(asGroup).toEqual(asObject)
+    expect(asGroup.fields.a.type).toBe('object') // folds before anything downstream sees it
   })
 
   it('the unknown-type error lists the set rather than a copy of it', () => {

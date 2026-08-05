@@ -120,7 +120,7 @@ The friendly type you write folds to a small set of **canonical kinds**. Write t
 | `markdown` / `html` | `text` + `format` | A rich-content body (a source string) |
 | `richtext` | `json` + `format: prosemirror` | A rich document edited in the visual app |
 | `json` | `json` | An opaque structured value |
-| `object` | `object` | A nested record — declare `fields:` or `values:` |
+| `object`, `group` | `object` | A nested record — declare `fields:` or `values:`. `group` is the author-facing spelling |
 | `array` | `array` | A list — declare `items:` (or just use `many:`) |
 | `ref` | `ref` | A reference to another schema — `{ ref: '@/person' }` |
 

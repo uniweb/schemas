@@ -49,11 +49,23 @@ export const SCALAR_KINDS = new Set([
 ])
 export const STRUCTURAL_KINDS = new Set(['object', 'array', 'ref'])
 // Friendly aliases → canonical kind.
+//
+// Each exists because the canonical kind is a STORAGE word and the alias is what
+// the person writing the schema actually means. `decimal`, `int`, `bool` and
+// `file` describe how a value is kept; `number`, `integer`, `boolean` and `image`
+// describe what it is. Schemas are written in markdown-adjacent YAML by people
+// who are not always developers, so who has to understand the word decides which
+// word is offered.
+//
+// `group` → `object` is that same move, and the one the set was missing: a nested
+// record is a *group of fields* to anyone who is not thinking about storage.
+// `group` + `many: true` reads correctly too — a repeating group.
 const TYPE_ALIASES = {
   number: 'decimal',
   integer: 'int',
   boolean: 'bool',
   image: 'file',
+  group: 'object',
 }
 // Friendly type aliases that lower to a base kind + a carried `format` marker.
 // `url`/`email` → `string` (server-validated value subtypes). `markdown`/`html` →

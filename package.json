@@ -1,6 +1,6 @@
 {
   "name": "@uniweb/schemas",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "description": "The Uniweb data-schema format and its standard schema definitions",
   "type": "module",
   "main": "src/index.js",

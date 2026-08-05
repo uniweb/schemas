@@ -185,6 +185,14 @@ function normalizeSection(section, ref, path, briefState) {
   }
   const out = { kind }
 
+  // A section carries display prose the same way a field does. Confirmed by the
+  // registry (2026-08-05): both are stored on the section, keyed for translation
+  // as `section.<name>.label` / `section.<name>.description`. These were dropped
+  // here until then, so an authored section `description:` never left the build.
+  for (const k of ['label', 'description']) {
+    if (section[k] !== undefined) out[k] = section[k]
+  }
+
   if (section.brief === true) {
     if (kind !== 'single') {
       throw new Error(`Data schema '${ref}': brief section '${path}' must be a single record (drop 'many').`)

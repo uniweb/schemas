@@ -20,7 +20,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { rootListSection, validateBound, validateItem, isStaticallyCheckable, briefFields } from '../src/conform.js'
+import { rootListSection, validateBound, validateItem, isStaticallyCheckable } from '../src/conform.js'
 import { validateAndNormalizeSchema } from '../src/format.js'
 import { validate, applyDefaults, getDefaults, nav } from '../src/index.js'
 
@@ -171,46 +171,5 @@ describe('@std/nav — the shipped standard this was silently skipping', () => {
     expect(Object.keys(n.sections)).toHaveLength(1)
     expect(Object.values(n.sections)[0].kind).toBe('multi')
     expect(Object.values(n.sections).some((s) => s.brief)).toBe(false)
-  })
-})
-
-describe('briefFields — the lean shape a data schema states about itself', () => {
-  const withBrief = {
-    sections: {
-      card: { kind: 'single', brief: true, fields: { title: {}, date: {}, image: {} } },
-      body: { kind: 'single', fields: { content: {} } },
-    },
-  }
-
-  it('returns the brief section\'s field names', () => {
-    expect([...briefFields(withBrief)].sort()).toEqual(['date', 'image', 'title'])
-  })
-
-  it('does not include fields from sibling sections', () => {
-    // The whole point: `content` is what a list payload should not carry.
-    expect(briefFields(withBrief).has('content')).toBe(false)
-  })
-
-  it('returns null when the schema states no lean shape', () => {
-    // ⛔ Not an empty set. An empty set says "the lean shape is nothing", and a
-    // caller stripping to it empties every record.
-    expect(briefFields({ sections: { a: { kind: 'single', fields: { x: {} } } } })).toBeNull()
-    expect(briefFields({ sections: { list: { kind: 'multi', fields: { x: {} } } } })).toBeNull()
-  })
-
-  it('returns null for a root list, which has no brief by construction', () => {
-    const nav = { sections: { items: { kind: 'multi', fields: { label: {}, href: {} } } } }
-    expect(rootListSection(nav)).toBeTruthy()
-    expect(briefFields(nav)).toBeNull()
-  })
-
-  it('returns null rather than throwing on junk', () => {
-    for (const bad of [null, undefined, {}, 'x', [], { sections: null }]) {
-      expect(briefFields(bad)).toBeNull()
-    }
-  })
-
-  it('treats a brief with no fields as stating nothing', () => {
-    expect(briefFields({ sections: { card: { brief: true, fields: {} } } })).toBeNull()
   })
 })

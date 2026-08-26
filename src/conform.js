@@ -170,37 +170,6 @@ export function isStaticallyCheckable(schema) {
 }
 
 /**
- * The field names a record's LEAN shape carries — the fields of the section
- * marked `brief: true`.
- *
- * ⭐ A brief is a data schema stating what its own summary is: the card, the row,
- * the thing a list shows. That makes it the answer to "which fields belong in a
- * collection's list payload, and which are wanted only when one record is the
- * focus?" — a question a site otherwise answers by hand, per collection, in build
- * config, with nothing checking it against the shape it describes.
- *
- * `format.js` guarantees at most one brief section and that it is single, so
- * there is nothing to disambiguate here.
- *
- * Returns null — "this schema states no lean shape" — when there is no brief.
- * ⛔ Null is NOT an empty set. An empty set would say the lean shape is nothing,
- * and a caller stripping to it empties every record. A root list (`@std/nav`) is
- * the ordinary case for null, and the right response is to leave records whole.
- *
- * @param {Object} schema - a normalized data schema
- * @returns {Set<string>|null} the brief's field names, or null when none
- */
-export function briefFields(schema) {
-  if (!schema || typeof schema !== 'object' || !schema.sections) return null
-  for (const section of Object.values(schema.sections)) {
-    if (!section || section.brief !== true) continue
-    const names = Object.keys(section.fields || {})
-    return names.length ? new Set(names) : null
-  }
-  return null
-}
-
-/**
  * The field map ONE FLAT RECORD is checked against — the surface a single source
  * file (a `.md` with frontmatter, a `.yml`, one `.json` object) can populate.
  *

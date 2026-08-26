@@ -181,9 +181,25 @@ export function isStaticallyCheckable(schema) {
  * `collectionRecordsToEntities` implements when it turns a collection's source
  * files into entities (`@uniweb/build`, `src/uwx/collections.js`) — "a record
  * maps to the Model's SINGLE sections in declared order — the brief (the card)
- * plus any sibling single sections", with field names unique across a Model's
- * sections. `multi` sections are skipped there for the same reason they are
- * skipped here: repeating items cannot be expressed by one flat record.
+ * plus any sibling single sections". `multi` sections are skipped there as they
+ * are here, because both functions describe the same FLAT-RECORD shape: one file
+ * whose frontmatter keys are field names.
+ *
+ * ⛔ TWO CORRECTIONS, because this paragraph carried both and one of them had
+ * been relied on:
+ *
+ * 1. It used to add "with field names unique across a Model's sections". That is
+ *    FALSE — no such convention holds and nothing validates it. Where a name is
+ *    declared in two sections the mapper writes the same value into both, each
+ *    encoded per its own field's type. The merge below inherits the ambiguity and
+ *    keeps the first occurrence, which is a choice, not a guarantee.
+ *
+ * 2. It used to say repeating items "cannot be expressed by one flat record".
+ *    True of a flat record and misleading as a statement about records, which
+ *    need not be flat: a Model whose only section is `many` is a supported shape
+ *    whose content is a bare array — see `rootListSection` above, and `@std/nav`.
+ *    `flatRecordFields` returns null for exactly those, which is the honest
+ *    answer to "what is this schema's flat surface?", not a limitation of theirs.
  *
  * WHY THIS IS NOT `isStaticallyCheckable`. That predicate guards a different
  * question — whether `@uniweb/build` should validate a site's data files at all

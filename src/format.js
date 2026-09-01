@@ -87,6 +87,57 @@ export const FORMAT_TYPES = new Set(['url', 'email', 'markdown', 'html', 'richte
 export const SECTION_KINDS = new Set(['single', 'multi', 'binder'])
 
 /**
+ * Who may instantiate a Model. A CLOSED set — `any_user` is the default a Model
+ * materializes with, and `unit_members` is the one tightening a data-schema can
+ * declare. Finer control (naming specific accounts) is a per-account grant the
+ * registry owns, not something a schema can express.
+ *
+ * ⚠️ Not to be confused with the STORAGE enum, which is wider (`role`,
+ * `unit_admin`, `system_only`). Those are reachable by other means; this is the
+ * authoring surface, and it is deliberately the narrower of the two.
+ */
+export const CREATABLE_BY = new Set(['any_user', 'unit_members'])
+
+/**
+ * Every key a Model may carry beside its content. Used only to WARN, never to
+ * refuse — see `warnUnknownModelKeys`.
+ */
+const MODEL_KEYS = new Set([
+  'name', 'version', 'label', 'description', 'source_locale', 'sourceLocale',
+  'linkable', 'creatable_by', 'creatableBy', 'sort_date', 'sortDate',
+  'fields', 'sections'
+])
+
+/**
+ * Warn about a model-level key nothing will carry.
+ *
+ * ⚖️ WHY WARN HERE WHEN THE QUERY DECL DELIBERATELY DOES NOT. `queriesNested` in
+ * `@uniweb/build` forwards keys it does not recognise, and argues — correctly —
+ * that framework cannot tell a valid Model field from a typo, so only the server
+ * should judge. **That reasoning does not reach this tier, and the difference is
+ * structural rather than a matter of taste:**
+ *
+ *   - a decl's fields are a PASSTHROUGH — an unknown key can be forwarded intact,
+ *     so silence costs nothing and refusing would cry wolf on every new field;
+ *   - a model's keys are LOWERED — each one is read by name and written into a
+ *     specific slot of the declaration. An unknown key cannot be forwarded,
+ *     because there is nowhere to forward it TO.
+ *
+ * ⇒ Here, silence is a guaranteed loss rather than a possible one. It stays a
+ * warning and not an error so a schema written against a newer registry still
+ * builds — it simply says what will not survive.
+ */
+function warnUnknownModelKeys(schema, ref) {
+  const unknown = Object.keys(schema).filter((k) => !MODEL_KEYS.has(k))
+  if (unknown.length === 0) return
+  console.warn(
+    `Data schema '${ref}': ${unknown.map((k) => `'${k}'`).join(', ')} ` +
+      `${unknown.length === 1 ? 'is not a model-level key and will not be carried' : 'are not model-level keys and will not be carried'}. ` +
+      `Known: ${[...MODEL_KEYS].filter((k) => !/[A-Z]/.test(k)).join(', ')}.`
+  )
+}
+
+/**
  * Every word valid as a `type:` — the canonical kinds plus every alias that folds
  * into one. This is the complete authoring type vocabulary.
  *
@@ -213,9 +264,57 @@ export function validateAndNormalizeSchema(schema, ref) {
     throw new Error(`Data schema '${ref}' did not export a schema object.`)
   }
 
+  assertProseStrings(schema, ref, 'the model')
+
   const out = {}
-  for (const k of ['name', 'version', 'description']) {
+  for (const k of ['name', 'version', 'description', 'label']) {
     if (schema[k] !== undefined) out[k] = schema[k]
+  }
+
+  // ⛔ THE MODEL-LEVEL KEYS WERE A SILENT DROP, MEASURED 2026-09-01. This
+  // allowlist held `name`/`version`/`description` and nothing else, so FOUR of the
+  // six keys the registry documents on a Model's `info` — `label`, `source_locale`,
+  // `linkable`, `creatable_by` — were discarded here with **no error**. An author
+  // wrote them, saw nothing, and shipped a Model that did not carry them.
+  //
+  // ⭐ `creatable_by` is why this is more than tidiness. A content Model
+  // materializes open — anyone authenticated may create entities of it — and
+  // `creatable_by` is the ONLY thing that tightens that. Dropping it turns a
+  // declared restriction into no restriction, silently, which is the worst
+  // direction for a permission to fail in.
+  const sourceLocale = schema.source_locale ?? schema.sourceLocale
+  if (sourceLocale !== undefined) {
+    if (typeof sourceLocale !== 'string' || !sourceLocale) {
+      throw new Error(
+        `Data schema '${ref}': 'source_locale' must be a locale code like 'en', got ${typeof sourceLocale}.`
+      )
+    }
+    out.sourceLocale = sourceLocale
+  }
+
+  // `linkable` — may this Model's entities be `entity_ref` targets? Authored as a
+  // boolean; the producer reconciles it against whether a brief exists, since a
+  // model with no card to hydrate cannot be a target whatever it declares.
+  if (schema.linkable !== undefined) {
+    if (typeof schema.linkable !== 'boolean') {
+      throw new Error(
+        `Data schema '${ref}': 'linkable' must be a boolean, got ${typeof schema.linkable}.`
+      )
+    }
+    out.linkable = schema.linkable
+  }
+
+  // `creatable_by` — who may instantiate this Model. A CLOSED set, and small, so
+  // a wrong value throws rather than travelling: the registry would reject it, and
+  // a typo here is a permission that silently does not apply.
+  const creatableBy = schema.creatable_by ?? schema.creatableBy
+  if (creatableBy !== undefined) {
+    if (!CREATABLE_BY.has(creatableBy)) {
+      throw new Error(
+        `Data schema '${ref}': 'creatable_by' must be one of ${[...CREATABLE_BY].join(' | ')}, got ${JSON.stringify(creatableBy)}.`
+      )
+    }
+    out.creatableBy = creatableBy
   }
 
   // The model's sort axis names a DATE FIELD IN THE BRIEF section (not a boolean,
@@ -242,6 +341,8 @@ export function validateAndNormalizeSchema(schema, ref) {
   if (!hasFields && !hasSections) {
     throw new Error(`Data schema '${ref}': must declare 'fields' or 'sections'.`)
   }
+
+  warnUnknownModelKeys(schema, ref)
 
   if (hasSections) {
     out.sections = normalizeSections(schema.sections, ref)

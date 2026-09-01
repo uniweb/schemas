@@ -255,3 +255,84 @@ describe('flatRecordFields — the surface one source file can populate', () => 
     expect(flatRecordFields(norm).title.description).toBe('first')
   })
 })
+
+/**
+ * Model-level keys — the four that used to vanish.
+ *
+ * ⛔ Measured 2026-09-01: this validator's allowlist held `name`, `version` and
+ * `description`, so `label`, `source_locale`, `linkable` and `creatable_by` — four
+ * of the six keys the registry documents on a Model — were dropped with no error.
+ *
+ * ⭐ `creatable_by` is the one that made this urgent rather than untidy. A content
+ * Model materializes OPEN (anyone authenticated may create entities of it), and
+ * `creatable_by` is the only thing a schema can say to tighten that. Dropping it
+ * silently converts a declared restriction into no restriction.
+ */
+describe('model-level keys', () => {
+  const withSections = (extra) => ({
+    name: '@demo/session',
+    sections: { identity: { brief: true, fields: { title: { type: 'string' } } } },
+    ...extra
+  })
+
+  it('keeps all four keys that used to be dropped', () => {
+    const out = validateAndNormalizeSchema(
+      withSections({
+        label: 'Session',
+        description: 'A conference talk.',
+        source_locale: 'en',
+        linkable: false,
+        creatable_by: 'unit_members'
+      }),
+      '@demo/session'
+    )
+    expect(out.label).toBe('Session')
+    expect(out.description).toBe('A conference talk.')
+    expect(out.sourceLocale).toBe('en')
+    expect(out.linkable).toBe(false)
+    expect(out.creatableBy).toBe('unit_members')
+  })
+
+  it('accepts either spelling, normalizing to one key each', () => {
+    // Same rule as `sort_date`/`sortDate`: the authoring vocabulary is snake_case,
+    // the camel alias is accepted, and exactly one key reaches the producer —
+    // carrying both through is how an authored value gets silently ignored.
+    const out = validateAndNormalizeSchema(
+      withSections({ sourceLocale: 'fr', creatableBy: 'any_user' }),
+      '@demo/session'
+    )
+    expect(out.sourceLocale).toBe('fr')
+    expect(out.creatableBy).toBe('any_user')
+    expect(out.source_locale).toBeUndefined()
+    expect(out.creatable_by).toBeUndefined()
+  })
+
+  it('refuses a creatable_by outside the closed set, naming what is allowed', () => {
+    // A typo here is a permission that silently does not apply, so it throws
+    // rather than travelling to a registry that would reject it later.
+    expect(() =>
+      validateAndNormalizeSchema(withSections({ creatable_by: 'unit_member' }), '@demo/session')
+    ).toThrow(/creatable_by.*any_user \| unit_members/)
+  })
+
+  it('refuses a non-boolean linkable and a non-string source_locale', () => {
+    expect(() => validateAndNormalizeSchema(withSections({ linkable: 'yes' }), '@x')).toThrow(/linkable/)
+    expect(() => validateAndNormalizeSchema(withSections({ source_locale: 2 }), '@x')).toThrow(/source_locale/)
+  })
+
+  it('refuses a per-locale object for the model label, like every other tier', () => {
+    expect(() =>
+      validateAndNormalizeSchema(withSections({ label: { en: 'Session' } }), '@demo/session')
+    ).toThrow(/must be a plain string/)
+  })
+
+  it('warns about an unknown model-level key rather than dropping it in silence', () => {
+    // ⚖️ A warning, not an error: a schema written against a newer registry still
+    // builds. But it must not be SILENT — unlike a decl's fields, a model key is
+    // lowered by name, so there is nowhere to forward one we do not know.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    validateAndNormalizeSchema(withSections({ creatabe_by: 'any_user' }), '@demo/session')
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('creatabe_by'))
+    warn.mockRestore()
+  })
+})

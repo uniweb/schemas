@@ -8,6 +8,7 @@
     ".": "./src/index.js",
     "./format": "./src/format.js",
     "./conform": "./src/conform.js",
+    "./editor-form": "./src/editor-form.js",
     "./standard/*": "./src/standard/*.js",
     "./utils/*": "./src/utils/*.js"
   },

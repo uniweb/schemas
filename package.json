@@ -13,6 +13,7 @@
     "./format": "./src/format.js",
     "./conform": "./src/conform.js",
     "./editor-form": "./src/editor-form.js",
+    "./starter": "./src/starter.js",
     "./standard/*": "./src/standard/*.js",
     "./utils/*": "./src/utils/*.js"
   },

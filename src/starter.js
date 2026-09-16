@@ -41,6 +41,7 @@
  */
 
 import { resolveFamily } from './families.js'
+import { elementSpec, parseExpectation, declarationKey } from './content.js'
 import { registerFor } from './starter/registers.js'
 import { starterImage } from './starter/placeholder.js'
 import { sampleRecord } from './starter/sample-record.js'
@@ -51,65 +52,14 @@ import { sampleRecord } from './starter/sample-record.js'
 import { schemas as STANDARD_SCHEMAS } from './index.js'
 
 /**
- * A `content:` key → the key the structure (and the component) uses.
+ * Elements this generator does not fill, though the vocabulary allows them.
  *
- * ⛔ THE DECLARATION AND THE DELIVERY DO NOT USE THE SAME WORD for images and
- * icons: a developer declares `image:` and `icon:` (singular, a role) and the
- * component reads `content.images` and `content.icons` (plural, the arrays).
- * `thumbnail` is a third spelling for the same array — it names the ROLE the
- * image plays, not a separate slot; the parser has no `thumbnails`.
- *
- * ⛔ `background` is NOT a content element. It is the top-level `background:`
- * key in `meta.js` and is rendered by the runtime from frontmatter, so a
- * declaration that lists it here is naming something this cannot fill.
+ * ⛔ The element VOCABULARY is not here — it is `./content.js`, which owns the
+ * `content:` grammar and is what `describeContent` reads. This file used to
+ * carry its own copy of the declared-name → delivered-key table; two copies of
+ * one mapping is the drift this package keeps warning about.
  */
-const ELEMENT_TO_SLOT = {
-  title: 'title',
-  pretitle: 'pretitle',
-  subtitle: 'subtitle',
-  paragraphs: 'paragraphs',
-  links: 'links',
-  lists: 'lists',
-  items: 'items',
-  videos: 'videos',
-  snippets: 'snippets',
-  data: 'data',
-  image: 'images',
-  images: 'images',
-  thumbnail: 'images',
-  icon: 'icons',
-  icons: 'icons',
-}
-
-/**
- * A slot → the `content:` key a developer writes for it.
- *
- * ⛔ THE INVERSE OF THE TABLE ABOVE, AND EXPORTED SO THERE IS ONLY ONE. A caller
- * that scaffolds a declaration needs to go back the other way, and the CLI was
- * doing it with two hand-written ternaries — a second copy of a mapping that
- * lives here, which rots silently the moment a row is added above.
- *
- * Several elements map to one slot (`image` / `images` / `thumbnail` → `images`),
- * so this names the canonical spelling to WRITE: the first key that maps to each
- * slot, which is the singular role name a developer declares.
- */
-const SLOT_TO_ELEMENT = Object.entries(ELEMENT_TO_SLOT).reduce((out, [element, slot]) => {
-  if (!(slot in out)) out[slot] = element
-  return out
-}, {})
-
-/**
- * The `content:` key a developer writes to declare this slot.
- *
- * @param {string} slot - a key of the structure `starterContent` returns
- * @returns {string} the declaration spelling, or the slot itself when it has none
- */
-export function declarationKey(slot) {
-  return SLOT_TO_ELEMENT[slot] || slot
-}
-
-/** Elements a declaration may legally carry that this generator does not fill. */
-const UNFILLABLE = new Set(['background', 'insets', 'quotes', 'headings'])
+const UNFILLABLE = new Set(['insets', 'quotes', 'headings'])
 
 /** How many to generate when the declaration states no count. */
 const DEFAULT_ARITY = {
@@ -143,40 +93,6 @@ const UNCOUNTED = new Set(['title', 'pretitle', 'subtitle', 'data'])
 
 /** Generating more than this is noise, whatever the declaration asks for. */
 const ARITY_CAP = 8
-
-/**
- * Read a content expectation's label and count.
- *
- * ⭐ THIS IS THE FIRST READER OF THE COUNT SYNTAX. `'Feature cards [3-6]'` has
- * been documented since the beginning and parsed NOWHERE — `docs/reference/
- * component-metadata.md` calls it "guidance for content authors, not
- * validation". Generating content needs an arity, so from here the brackets are
- * load-bearing: a developer who writes one is now telling us how much to make.
- *
- * ⭐ AND THE NUMBER WE TAKE IS THE UPPER BOUND, deliberately. A component is not
- * obliged to render everything it is handed, and the params that reduce (a
- * `layout: compact`) simply render less — so surplus content costs nothing and
- * is the free A/B a preset gives you, while a shortfall leaves a visible hole.
- * `[0-2]` generates 2. `[2+]` generates 3.
- *
- * @param {string|object} expectation - `'Label [1-2]'` or `{ label, hint }`
- * @returns {{label: string, min: number|null, max: number|null, open: boolean}}
- */
-export function parseExpectation(expectation) {
-  const raw =
-    typeof expectation === 'string'
-      ? expectation
-      : (expectation && typeof expectation === 'object' && expectation.label) || ''
-
-  const match = String(raw).match(/^(.*?)\s*\[\s*(\d+)\s*(?:(-)\s*(\d+)|(\+))?\s*\]\s*$/)
-  if (!match) return { label: String(raw).trim(), min: null, max: null, open: false }
-
-  const [, label, first, dash, second, plus] = match
-  const min = Number(first)
-  if (dash) return { label: label.trim(), min, max: Number(second), open: false }
-  if (plus) return { label: label.trim(), min, max: null, open: true }
-  return { label: label.trim(), min, max: min, open: false }
-}
 
 /**
  * How many of an element to generate.
@@ -358,15 +274,16 @@ export function starterContent(component, options = {}) {
   }
 
   for (const [element, expectation] of Object.entries(declared)) {
-    if (UNFILLABLE.has(element)) {
+    // ⛔ One test covers three cases, and that is the point of a single
+    // vocabulary: `background` (a real meta.js key, just not a content one) and
+    // an outright typo both have no element spec, so both decline here.
+    // `describeContent` is what tells them apart, for a consumer that cares.
+    const spec = UNFILLABLE.has(element) ? null : elementSpec(element)
+    if (!spec) {
       unfilled.push(element)
       continue
     }
-    const slot = ELEMENT_TO_SLOT[element]
-    if (!slot) {
-      unfilled.push(element)
-      continue
-    }
+    const slot = spec.key
 
     const n = UNCOUNTED.has(slot) ? 0 : arityFor(slot, expectation)
 
@@ -449,4 +366,7 @@ export function starterContent(component, options = {}) {
   }
 }
 
+// Re-exported because `@uniweb/schemas/starter` is where a caller of this
+// generator looks for them; `./content` is where they live.
+export { parseExpectation, declarationKey } from './content.js'
 export { registerFor, starterImage, sampleRecord }

@@ -12,6 +12,7 @@
     "./locales/*": "./src/locales/*.json",
     "./format": "./src/format.js",
     "./conform": "./src/conform.js",
+    "./content": "./src/content.js",
     "./editor-form": "./src/editor-form.js",
     "./starter": "./src/starter.js",
     "./standard/*": "./src/standard/*.js",
@@ -25,6 +26,8 @@
     "gen:families": "node scripts/gen-families-json.mjs"
   },
   "devDependencies": {
+    "@uniweb/content-reader": "workspace:*",
+    "@uniweb/semantic-parser": "workspace:*",
     "vitest": "^4.1.7"
   },
   "keywords": [

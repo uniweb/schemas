@@ -1,10 +1,11 @@
 # @uniweb/schemas
 
-Uniweb's standard names, and the language they're written in. Four things, and it helps to know which one you're reaching for:
+Uniweb's standard names, and the language they're written in. Five things, and it helps to know which one you're reaching for:
 
 - **The data-schema format** — the language schemas are written in: its type vocabulary, the normalizer that folds friendly type names to canonical kinds, and the conformance checker that validates a record against a schema.
 - **The standard schemas** — a shared vocabulary of common content types (`person`, `article`, `event`, …) written in that format, referenced as `@std/<name>`.
 - **The section families** — the standard section types a component can claim with `family:` in its `meta.js`, so an editor can show the right illustration and a label it can translate. [Section families](#section-families).
+- **The content declaration** — a reader for the `content:` block a section type writes, so a tool can show what a component expects without learning the grammar. [The content declaration](#the-content-declaration).
 - **Starter content** — a component's `content:` declaration turned into something an author can edit instead of an empty box. [Starter content](#starter-content).
 
 A data schema describes a structured content type: its fields, their types, their defaults. Write the shape once and it does three jobs — `uniweb validate` **checks** your data before it ships, the runtime **delivers** each record with defaults applied, and the visual editor renders a **form** authors fill in.
@@ -525,6 +526,52 @@ resolveFamily(component)   // → { id, label, group, source, unknown }
 `@uniweb/schemas/families.json` is the same data as JSON. English and French labels are at `@uniweb/schemas/locales/en` and `/fr` — 83 keys each, keyed by id, never by label.
 
 ⛔ Nothing in the build, the runtime or a delivered site reads `family`. It is a claim about **shape** — never about entitlement, tier or capability — and a component that declares none renders identically. An unrecognized value is legal: it falls back rather than failing.
+
+---
+
+## The content declaration
+
+A section type says what content it expects:
+
+```js
+content: {
+  title:      'Headline',
+  paragraphs: 'Short pitch [0-1]',
+  items:      { label: 'Feature cards [3-6]', hint: 'Each H3 becomes a card' },
+}
+```
+
+That's a small grammar — an element vocabulary, a count in brackets, two ways to write a value, and names whose singular declares what their plural delivers. `describeContent` reads it so a consumer doesn't have to:
+
+```js
+import { describeContent } from '@uniweb/schemas/content'
+
+const { elements, unknown, declared, summary } = describeContent(component)
+```
+
+Each element comes back with what a UI needs to draw it:
+
+```js
+{
+  key: 'items',            // what the component reads off `content`
+  declaredAs: 'items',     // what the developer wrote
+  label: 'Feature cards',
+  labelSource: 'declared', // 'standard' when the label is ours, not theirs
+  hint: 'Each H3 becomes a card',
+  kind: 'entries',         // one of CONTENT_KINDS
+  syntax: '# Section title\n\n### First entry\n…',
+  description: 'Repeated groups within one file — a heading starts each one. …',
+  arity: { min: 3, max: 6, required: true, repeatable: true, text: '3–6' },
+}
+```
+
+- **`kind`** is a closed set — `heading` · `prose` · `list` · `link` · `image` · `icon` · `video` · `entries` · `code` · `data` · `inset`, published as `CONTENT_KINDS`.
+- **`syntax`** is a markdown sample that actually produces the element. A test asserts exactly that for every one of them, because a sample that doesn't parse is worse than none — it's copy-pasteable and it fails silently.
+- ⛔ **`labelSource` decides whether you may translate the label.** A declared label is the foundation's own words, in whatever language the developer chose; show it verbatim. A `'standard'` one is ours.
+- **`unknown`** names anything `content:` declared that isn't an element, with a reason. `background` gets its own — it's a real `meta.js` key, just a top-level one, so calling it a typo would hide that there's a correct place for it.
+- **`declared: false`** means the component declares no `content:` at all. That's supported and common, never an error.
+
+Nothing throws. A foundation is third-party, and one odd key shouldn't cost a section its panel.
 
 ---
 

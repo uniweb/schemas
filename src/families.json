@@ -36,9 +36,9 @@
       "description": "bring in something external"
     },
     {
-      "id": "building",
-      "label": "Building",
-      "description": "you supply the substance"
+      "id": "organizing",
+      "label": "Organizing",
+      "description": "arrange other content on the page"
     }
   ],
   "families": [
@@ -70,6 +70,11 @@
     {
       "id": "marquee",
       "label": "Marquee",
+      "group": "opening"
+    },
+    {
+      "id": "canvas",
+      "label": "Canvas",
       "group": "opening"
     },
     {
@@ -120,11 +125,6 @@
     {
       "id": "steps",
       "label": "Steps",
-      "group": "explaining"
-    },
-    {
-      "id": "accordion",
-      "label": "Accordion",
       "group": "explaining"
     },
     {
@@ -318,6 +318,11 @@
       "group": "acting"
     },
     {
+      "id": "app",
+      "label": "App",
+      "group": "acting"
+    },
+    {
       "id": "header",
       "label": "Header",
       "group": "navigating"
@@ -325,11 +330,6 @@
     {
       "id": "footer",
       "label": "Footer",
-      "group": "navigating"
-    },
-    {
-      "id": "tabs",
-      "label": "Tabs",
       "group": "navigating"
     },
     {
@@ -365,17 +365,17 @@
     {
       "id": "grid",
       "label": "Grid",
-      "group": "building"
+      "group": "organizing"
     },
     {
-      "id": "scene",
-      "label": "Scene",
-      "group": "building"
+      "id": "tabs",
+      "label": "Tabs",
+      "group": "organizing"
     },
     {
-      "id": "app",
-      "label": "App",
-      "group": "building"
+      "id": "accordion",
+      "label": "Accordion",
+      "group": "organizing"
     }
   ]
 }

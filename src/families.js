@@ -66,7 +66,7 @@ export const GROUPS = [
   { id: 'acting', label: 'Acting', description: 'get the visitor to do something' },
   { id: 'navigating', label: 'Navigating', description: 'help them get around' },
   { id: 'embedding', label: 'Embedding', description: 'bring in something external' },
-  { id: 'building', label: 'Building', description: 'you supply the substance' },
+  { id: 'organizing', label: 'Organizing', description: 'arrange other content on the page' },
 ]
 
 /**
@@ -81,12 +81,22 @@ export const GROUPS = [
  * the bare word `quote` is ambiguous with a pull-quote, and a developer
  * reading it would declare the wrong one every time.
  *
- * ⭐ `building` MEANS THE AUTHOR SUPPLIES THE SUBSTANCE, and it is the
- * tie-breaker for the next ambiguous family. The test: does it come with an
- * OPINION about what goes in it? `hero` does — a headline, an image, a call to
- * action. `grid`, `scene` and `app` hand you a surface instead, so what the
- * section becomes is the author's doing. ⇒ When a family's group depends on how
- * it is USED rather than what it IS, it belongs in `building`.
+ * ⛔ EVERY GROUP IS A ROLE THE SECTION TAKES ON THE PAGE, and a group that is
+ * not one breaks the axis. There was a `building` group — "you supply the
+ * substance" — for sections whose role varies with use. That described the
+ * AUTHOR'S effort rather than the section's role, so it sorted by uncertainty
+ * of role instead of by role, and it was retired.
+ *
+ * ⭐ THE TIE-BREAKER IS THE DOMINANT ROLE. A section usable in several roles sits
+ * in the one it most often takes — the same rule as a `family:` value naming the
+ * dominant shape. "It is not required to be used that way" is true of `hero` and
+ * `stats` too, so it decides nothing. That is why `canvas` sits in `opening`:
+ * its most natural use is an arresting hero.
+ *
+ * ⭐ `organizing` IS A ROLE, NOT A TECHNIQUE: the section's job on the page is to
+ * arrange other content — into a grid, behind tabs, into collapsible panels.
+ * `tabs` is there rather than in `navigating` because it organizes what is in
+ * front of the visitor; `navigating` is getting around the site.
  */
 const BY_GROUP = {
   opening: [
@@ -96,6 +106,7 @@ const BY_GROUP = {
     ['announcement', 'Announcement'],
     ['countdown', 'Countdown'],
     ['marquee', 'Marquee'],
+    ['canvas', 'Canvas'],
   ],
   explaining: [
     ['article', 'Article'],
@@ -108,7 +119,6 @@ const BY_GROUP = {
     ['code-block', 'Code Block'],
     ['callout', 'Callout'],
     ['steps', 'Steps'],
-    ['accordion', 'Accordion'],
     ['process', 'Process'],
     ['roadmap', 'Roadmap'],
     ['faq', 'FAQ'],
@@ -153,11 +163,11 @@ const BY_GROUP = {
     ['search', 'Search'],
     ['auth', 'Sign In'],
     ['paywall', 'Paywall'],
+    ['app', 'App'],
   ],
   navigating: [
     ['header', 'Header'],
     ['footer', 'Footer'],
-    ['tabs', 'Tabs'],
     ['pathways', 'Pathways'],
     ['toc', 'Table of Contents'],
   ],
@@ -167,10 +177,10 @@ const BY_GROUP = {
     ['raw-code', 'Raw HTML'],
     ['widget', 'Widget'],
   ],
-  building: [
+  organizing: [
     ['grid', 'Grid'],
-    ['scene', 'Scene'],
-    ['app', 'App'],
+    ['tabs', 'Tabs'],
+    ['accordion', 'Accordion'],
   ],
 }
 

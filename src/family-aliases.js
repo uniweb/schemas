@@ -273,10 +273,17 @@ const ALIASES = {
   'grid-composition': 'grid',
   'columns': 'grid',
   'split-layout': 'grid',
-  // → scene
-  'scene-composer': 'scene',
-  'composer': 'scene',
-  'canvas': 'scene',}
+  // → canvas
+  // ⭐ `scene` WAS THIS FAMILY'S ID, and it named the renderer rather than the
+  // section — a developer building the same kind of section on anything else
+  // would have no reason to call it that. It stays here so a component named
+  // `Scene` is still pointed at the right family.
+  'scene': 'canvas',
+  'scene-composer': 'canvas',
+  'composer': 'canvas',
+  'artboard': 'canvas',
+  'visual-composition': 'canvas',
+}
 
 /**
  * Shape words that carry no meaning of their own.

@@ -132,10 +132,37 @@ describe('resolveFamily', () => {
   })
 })
 
+describe('the page-role regrouping', () => {
+  it('retires `building` — every group is a role the section takes on the page', () => {
+    // ⛔ `building` ("you supply the substance") described the AUTHOR'S effort,
+    // not the section's role, so it sorted by uncertainty of role rather than by
+    // role. A group that is not a page role breaks the axis the rest rely on.
+    expect(getGroup('building')).toBeUndefined()
+    expect(GROUPS.map(g => g.id)).toContain('organizing')
+  })
+
+  it('places each former member by its dominant role', () => {
+    expect(getFamily('canvas').group).toBe('opening')
+    expect(getFamily('app').group).toBe('acting')
+    for (const id of ['grid', 'tabs', 'accordion']) {
+      expect(getFamily(id).group, id).toBe('organizing')
+    }
+  })
+
+  it('keeps `scene` reachable as a guess, never as a family', () => {
+    // `scene` named the renderer, not the section. It is no longer a family —
+    // the resolver refuses it — but doctor still points a component named
+    // `Scene` at `canvas`.
+    expect(isFamily('scene')).toBe(false)
+    expect(resolveFamily({ name: 'Scene' }).id).toBeNull()
+    expect(suggestFamily('Scene', FAMILIES.map(f => f.id)).id).toBe('canvas')
+  })
+})
+
 describe('lookups', () => {
   it('finds a family and a group by id', () => {
     expect(getFamily('toc')).toEqual({ id: 'toc', label: 'Table of Contents', group: 'navigating' })
-    expect(getGroup('building').label).toBe('Building')
+    expect(getGroup('organizing').label).toBe('Organizing')
     expect(isFamily('app')).toBe(true)
     expect(isFamily('generic')).toBe(false) // a picker state, never a family
   })

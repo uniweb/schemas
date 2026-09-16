@@ -1,11 +1,13 @@
 {
   "name": "@uniweb/schemas",
   "version": "0.2.13",
-  "description": "The Uniweb data-schema format and its standard schema definitions",
+  "description": "The Uniweb data-schema format, its standard schema definitions, and the standard section families",
   "type": "module",
   "main": "src/index.js",
   "exports": {
     ".": "./src/index.js",
+    "./families": "./src/families.js",
+    "./families.json": "./src/families.json",
     "./format": "./src/format.js",
     "./conform": "./src/conform.js",
     "./editor-form": "./src/editor-form.js",
@@ -16,7 +18,8 @@
     "src"
   ],
   "scripts": {
-    "test": "vitest run"
+    "test": "vitest run",
+    "gen:families": "node scripts/gen-families-json.mjs"
   },
   "devDependencies": {
     "vitest": "^4.1.7"

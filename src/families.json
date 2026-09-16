@@ -1,0 +1,381 @@
+{
+  "groups": [
+    {
+      "id": "opening",
+      "label": "Opening",
+      "move": "say what this page is"
+    },
+    {
+      "id": "explaining",
+      "label": "Explaining",
+      "move": "your own words and pictures"
+    },
+    {
+      "id": "listing",
+      "label": "Listing",
+      "move": "show many of something"
+    },
+    {
+      "id": "convincing",
+      "label": "Convincing",
+      "move": "evidence and proof"
+    },
+    {
+      "id": "acting",
+      "label": "Acting",
+      "move": "get the visitor to do something"
+    },
+    {
+      "id": "navigating",
+      "label": "Navigating",
+      "move": "help them get around"
+    },
+    {
+      "id": "embedding",
+      "label": "Embedding",
+      "move": "bring in something external"
+    },
+    {
+      "id": "building",
+      "label": "Building",
+      "move": "you supply the substance"
+    }
+  ],
+  "families": [
+    {
+      "id": "hero",
+      "label": "Hero",
+      "group": "opening"
+    },
+    {
+      "id": "profile",
+      "label": "Profile",
+      "group": "opening"
+    },
+    {
+      "id": "statement",
+      "label": "Statement",
+      "group": "opening"
+    },
+    {
+      "id": "announcement",
+      "label": "Announcement",
+      "group": "opening"
+    },
+    {
+      "id": "countdown",
+      "label": "Countdown",
+      "group": "opening"
+    },
+    {
+      "id": "marquee",
+      "label": "Marquee",
+      "group": "opening"
+    },
+    {
+      "id": "article",
+      "label": "Article",
+      "group": "explaining"
+    },
+    {
+      "id": "rich-text",
+      "label": "Rich Text",
+      "group": "explaining"
+    },
+    {
+      "id": "story",
+      "label": "Story",
+      "group": "explaining"
+    },
+    {
+      "id": "editorial",
+      "label": "Editorial",
+      "group": "explaining"
+    },
+    {
+      "id": "figure",
+      "label": "Figure",
+      "group": "explaining"
+    },
+    {
+      "id": "gallery",
+      "label": "Gallery",
+      "group": "explaining"
+    },
+    {
+      "id": "video",
+      "label": "Video",
+      "group": "explaining"
+    },
+    {
+      "id": "code-block",
+      "label": "Code Block",
+      "group": "explaining"
+    },
+    {
+      "id": "callout",
+      "label": "Callout",
+      "group": "explaining"
+    },
+    {
+      "id": "steps",
+      "label": "Steps",
+      "group": "explaining"
+    },
+    {
+      "id": "accordion",
+      "label": "Accordion",
+      "group": "explaining"
+    },
+    {
+      "id": "process",
+      "label": "Process",
+      "group": "explaining"
+    },
+    {
+      "id": "roadmap",
+      "label": "Roadmap",
+      "group": "explaining"
+    },
+    {
+      "id": "faq",
+      "label": "FAQ",
+      "group": "explaining"
+    },
+    {
+      "id": "card-grid",
+      "label": "Card Grid",
+      "group": "listing"
+    },
+    {
+      "id": "team",
+      "label": "Team",
+      "group": "listing"
+    },
+    {
+      "id": "products",
+      "label": "Products",
+      "group": "listing"
+    },
+    {
+      "id": "jobs",
+      "label": "Jobs",
+      "group": "listing"
+    },
+    {
+      "id": "schedule",
+      "label": "Schedule",
+      "group": "listing"
+    },
+    {
+      "id": "menu",
+      "label": "Menu",
+      "group": "listing"
+    },
+    {
+      "id": "social-feed",
+      "label": "Social Feed",
+      "group": "listing"
+    },
+    {
+      "id": "changelog",
+      "label": "Changelog",
+      "group": "listing"
+    },
+    {
+      "id": "downloads",
+      "label": "Downloads",
+      "group": "listing"
+    },
+    {
+      "id": "bibliography",
+      "label": "Bibliography",
+      "group": "listing"
+    },
+    {
+      "id": "teaser",
+      "label": "Teaser",
+      "group": "listing"
+    },
+    {
+      "id": "recommendations",
+      "label": "Recommendations",
+      "group": "listing"
+    },
+    {
+      "id": "features",
+      "label": "Features",
+      "group": "convincing"
+    },
+    {
+      "id": "testimonials",
+      "label": "Testimonials",
+      "group": "convincing"
+    },
+    {
+      "id": "evidence",
+      "label": "Evidence",
+      "group": "convincing"
+    },
+    {
+      "id": "logo-cloud",
+      "label": "Logo Cloud",
+      "group": "convincing"
+    },
+    {
+      "id": "integrations",
+      "label": "Integrations",
+      "group": "convincing"
+    },
+    {
+      "id": "spotlight",
+      "label": "Spotlight",
+      "group": "convincing"
+    },
+    {
+      "id": "hotspots",
+      "label": "Hotspots",
+      "group": "convincing"
+    },
+    {
+      "id": "pricing",
+      "label": "Pricing",
+      "group": "convincing"
+    },
+    {
+      "id": "stats",
+      "label": "Stats",
+      "group": "convincing"
+    },
+    {
+      "id": "metrics",
+      "label": "Metrics",
+      "group": "convincing"
+    },
+    {
+      "id": "data-table",
+      "label": "Data Table",
+      "group": "convincing"
+    },
+    {
+      "id": "comparison",
+      "label": "Comparison",
+      "group": "convincing"
+    },
+    {
+      "id": "cta",
+      "label": "Call to Action",
+      "group": "acting"
+    },
+    {
+      "id": "contact",
+      "label": "Contact Form",
+      "group": "acting"
+    },
+    {
+      "id": "newsletter",
+      "label": "Newsletter Signup",
+      "group": "acting"
+    },
+    {
+      "id": "booking",
+      "label": "Booking",
+      "group": "acting"
+    },
+    {
+      "id": "wizard",
+      "label": "Wizard",
+      "group": "acting"
+    },
+    {
+      "id": "quiz",
+      "label": "Quiz",
+      "group": "acting"
+    },
+    {
+      "id": "calculator",
+      "label": "Calculator",
+      "group": "acting"
+    },
+    {
+      "id": "estimate",
+      "label": "Estimate Request",
+      "group": "acting"
+    },
+    {
+      "id": "search",
+      "label": "Search",
+      "group": "acting"
+    },
+    {
+      "id": "auth",
+      "label": "Sign In",
+      "group": "acting"
+    },
+    {
+      "id": "paywall",
+      "label": "Paywall",
+      "group": "acting"
+    },
+    {
+      "id": "header",
+      "label": "Header",
+      "group": "navigating"
+    },
+    {
+      "id": "footer",
+      "label": "Footer",
+      "group": "navigating"
+    },
+    {
+      "id": "tabs",
+      "label": "Tabs",
+      "group": "navigating"
+    },
+    {
+      "id": "pathways",
+      "label": "Pathways",
+      "group": "navigating"
+    },
+    {
+      "id": "toc",
+      "label": "Table of Contents",
+      "group": "navigating"
+    },
+    {
+      "id": "map",
+      "label": "Map",
+      "group": "embedding"
+    },
+    {
+      "id": "embed",
+      "label": "Embed",
+      "group": "embedding"
+    },
+    {
+      "id": "raw-code",
+      "label": "Raw HTML",
+      "group": "embedding"
+    },
+    {
+      "id": "widget",
+      "label": "Widget",
+      "group": "embedding"
+    },
+    {
+      "id": "grid",
+      "label": "Grid",
+      "group": "building"
+    },
+    {
+      "id": "scene",
+      "label": "Scene",
+      "group": "building"
+    },
+    {
+      "id": "app",
+      "label": "App",
+      "group": "building"
+    }
+  ]
+}

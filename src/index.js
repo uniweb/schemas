@@ -1,7 +1,7 @@
 /**
  * @uniweb/schemas
  *
- * Two things, and it is worth knowing which you are reaching for:
+ * Three things, and it is worth knowing which you are reaching for:
  *
  *   the FORMAT    the data-schema language itself — the type vocabulary, the
  *                 normalizer that folds its friendly aliases to canonical kinds,
@@ -12,6 +12,14 @@
  *   the STANDARDS the shared `@std/*` schema definitions — person, article,
  *                 event, and the rest — written in that format.
  *                 → `./standard/*`, or the named exports below
+ *
+ *   the FAMILIES  the standard section types a foundation's component can claim
+ *                 (`family:` in `meta.js`), so an editor can show the right
+ *                 illustration and a translated label. A different kind of
+ *                 standard name from the schemas above, in the same package
+ *                 because "where are Uniweb's standard names?" should have one
+ *                 answer. ⛔ Aliases are NOT here — they are `uniweb doctor`'s.
+ *                 → `./families`, `./families.json`
  */
 
 // Standard schemas
@@ -24,6 +32,17 @@ import publication from './standard/publication.js'
 import nav from './standard/nav.js'
 import scene from './standard/scene.js'
 import form from './standard/form.js'
+
+// Section families — also at the `@uniweb/schemas/families` subpath
+export {
+  FAMILIES,
+  GROUPS,
+  getFamily,
+  getGroup,
+  isFamily,
+  normalizeName,
+  resolveFamily,
+} from './families.js'
 
 // Utilities
 import { validateAgainstSchema } from './utils/validate.js'

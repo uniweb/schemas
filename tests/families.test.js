@@ -152,9 +152,20 @@ describe('locales/en.json', () => {
     // ⭐ A label may be reworded; an id may not. A locale file keyed on the
     // English string would break the day anyone improves the wording.
     const en = JSON.parse(readFileSync(LOCALE_EN, 'utf8'))
-    expect(Object.keys(en)).toHaveLength(FAMILIES.length + GROUPS.length)
-    for (const f of FAMILIES) expect(en[`family.${f.id}`], f.id).toBe(f.label)
-    for (const g of GROUPS) expect(en[`group.${g.id}`], g.id).toBe(g.label)
+    expect(Object.keys(en)).toHaveLength(FAMILIES.length + GROUPS.length * 2)
+    for (const f of FAMILIES) expect(en[`family.${f.id}.label`], f.id).toBe(f.label)
+    for (const g of GROUPS) {
+      expect(en[`group.${g.id}.label`], g.id).toBe(g.label)
+      expect(en[`group.${g.id}.description`], g.id).toBe(g.description)
+    }
+  })
+
+  it('ends every key in a leaf, never in a bare id', () => {
+    // ⛔ Many i18n pipelines auto-nest on the dot. `group.opening` holding a
+    // string beside `group.opening.description` holding another collides there
+    // — one name would have to be both a string and an object.
+    const en = JSON.parse(readFileSync(LOCALE_EN, 'utf8'))
+    for (const k of Object.keys(en)) expect(k, k).toMatch(/\.(label|description)$/)
   })
 })
 
@@ -162,6 +173,12 @@ describe('every locale', () => {
   const dir = new URL('../src/locales/', import.meta.url)
   const en = JSON.parse(readFileSync(new URL('en.json', dir), 'utf8'))
   const locales = readdirSync(dir).filter(f => f.endsWith('.json'))
+
+  it('carries a description for every group, since it is rendered', () => {
+    // `description` is the subtitle under a group heading, not a code comment,
+    // so it is user-facing text and belongs in every locale.
+    for (const g of GROUPS) expect(typeof g.description, g.id).toBe('string')
+  })
 
   it('ships at least English and French', () => {
     expect(locales).toEqual(expect.arrayContaining(['en.json', 'fr.json']))

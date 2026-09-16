@@ -29,13 +29,18 @@ export function renderFamiliesJson() {
  *
  * ⛔ KEY BY ID, NEVER BY LABEL. A label may be reworded; an id may not.
  *
- * Flat dotted keys so any i18n pipeline can consume or transform them. A
- * `locales/<lang>.json` carries the same keys and nothing else.
+ * ⛔ EVERY KEY ENDS IN A LEAF (`.label`, `.description`), never in the id alone.
+ * Many i18n pipelines auto-nest on the dot, and `group.opening` holding a string
+ * beside `group.opening.description` holding another would collide there — one
+ * name would have to be both a string and an object.
  */
 export function renderLocaleJson() {
   const out = {}
-  for (const g of GROUPS) out[`group.${g.id}`] = g.label
-  for (const f of FAMILIES) out[`family.${f.id}`] = f.label
+  for (const g of GROUPS) {
+    out[`group.${g.id}.label`] = g.label
+    out[`group.${g.id}.description`] = g.description
+  }
+  for (const f of FAMILIES) out[`family.${f.id}.label`] = f.label
   return JSON.stringify(out, null, 2) + '\n'
 }
 
@@ -49,7 +54,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   writeFileSync(LOCALE_EN, renderLocaleJson())
   console.log(
     `families.json — ${GROUPS.length} groups, ${FAMILIES.length} families\n` +
-      `locales/en.json — ${GROUPS.length + FAMILIES.length} strings`
+      `locales/en.json — ${Object.keys(JSON.parse(renderLocaleJson())).length} strings`
   )
 }
 

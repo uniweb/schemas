@@ -52,16 +52,21 @@
  * gerunds, and the series is what makes them work — "Acting" alone is ambiguous
  * in English; read after Opening, Explaining, Listing, Convincing it can only be
  * the gerund of `act`.
+ *
+ * ⭐ `description` IS USER-FACING TEXT, not a code comment. It is the one-line
+ * answer to "what is an author DOING when they reach for this group", and it
+ * renders as the subtitle under the heading. That makes it localizable, which is
+ * why it has a key in `locales/` beside the label.
  */
 export const GROUPS = [
-  { id: 'opening', label: 'Opening', move: 'say what this page is' },
-  { id: 'explaining', label: 'Explaining', move: 'your own words and pictures' },
-  { id: 'listing', label: 'Listing', move: 'show many of something' },
-  { id: 'convincing', label: 'Convincing', move: 'evidence and proof' },
-  { id: 'acting', label: 'Acting', move: 'get the visitor to do something' },
-  { id: 'navigating', label: 'Navigating', move: 'help them get around' },
-  { id: 'embedding', label: 'Embedding', move: 'bring in something external' },
-  { id: 'building', label: 'Building', move: 'you supply the substance' },
+  { id: 'opening', label: 'Opening', description: 'say what this page is' },
+  { id: 'explaining', label: 'Explaining', description: 'your own words and pictures' },
+  { id: 'listing', label: 'Listing', description: 'show many of something' },
+  { id: 'convincing', label: 'Convincing', description: 'evidence and proof' },
+  { id: 'acting', label: 'Acting', description: 'get the visitor to do something' },
+  { id: 'navigating', label: 'Navigating', description: 'help them get around' },
+  { id: 'embedding', label: 'Embedding', description: 'bring in something external' },
+  { id: 'building', label: 'Building', description: 'you supply the substance' },
 ]
 
 /**

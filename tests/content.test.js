@@ -131,6 +131,23 @@ describe('⭐ every published syntax sample produces the element it claims', () 
   }
 })
 
+// ⛔ THE SAMPLE-PRODUCES-ITS-ELEMENT GUARD ABOVE CANNOT CATCH THIS. Both the
+// label line and the old positional form parse to a pretitle, so a sample that
+// silently regressed to `### Eyebrow` + `# Headline` would still pass it. The
+// spelling has to be asserted on its own.
+describe('the pretitle sample teaches the label line, not the positional form', () => {
+  test('it is `#>`', () => {
+    const [el] = describeContent({ name: 'X', content: { pretitle: 'Eyebrow' } }).elements
+    expect(el.syntax).toMatch(/^#+>/)
+  })
+
+  test('and the node it produces carries the role, rather than being a smaller heading', () => {
+    const [el] = describeContent({ name: 'X', content: { pretitle: 'Eyebrow' } }).elements
+    const doc = markdownToProseMirror(el.syntax)
+    expect(doc.content[0].attrs.role).toBe('pretitle')
+  })
+})
+
 describe('parseExpectation', () => {
   test('the three count forms', () => {
     expect(parseExpectation('Image [1]')).toMatchObject({ label: 'Image', min: 1, max: 1 })

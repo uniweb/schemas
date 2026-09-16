@@ -64,8 +64,14 @@ const ELEMENTS = {
   },
   pretitle: {
     key: 'pretitle', kind: 'heading', repeatable: false, label: 'Eyebrow',
-    syntax: '### Eyebrow\n# Headline',
-    description: 'A small line above the headline — a heading written before it.',
+    // ⛔ A LABEL LINE, not a smaller heading before the title. The positional
+    // form still parses, but it means "pretitle" only by sitting before a bigger
+    // heading — so the same line moved, or left alone, stops being one. `#>` says
+    // what it is wherever it lands, and the `#` count means nothing: `#>`, `##>`
+    // and `###>` are the same thing.
+    syntax: '#> Eyebrow\n# Headline',
+    description:
+      'A small line above the headline — write it as a label line, `#> Text`. Any number of leading # works; the count carries no meaning.',
   },
   subtitle: {
     key: 'subtitle', kind: 'heading', repeatable: false, label: 'Subheading',

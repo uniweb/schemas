@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import {
   FAMILIES,
   GROUPS,
@@ -155,6 +155,29 @@ describe('locales/en.json', () => {
     expect(Object.keys(en)).toHaveLength(FAMILIES.length + GROUPS.length)
     for (const f of FAMILIES) expect(en[`family.${f.id}`], f.id).toBe(f.label)
     for (const g of GROUPS) expect(en[`group.${g.id}`], g.id).toBe(g.label)
+  })
+})
+
+describe('every locale', () => {
+  const dir = new URL('../src/locales/', import.meta.url)
+  const en = JSON.parse(readFileSync(new URL('en.json', dir), 'utf8'))
+  const locales = readdirSync(dir).filter(f => f.endsWith('.json'))
+
+  it('ships at least English and French', () => {
+    expect(locales).toEqual(expect.arrayContaining(['en.json', 'fr.json']))
+  })
+
+  it.each(locales)('%s carries exactly the English keys', file => {
+    // ⛔ A MISSING KEY IS SILENT: the editor falls back to the English string
+    // and the interface is half-translated with nothing reporting it. An EXTRA
+    // key is a translation of something that no longer exists — the shape a
+    // locale file takes after a family is renamed and nobody updated it.
+    const loc = JSON.parse(readFileSync(new URL(file, dir), 'utf8'))
+    expect(Object.keys(loc).sort()).toEqual(Object.keys(en).sort())
+    for (const [k, v] of Object.entries(loc)) {
+      expect(typeof v, k).toBe('string')
+      expect(v.trim(), k).not.toBe('')
+    }
   })
 })
 

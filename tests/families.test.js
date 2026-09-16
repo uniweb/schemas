@@ -177,6 +177,34 @@ describe('family-aliases', () => {
     for (const suffix of SHAPE_SUFFIXES) expect(normalizeName(suffix), suffix).toBe(suffix)
   })
 
+  it('bars an ambiguous STEM reached through the suffix rule', () => {
+    // ⛔ THE BUG THIS EXISTS FOR, found 2026-09-15 by feeding the matcher names
+    // it had never been shown. `CardList` stripped to `card`, hit the `cards`
+    // alias, and came back FIXABLE — while `card` is on the ambiguous list
+    // precisely as "a container word that names no shape". The guard read the
+    // FULL name and the match used the STEM, so they checked different strings.
+    //
+    // ⚠️ The suite did not catch it because the test below feeds only bare
+    // ambiguous names, which the guard handles. A fixture authored to match the
+    // matcher can only confirm that the matcher matches itself.
+    for (const name of ['CardList', 'CardBand', 'PanelGrid', 'SectionList', 'PageList']) {
+      expect(suggestFamily(name, ids).fixable, name).toBe(false)
+    }
+  })
+
+  it('lets an EXPLICIT alias beat the stem it contains', () => {
+    // ⭐ The line between the two. `showcase` alone is ambiguous — features?
+    // gallery? spotlight? — so it is refused. `showcase-grid` is a row somebody
+    // WROTE in the table, which is a decision rather than a guess, and a
+    // decision is allowed to be more specific than the word it contains.
+    expect(suggestFamily('ShowcaseGrid', ids)).toMatchObject({
+      id: 'card-grid',
+      via: 'alias',
+      fixable: true,
+    })
+    expect(suggestFamily('Showcase', ids).fixable).toBe(false)
+  })
+
   it('bars every ambiguous name from --fix, however it is reached', () => {
     // ⛔ The discipline. A wrong auto-fix is worse than a fallback: a developer
     // approves it once and it is wrong in their source forever.

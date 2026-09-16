@@ -369,7 +369,17 @@ export function suggestFamily(name, families) {
     if (!norm.endsWith(`-${suffix}`)) continue
     const stem = norm.slice(0, -(suffix.length + 1))
     const hit = matchExactOrAlias(stem)
-    if (hit) return { id: hit, via: 'suffix', fixable: !why, ambiguous: why || null }
+    if (hit) {
+      // ⛔ THE STEM IS WHAT WAS MATCHED, SO THE STEM IS WHAT MUST BE CHECKED.
+      // Measured 2026-09-15: `CardList` stripped to `card`, hit the `cards`
+      // alias and came back FIXABLE — while `card` is on the list above
+      // precisely as "a container word that names no shape". The guard read
+      // the full name and the match used the stem, so they were checking
+      // different strings.
+      const stemWhy = AMBIGUOUS.get(stem)
+      const blocked = why || stemWhy || null
+      return { id: hit, via: 'suffix', fixable: !blocked, ambiguous: blocked }
+    }
     break // one suffix only — stripping two invents a word the developer never wrote
   }
 

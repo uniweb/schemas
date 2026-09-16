@@ -43,6 +43,8 @@
 import { resolveFamily } from './families.js'
 import { registerFor } from './starter/registers.js'
 import { starterImage } from './starter/placeholder.js'
+import { sampleRecord } from './starter/sample-record.js'
+import { schemas as STANDARD_SCHEMAS } from './index.js'
 
 /**
  * A `content:` key → the key the structure (and the component) uses.
@@ -66,6 +68,8 @@ const ELEMENT_TO_SLOT = {
   lists: 'lists',
   items: 'items',
   videos: 'videos',
+  snippets: 'snippets',
+  data: 'data',
   image: 'images',
   images: 'images',
   thumbnail: 'images',
@@ -74,7 +78,7 @@ const ELEMENT_TO_SLOT = {
 }
 
 /** Elements a declaration may legally carry that this generator does not fill. */
-const UNFILLABLE = new Set(['background', 'insets', 'snippets', 'quotes', 'headings'])
+const UNFILLABLE = new Set(['background', 'insets', 'quotes', 'headings'])
 
 /** How many to generate when the declaration states no count. */
 const DEFAULT_ARITY = {
@@ -88,6 +92,10 @@ const DEFAULT_ARITY = {
   images: 1,
   icons: 1,
   videos: 1,
+  snippets: 1,
+  // `data` is a MAP keyed by tag, not a list — its size is how many keys the
+  // component declares in `data:`, never a count in the label.
+  data: 1,
 }
 
 /** Generating more than this is noise, whatever the declaration asks for. */
@@ -198,6 +206,54 @@ function frontmatterFor(component, presetName) {
 }
 
 /**
+ * Resolve one `data:` value to a schema this can sample.
+ *
+ * A value is a named ref (`'@std/person'`, `{ schema: '@/member' }`), an inline
+ * field map, an inline rich-form, or `{}` for a key with no schema at all.
+ *
+ * ⭐ `@std/*` RESOLVES HERE, WITH NO HELP. Those schemas are this package's own,
+ * so the commonest ref in the wild costs a caller nothing. ⛔ `@/x` and `@org/x`
+ * cannot: they live on the foundation's disk, and resolving them is the build's
+ * job (`dataSchemas` in `schema.json`). A caller holding that map passes it in;
+ * one that does not gets no block for those keys rather than a wrong one.
+ */
+function resolveDataSchema(value, dataSchemas) {
+  const ref =
+    typeof value === 'string'
+      ? value
+      : value && typeof value === 'object' && typeof value.schema === 'string'
+        ? value.schema
+        : null
+
+  if (ref) {
+    if (dataSchemas && dataSchemas[ref]) return dataSchemas[ref]
+    const std = ref.startsWith('@std/') ? STANDARD_SCHEMAS[ref.slice('@std/'.length)] : null
+    return std || null
+  }
+
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
+  // `{}` declares a key and no shape — there is nothing to sample.
+  return Object.keys(value).length > 0 ? value : null
+}
+
+/**
+ * One tagged block per key the component declares in `data:`, keyed by the tag
+ * an author would write (```yaml:<key>). Returns null when nothing resolved, so
+ * the caller can report the element unfilled rather than emit an empty map.
+ */
+function sampleDataBlocks(declared, dataSchemas) {
+  if (!declared || typeof declared !== 'object' || Array.isArray(declared)) return null
+  const blocks = {}
+  for (const [tag, value] of Object.entries(declared)) {
+    const schema = resolveDataSchema(value, dataSchemas)
+    if (!schema) continue
+    const record = sampleRecord(schema)
+    if (record !== null) blocks[tag] = record
+  }
+  return Object.keys(blocks).length > 0 ? blocks : null
+}
+
+/**
  * Generate starter content for one section type.
  *
  * @param {object} component - a `schema.json` component entry. It needs `name`,
@@ -206,6 +262,9 @@ function frontmatterFor(component, presetName) {
  *   foundation schema passes an entry straight through to either one.
  * @param {object} [options]
  * @param {string} [options.preset] - use this preset's params as the frontmatter.
+ * @param {object} [options.dataSchemas] - resolved schemas by ref, as
+ *   `schema.json`'s `dataSchemas` carries them. Needed only for `@/x` and
+ *   `@org/x` refs; `@std/*` resolves without it.
  * @param {Array}  [options.assets] - images the CALLER can offer, as
  *   `{ url, alt?, width?, height? }`. Used in order, then the built-in
  *   placeholders. ⛔ Framework never constructs an image address; this is the
@@ -302,6 +361,30 @@ export function starterContent(component, options = {}) {
       case 'icons':
         content.icons = take(register.icons, n).map((name) => ({ library: 'lu', name }))
         break
+      case 'snippets':
+        content.snippets = take(register.snippets, n)
+        break
+      case 'data': {
+        // ⭐ `content: { data: … }` IS THE DISCRIMINATOR, and it is the whole
+        // reason this is not filled whenever `data:` exists.
+        //
+        // `data:` in meta.js declares the `content.data` keys a component
+        // RECEIVES — and a key is filled either by a FETCH the site declares or
+        // by a tagged block the author writes. `store/ProductGrid` declares
+        // `data: { products: … }` filled by a query; writing a ```yaml:products
+        // block for it would invent content the site is supposed to supply.
+        // `docs/ApiReference` declares `content: { data: 'API definition' }`,
+        // which says the author writes it inline. Only that says so.
+        //
+        // ⚠️ It cannot separate two keys of ONE component when some are fetched
+        // and some authored — nothing in meta.js distinguishes them. A component
+        // in that position gets a block per key and its developer deletes the
+        // ones a query fills.
+        const blocks = sampleDataBlocks(component.data, options.dataSchemas)
+        if (blocks) content.data = blocks
+        else unfilled.push(element)
+        break
+      }
       case 'videos':
         // No placeholder video exists and inventing an address is exactly what
         // this package must not do — so a declared video slot is reported
@@ -322,4 +405,4 @@ export function starterContent(component, options = {}) {
   }
 }
 
-export { registerFor, starterImage }
+export { registerFor, starterImage, sampleRecord }

@@ -57,6 +57,13 @@ const GENERIC = {
   ],
   icons: ['sparkles', 'layers', 'zap', 'circle-check', 'compass', 'package'],
   image: { shape: 'wide', alt: 'Placeholder image' },
+  // Code samples, for a component that declares `snippets:`. Short and real —
+  // a snippet is displayed with syntax highlighting, so a nonsense one shows
+  // the highlighting is broken when it is not.
+  snippets: [
+    { language: 'bash', code: 'npx uniweb create my-site\ncd my-site && npm run dev' },
+    { language: 'js', code: "export default function Hero({ content }) {\n  return <h1>{content.title}</h1>\n}" },
+  ],
   // ⭐ The elements to fill when a component declares NO `content:` at all.
   // 13 of the 92 sections in the official templates are in that state, several
   // of them with a perfectly clear family (`marketing/Hero`, `conference/Hero`).
@@ -88,6 +95,10 @@ const BY_GROUP = {
   },
 
   explaining: {
+    snippets: [
+      { language: 'js', code: "import { useWebsite } from '@uniweb/kit'\n\nconst site = useWebsite()" },
+      { language: 'yaml', code: 'title: My page\nsections:\n  - hero\n  - features' },
+    ],
     elements: ['title', 'paragraphs', 'image'],
     eyebrow: 'How it works',
     headline: 'Explain the thing once, properly',
@@ -189,6 +200,9 @@ const BY_GROUP = {
   },
 
   embedding: {
+    snippets: [
+      { language: 'html', code: '<iframe src="https://example.com/embed" title="Embedded"></iframe>' },
+    ],
     elements: ['title', 'paragraphs', 'image'],
     eyebrow: 'From elsewhere',
     headline: 'Something that lives on another service',
@@ -377,7 +391,22 @@ const BY_FAMILY = {
     icons: ['mail', 'sparkles'],
   },
 
+  'code-block': {
+    eyebrow: 'Example',
+    headline: 'A worked example',
+    sentences: ['What the snippet below does, and what to change in it.'],
+    snippets: [
+      { language: 'js', code: "const site = await uniweb.load('./site.yml')\nconsole.log(site.pages.length)" },
+      { language: 'bash', code: 'uniweb build && uniweb export' },
+    ],
+    elements: ['title', 'paragraphs'],
+    icons: ['file-text', 'workflow'],
+  },
+
   article: {
+    snippets: [
+      { language: 'js', code: "const rows = await db.query('select * from things limit 10')" },
+    ],
     elements: ['pretitle', 'title', 'subtitle', 'paragraphs', 'image'],
     eyebrow: 'Engineering',
     headline: 'A title that says what the piece argues',

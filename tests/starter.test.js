@@ -1,5 +1,9 @@
 import { describe, test, expect } from 'vitest'
 import { starterContent, parseExpectation } from '../src/starter.js'
+import { sampleRecord } from '../src/starter/sample-record.js'
+import person from '../src/standard/person.js'
+import form from '../src/standard/form.js'
+import nav from '../src/standard/nav.js'
 
 describe('parseExpectation — the count syntax', () => {
   test('no count', () => {
@@ -66,11 +70,14 @@ describe('the declaration decides the slots', () => {
   })
 
   test('an element this cannot fill is REPORTED, never silently dropped', () => {
+    // `background:` is not a content element at all — it is the top-level
+    // meta.js key, rendered by the runtime from frontmatter — and a video needs
+    // an address this package must not invent.
     const { content, unfilled } = starterContent({
       name: 'Lesson',
-      content: { title: 'T', snippets: 'Code', background: 'BG' },
+      content: { title: 'T', background: 'BG', videos: 'Clip' },
     })
-    expect(unfilled).toEqual(expect.arrayContaining(['snippets', 'background']))
+    expect(unfilled).toEqual(expect.arrayContaining(['background', 'videos']))
     expect(content).toHaveProperty('title')
   })
 })
@@ -176,5 +183,138 @@ describe('contract', () => {
   test('a component with no name is refused', () => {
     expect(() => starterContent({})).toThrow(/name/)
     expect(() => starterContent(null)).toThrow(/name/)
+  })
+})
+
+describe('snippets', () => {
+  test('a declared snippets slot gets a code sample with a language', () => {
+    const { content, unfilled } = starterContent({ name: 'Lesson', content: { snippets: 'Code' } })
+    expect(unfilled).toEqual([])
+    expect(content.snippets[0]).toMatchObject({ language: expect.any(String), code: expect.any(String) })
+    expect(content.snippets[0].code.length).toBeGreaterThan(0)
+  })
+
+  test('the count decides how many', () => {
+    expect(starterContent({ name: 'Docs', content: { snippets: 'Code [2]' } }).content.snippets).toHaveLength(2)
+  })
+})
+
+describe('tagged data blocks', () => {
+  const declared = { title: 'T', data: 'The block the author writes' }
+
+  test('`content: { data }` is what asks for a block — a fetched key gets none', () => {
+    // `data:` declares the keys a component RECEIVES, and a key is filled by a
+    // fetch OR by an authored block. Only the content element says which.
+    const fetched = starterContent({
+      name: 'ProductGrid',
+      content: { title: 'T' },
+      data: { products: { price: { type: 'number' } } },
+    })
+    expect(fetched.content).not.toHaveProperty('data')
+
+    const authored = starterContent({
+      name: 'ApiReference',
+      content: declared,
+      data: { api: { method: { type: 'string', enum: ['GET', 'POST'] } } },
+    })
+    expect(authored.content.data).toEqual({ api: { method: 'GET' } })
+  })
+
+  test('the tag is the declared key, so the author writes ```yaml:<key>', () => {
+    const { content } = starterContent({
+      name: 'X',
+      content: declared,
+      data: { api: { path: { type: 'string' } }, meta: { title: { type: 'string' } } },
+    })
+    expect(Object.keys(content.data)).toEqual(['api', 'meta'])
+  })
+
+  test('an @std ref resolves with no help from the caller', () => {
+    const { content } = starterContent({ name: 'Team', content: declared, data: { people: '@std/person' } })
+    expect(content.data.people.name).toBeTruthy()
+    expect(content.data.people.email).toContain('@')
+  })
+
+  test('a foundation ref needs the resolved map, and is skipped without it', () => {
+    const component = { name: 'X', content: declared, data: { members: '@/member' } }
+    expect(starterContent(component).unfilled).toContain('data')
+
+    const withMap = starterContent(component, {
+      dataSchemas: { '@/member': { name: 'member', fields: { name: { type: 'string' } } } },
+    })
+    expect(withMap.content.data.members.name).toBeTruthy()
+  })
+
+  test('a key declaring no shape produces no block', () => {
+    expect(starterContent({ name: 'X', content: declared, data: { quiz: {} } }).unfilled).toContain('data')
+  })
+})
+
+describe('sampleRecord', () => {
+  test('an empty default is an absence, not an answer', () => {
+    // `{ type: 'string', default: '' }` is the commonest declaration in the
+    // templates; honouring it gives a block of empty strings.
+    const r = sampleRecord({ title: { type: 'string', default: '' }, price: { type: 'number', default: 0 } })
+    expect(r.title).not.toBe('')
+    expect(r.price).toBe(0) // a non-empty default IS the developer's answer
+  })
+
+  test('a declared enum wins — it is the developer\'s own vocabulary', () => {
+    expect(sampleRecord({ status: { type: 'string', enum: ['draft', 'live'] } }).status).toBe('draft')
+  })
+
+  test('the field NAME picks the sample, matched on its last word', () => {
+    const r = sampleRecord({ contactEmail: { type: 'string' }, contact_email: { type: 'string' } })
+    expect(r.contactEmail).toContain('@')
+    expect(r.contact_email).toContain('@')
+  })
+
+  test('an unknown OPTIONAL field is left out; a required one is filled', () => {
+    // A kind-only sample is a guess, and a flattened union makes most optional
+    // keys meaningless for most records.
+    const r = sampleRecord({
+      zork: { type: 'string' },
+      blint: { type: 'string', required: true },
+    })
+    expect(r).not.toHaveProperty('zork')
+    expect(r.blint).toBeTruthy()
+  })
+
+  test('a list entry differs from the one before it', () => {
+    const r = sampleRecord({ tags: { type: 'string', many: true } })
+    expect(new Set(r.tags).size).toBe(r.tags.length)
+  })
+
+  test('the enclosing list names the context: a parameter is not a person', () => {
+    const r = sampleRecord({
+      parameters: { type: 'object', many: true, fields: { name: { type: 'string', required: true } } },
+    })
+    expect(r.parameters[0].name).toBe('limit')
+    expect(sampleRecord({ name: { type: 'string', required: true } }).name).toBe('Ada Okonkwo')
+  })
+
+  test('a root-list schema samples a LIST, contextualized by its own name', () => {
+    const controls = sampleRecord(form)
+    expect(Array.isArray(controls)).toBe(true)
+    expect(controls[0].name).toBe('email')
+    const items = sampleRecord(nav)
+    expect(items[0].label).toBe('Home')
+    expect(items[0].href).toBe('/')
+  })
+
+  test('both authoring forms work — sections as well as fields', () => {
+    expect(sampleRecord(person).name).toBeTruthy() // sections form
+    expect(sampleRecord({ fields: { title: { type: 'string' } } }).title).toBeTruthy()
+  })
+
+  test('a rich-form declares its controls as an array keyed by id', () => {
+    const r = sampleRecord({ fields: [{ id: 'email', type: 'string' }, { id: 'note', type: 'text', required: true }] })
+    expect(r.email).toContain('@')
+    expect(r.note).toBeTruthy()
+  })
+
+  test('a malformed schema declines rather than throwing', () => {
+    // One bad `data:` entry must not cost a section its whole starter content.
+    expect(sampleRecord({ broken: { type: 'not-a-type' } })).toBeNull()
   })
 })

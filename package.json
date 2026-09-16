@@ -9,6 +9,7 @@
     "./families": "./src/families.js",
     "./families.json": "./src/families.json",
     "./family-aliases": "./src/family-aliases.js",
+    "./locales/*": "./src/locales/*.json",
     "./format": "./src/format.js",
     "./conform": "./src/conform.js",
     "./editor-form": "./src/editor-form.js",

@@ -9,7 +9,7 @@ import {
   normalizeName,
   resolveFamily,
 } from '../src/families.js'
-import { renderFamiliesJson, OUT } from '../scripts/gen-families-json.mjs'
+import { renderFamiliesJson, renderLocaleJson, OUT, LOCALE_EN } from '../scripts/gen-families-json.mjs'
 import { ALIASES, AMBIGUOUS, SHAPE_SUFFIXES, suggestFamily } from '../src/family-aliases.js'
 
 describe('the list', () => {
@@ -138,6 +138,23 @@ describe('lookups', () => {
     expect(getGroup('building').label).toBe('Building')
     expect(isFamily('app')).toBe(true)
     expect(isFamily('generic')).toBe(false) // a picker state, never a family
+  })
+})
+
+describe('locales/en.json', () => {
+  it('matches the labels it is generated from', () => {
+    // ⛔ Same invalidation as families.json: it is checked in so a consumer can
+    // read it straight from the package, which makes it a cache.
+    expect(readFileSync(LOCALE_EN, 'utf8')).toBe(renderLocaleJson())
+  })
+
+  it('keys every family and group by ID, never by label', () => {
+    // ⭐ A label may be reworded; an id may not. A locale file keyed on the
+    // English string would break the day anyone improves the wording.
+    const en = JSON.parse(readFileSync(LOCALE_EN, 'utf8'))
+    expect(Object.keys(en)).toHaveLength(FAMILIES.length + GROUPS.length)
+    for (const f of FAMILIES) expect(en[`family.${f.id}`], f.id).toBe(f.label)
+    for (const g of GROUPS) expect(en[`group.${g.id}`], g.id).toBe(g.label)
   })
 })
 

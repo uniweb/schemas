@@ -223,6 +223,18 @@ describe('family-aliases', () => {
     expect(suggestFamily('CtaBand', ids).via).toBe('suffix')
   })
 
+  it('reads `<Singular>List` as a collection, not as the singular', () => {
+    // ⛔ Measured on real foundations: the suffix rule strips `List` and lands
+    // on `article`, which is ONE article. A list of them is a card grid. An
+    // explicit row beats the rule, which is why step 2 runs before step 3.
+    expect(suggestFamily('ArticleList', ids).id).toBe('card-grid')
+    expect(suggestFamily('PostList', ids).id).toBe('card-grid')
+    // and the collective subjects still strip correctly — `features` and
+    // `stats` ARE the collection, so there is nothing to correct
+    expect(suggestFamily('FeatureGrid', ids).id).toBe('features')
+    expect(suggestFamily('StatsGrid', ids).id).toBe('stats')
+  })
+
   it('suggests a near miss but never fixes one', () => {
     expect(suggestFamily('heros', ids)).toMatchObject({ id: 'hero', via: 'near', fixable: false })
   })

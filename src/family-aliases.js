@@ -100,6 +100,15 @@ const ALIASES = {
   'questions': 'faq',
   'q-and-a': 'faq',
   // → card-grid
+  // ⛔ `<Singular>List` / `<Singular>Grid` is a COLLECTION of the thing, not the
+  // thing. The suffix rule strips to the singular and lands on the wrong family
+  // — measured 2026-09-15: `ArticleList` resolved to `article`, in a template
+  // and again in a real foundation. An explicit row beats the rule (step 2
+  // before step 3), so the collection spellings are named here.
+  'article-list': 'card-grid',
+  'post-list': 'card-grid',
+  'blog-list': 'card-grid',
+  'news-list': 'card-grid',
   'blog': 'card-grid',
   'posts': 'card-grid',
   'cards': 'card-grid',

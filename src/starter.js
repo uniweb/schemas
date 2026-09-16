@@ -44,6 +44,10 @@ import { resolveFamily } from './families.js'
 import { registerFor } from './starter/registers.js'
 import { starterImage } from './starter/placeholder.js'
 import { sampleRecord } from './starter/sample-record.js'
+// ⚖️ The package BARREL, deliberately: it is the one registry of `@std/*`, so a
+// standard added there is samplable here with no second list to update. Safe
+// because `index.js` does not import this module — a subpath export, not part of
+// the entry — and adding such an import there would be the cycle to avoid.
 import { schemas as STANDARD_SCHEMAS } from './index.js'
 
 /**
@@ -77,6 +81,33 @@ const ELEMENT_TO_SLOT = {
   icons: 'icons',
 }
 
+/**
+ * A slot → the `content:` key a developer writes for it.
+ *
+ * ⛔ THE INVERSE OF THE TABLE ABOVE, AND EXPORTED SO THERE IS ONLY ONE. A caller
+ * that scaffolds a declaration needs to go back the other way, and the CLI was
+ * doing it with two hand-written ternaries — a second copy of a mapping that
+ * lives here, which rots silently the moment a row is added above.
+ *
+ * Several elements map to one slot (`image` / `images` / `thumbnail` → `images`),
+ * so this names the canonical spelling to WRITE: the first key that maps to each
+ * slot, which is the singular role name a developer declares.
+ */
+const SLOT_TO_ELEMENT = Object.entries(ELEMENT_TO_SLOT).reduce((out, [element, slot]) => {
+  if (!(slot in out)) out[slot] = element
+  return out
+}, {})
+
+/**
+ * The `content:` key a developer writes to declare this slot.
+ *
+ * @param {string} slot - a key of the structure `starterContent` returns
+ * @returns {string} the declaration spelling, or the slot itself when it has none
+ */
+export function declarationKey(slot) {
+  return SLOT_TO_ELEMENT[slot] || slot
+}
+
 /** Elements a declaration may legally carry that this generator does not fill. */
 const UNFILLABLE = new Set(['background', 'insets', 'quotes', 'headings'])
 
@@ -93,10 +124,22 @@ const DEFAULT_ARITY = {
   icons: 1,
   videos: 1,
   snippets: 1,
-  // `data` is a MAP keyed by tag, not a list — its size is how many keys the
-  // component declares in `data:`, never a count in the label.
-  data: 1,
 }
+
+/**
+ * Slots a count cannot describe, so no arity is computed for them.
+ *
+ * A heading is one string — ⚠️ `buildDoc` does accept a string ARRAY for a
+ * multi-line title, and a declared `title: 'Headline [2]'` would be the way to
+ * ask for one. Nothing in the official templates does (the only count on a
+ * heading is `[0-1]`, meaning optional), and the registers carry one headline
+ * per family, so asking would produce a repeat. Left unsupported deliberately
+ * rather than by oversight.
+ *
+ * `data` is a MAP keyed by tag: its size is how many keys the component
+ * declares in `data:`, never a number in the label.
+ */
+const UNCOUNTED = new Set(['title', 'pretitle', 'subtitle', 'data'])
 
 /** Generating more than this is noise, whatever the declaration asks for. */
 const ARITY_CAP = 8
@@ -146,8 +189,9 @@ function arityFor(slot, expectation) {
   const { min, max, open } = parseExpectation(expectation)
   const fallback = DEFAULT_ARITY[slot] ?? 1
   let n
+  // `[n+]` always parses a digit before the `+`, so `min` is a number here.
   if (max !== null) n = max
-  else if (open) n = Math.max(min ?? 0, fallback, min !== null ? min + 1 : fallback)
+  else if (open) n = Math.max(min + 1, fallback)
   else if (min !== null) n = min
   else n = fallback
   return Math.min(Math.max(n, 1), ARITY_CAP)
@@ -324,7 +368,7 @@ export function starterContent(component, options = {}) {
       continue
     }
 
-    const n = arityFor(slot, expectation)
+    const n = UNCOUNTED.has(slot) ? 0 : arityFor(slot, expectation)
 
     switch (slot) {
       case 'title':

@@ -1,9 +1,11 @@
 # @uniweb/schemas
 
-Two things, and it helps to know which one you're reaching for:
+Uniweb's standard names, and the language they're written in. Four things, and it helps to know which one you're reaching for:
 
 - **The data-schema format** — the language schemas are written in: its type vocabulary, the normalizer that folds friendly type names to canonical kinds, and the conformance checker that validates a record against a schema.
 - **The standard schemas** — a shared vocabulary of common content types (`person`, `article`, `event`, …) written in that format, referenced as `@std/<name>`.
+- **The section families** — the standard section types a component can claim with `family:` in its `meta.js`, so an editor can show the right illustration and a label it can translate. [Section families](#section-families).
+- **Starter content** — a component's `content:` declaration turned into something an author can edit instead of an empty box. [Starter content](#starter-content).
 
 A data schema describes a structured content type: its fields, their types, their defaults. Write the shape once and it does three jobs — `uniweb validate` **checks** your data before it ships, the runtime **delivers** each record with defaults applied, and the visual editor renders a **form** authors fill in.
 
@@ -277,7 +279,7 @@ fields:
 - **It is a delete floor, not a fill requirement.** It refuses a delete that would take the section below N. It does *not* force an author to populate the section in the first place.
 - **It is a write guarantee, never a render guarantee.** Your component still handles an empty list — the same schema can be rendered by a foundation that never saw the constraint, so content and code stay independent.
 
-Constraints on a plain leaf field are ignored: a leaf narrows with `enum` and `format` instead. They take effect once the schema is [registered](#registering-schemas); for file-based collections there is no write step.
+Constraints on a plain leaf field are ignored: a leaf narrows with `enum` and `format` instead. They take effect once the schema is registered; for file-based collections there is no write step.
 
 ---
 
@@ -501,3 +503,72 @@ Full documentation index: <https://www.uniweb.io/llms.txt>
 ## License
 
 Apache 2.0
+
+---
+
+## Section families
+
+A section type can say **what it is** with one optional key:
+
+```js
+export default { title: 'Researcher Profile', family: 'profile' }
+```
+
+`family` is one of 67 standard ids, grouped into 8 for a picker. Most components declare nothing, because the section type *is* the component name — `Hero`, `Footer`, `Pricing`, `FAQ` resolve from the name alone.
+
+```js
+import { resolveFamily, FAMILIES, GROUPS } from '@uniweb/schemas/families'
+
+resolveFamily(component)   // → { id, label, group, source, unknown }
+```
+
+`@uniweb/schemas/families.json` is the same data as JSON. English and French labels are at `@uniweb/schemas/locales/en` and `/fr` — 83 keys each, keyed by id, never by label.
+
+⛔ Nothing in the build, the runtime or a delivered site reads `family`. It is a claim about **shape** — never about entitlement, tier or capability — and a component that declares none renders identically. An unrecognized value is legal: it falls back rather than failing.
+
+---
+
+## Starter content
+
+What an author should find in a new section, derived from what the component says it expects.
+
+```js
+import { starterContent } from '@uniweb/schemas/starter'
+
+const { params, content, family, unfilled, elementsInferred } = starterContent(component)
+```
+
+`component` is a foundation schema entry — the same argument `resolveFamily` takes. `content` is the flat content structure and `params` is the frontmatter. Serializing is one call in a package you already have, which is what keeps this one dependency-free:
+
+```js
+import { buildDoc } from '@uniweb/semantic-parser'        // → ProseMirror, for an editor
+import { serializeSection } from '@uniweb/content-writer'  // → markdown, for a file
+
+const doc = buildDoc(content)
+const md = serializeSection(params, doc)
+```
+
+`uniweb add section <Name> --starter` is the same thing from the command line.
+
+### What it reads
+
+| from `meta.js` | what it decides |
+|---|---|
+| `content:` | which elements to fill, and **how many** — the count syntax (`[3-6]`, `[2+]`) is read here |
+| `family:` | the register the copy comes from — a `team` gets people, a `pricing` gets tiers |
+| `params:` / `presets:` | the frontmatter. `{ preset: 'split' }` uses that preset's params instead of the defaults |
+| `data:` | a tagged block per key, sampled from its schema — **only** when `content:` declares `data` |
+
+`content: { data: … }` is the discriminator, because `data:` declares the keys a component *receives* and a key is filled either by a fetch the site declares or by a block the author writes. Nothing else in `meta.js` separates them.
+
+### Rules worth knowing
+
+- **The upper bound is what gets generated.** A component need not render everything it is handed, and the params that reduce simply render less — so surplus is free while a shortfall leaves a hole. `[0-2]` gives 2; a floor of 0 still gives one.
+- **A component that declares no `content:`** gets its family's canonical elements, and `elementsInferred` says so.
+- **Nothing is repeated** to reach a count. Duplicated filler reads as a bug, not a placeholder.
+- **Placeholder images are self-contained SVG data URIs.** No host is invented. Pass `{ assets: [{ url, alt }] }` to supply real ones.
+- **`unfilled`** names declared elements this cannot fill, so a caller can say so rather than silently omit them.
+
+### It is derived, never authored
+
+There is no `starter:` key in `meta.js`, deliberately. Authored sample copy drifts against the declaration it is meant to match, and it can never be localized — a developer's string is the foundation's own words and is shown verbatim in every UI language. Deriving the copy makes it framework's, which is the one category that can carry a locale file.

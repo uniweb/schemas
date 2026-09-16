@@ -10,6 +10,7 @@ import {
   resolveFamily,
 } from '../src/families.js'
 import { renderFamiliesJson, OUT } from '../scripts/gen-families-json.mjs'
+import { ALIASES, AMBIGUOUS, SHAPE_SUFFIXES, suggestFamily } from '../src/family-aliases.js'
 
 describe('the list', () => {
   it('has unique ids and unique labels', () => {
@@ -145,5 +146,73 @@ describe('families.json', () => {
     // ⛔ It is checked in so consumers can read it straight from the package,
     // which makes it a cache — this is its invalidation.
     expect(readFileSync(OUT, 'utf8')).toBe(renderFamiliesJson())
+  })
+})
+
+describe('family-aliases', () => {
+  const ids = FAMILIES.map(f => f.id)
+
+  it('points every alias at a family that exists', () => {
+    // ⭐ THE REASON THIS FILE LIVES BESIDE THE LIST. While the table sat in the
+    // CLI, removing a family here left an alias pointing at a dead id and no
+    // test on either side of the package boundary could see it — `doctor --fix`
+    // would have written a family nothing knows.
+    for (const [alias, target] of Object.entries(ALIASES)) {
+      expect(isFamily(target), `${alias} -> ${target}`).toBe(true)
+    }
+  })
+
+  it('wastes no alias on a name the resolver already matches', () => {
+    // A dead row: step 1 is exact and runs first, so an alias spelled like a
+    // family id can never be reached.
+    for (const alias of Object.keys(ALIASES)) {
+      expect(isFamily(alias), `${alias} is already a family id`).toBe(false)
+    }
+  })
+
+  it('normalizes every alias and suffix to its own key', () => {
+    // A key that does not survive normalizeName() is unreachable: lookups are
+    // done on the normalized name.
+    for (const alias of Object.keys(ALIASES)) expect(normalizeName(alias), alias).toBe(alias)
+    for (const suffix of SHAPE_SUFFIXES) expect(normalizeName(suffix), suffix).toBe(suffix)
+  })
+
+  it('bars every ambiguous name from --fix, however it is reached', () => {
+    // ⛔ The discipline. A wrong auto-fix is worse than a fallback: a developer
+    // approves it once and it is wrong in their source forever.
+    for (const name of AMBIGUOUS.keys()) {
+      const s = suggestFamily(name, ids)
+      expect(s.fixable, name).toBe(false)
+      expect(s.ambiguous, name).toBeTruthy()
+    }
+  })
+
+  it('composes the alias table with the suffix rule', () => {
+    // Why the table stays small: one subject reaches every shape of the word.
+    for (const n of ['SponsorStrip', 'SponsorBand', 'SponsorGrid']) {
+      expect(suggestFamily(n, ids).id, n).toBe('logo-cloud')
+    }
+    expect(suggestFamily('CtaBand', ids).via).toBe('suffix')
+  })
+
+  it('suggests a near miss but never fixes one', () => {
+    expect(suggestFamily('heros', ids)).toMatchObject({ id: 'hero', via: 'near', fixable: false })
+  })
+})
+
+describe('the resolver stays exact', () => {
+  it('imports nothing from family-aliases', async () => {
+    // ⛔ THE BOUNDARY IS BEHAVIOURAL, NOT PHYSICAL — the two modules are
+    // neighbours now, so this is the thing that keeps them apart. An alias
+    // reaching `resolveFamily` would be a SILENT wrong illustration, forever,
+    // because a wrong picture is not an error.
+    const src = readFileSync(new URL('../src/families.js', import.meta.url), 'utf8')
+    expect(src).not.toMatch(/family-aliases/)
+  })
+
+  it('still refuses every alias', () => {
+    for (const alias of ['banner', 'call-to-action', 'navbar', 'logos']) {
+      expect(resolveFamily({ name: alias }).id, alias).toBeNull()
+    }
   })
 })

@@ -1,7 +1,8 @@
 /**
  * @uniweb/schemas
  *
- * Three things, and it is worth knowing which you are reaching for:
+ * Its main parts, and it is worth knowing which you are reaching for (the
+ * content declaration and starter content are subpaths of their own):
  *
  *   the FORMAT    the data-schema language itself — the type vocabulary, the
  *                 normalizer that folds its friendly aliases to canonical kinds,
@@ -20,6 +21,13 @@
  *                 because "where are Uniweb's standard names?" should have one
  *                 answer. ⛔ Aliases are NOT here — they are `uniweb doctor`'s.
  *                 → `./families`, `./families.json`
+ *
+ *   the SITE TAGS the standard words for what a site is for (`tags:` in
+ *                 `site.yml`), so a list of sites can be filtered and labelled
+ *                 the same way everywhere. Standard names again, same reason.
+ *                 → `./site-tags`, `./site-tags.json`
+ *
+ * Both vocabularies' labels are translated in `./locales/*`, keyed by id.
  */
 
 // Standard schemas
@@ -43,6 +51,9 @@ export {
   normalizeName,
   resolveFamily,
 } from './families.js'
+
+// Site tags — also at the `@uniweb/schemas/site-tags` subpath
+export { SITE_TAGS, getSiteTag, isSiteTag, resolveSiteTags } from './site-tags.js'
 
 // Utilities
 import { validateAgainstSchema } from './utils/validate.js'

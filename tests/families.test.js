@@ -9,7 +9,7 @@ import {
   normalizeName,
   resolveFamily,
 } from '../src/families.js'
-import { renderFamiliesJson, renderLocaleJson, OUT, LOCALE_EN } from '../scripts/gen-families-json.mjs'
+import { renderFamiliesJson, renderLocaleJson, FAMILIES_JSON, LOCALE_EN } from '../scripts/gen-vocabulary.mjs'
 import { ALIASES, AMBIGUOUS, SHAPE_SUFFIXES, suggestFamily } from '../src/family-aliases.js'
 
 describe('the list', () => {
@@ -179,7 +179,9 @@ describe('locales/en.json', () => {
     // ⭐ A label may be reworded; an id may not. A locale file keyed on the
     // English string would break the day anyone improves the wording.
     const en = JSON.parse(readFileSync(LOCALE_EN, 'utf8'))
-    expect(Object.keys(en)).toHaveLength(FAMILIES.length + GROUPS.length * 2)
+    // The file also carries the site tags; `site-tags.test.js` counts those.
+    const ours = Object.keys(en).filter(k => /^(family|group)\./.test(k))
+    expect(ours).toHaveLength(FAMILIES.length + GROUPS.length * 2)
     for (const f of FAMILIES) expect(en[`family.${f.id}.label`], f.id).toBe(f.label)
     for (const g of GROUPS) {
       expect(en[`group.${g.id}.label`], g.id).toBe(g.label)
@@ -229,7 +231,7 @@ describe('families.json', () => {
   it('matches the module it is generated from', () => {
     // ⛔ It is checked in so consumers can read it straight from the package,
     // which makes it a cache — this is its invalidation.
-    expect(readFileSync(OUT, 'utf8')).toBe(renderFamiliesJson())
+    expect(readFileSync(FAMILIES_JSON, 'utf8')).toBe(renderFamiliesJson())
   })
 })
 

@@ -1,0 +1,100 @@
+{
+  "tags": [
+    {
+      "id": "business",
+      "label": "Business"
+    },
+    {
+      "id": "landing-page",
+      "label": "Landing Page"
+    },
+    {
+      "id": "portfolio",
+      "label": "Portfolio"
+    },
+    {
+      "id": "personal",
+      "label": "Personal"
+    },
+    {
+      "id": "resume",
+      "label": "Résumé"
+    },
+    {
+      "id": "blog",
+      "label": "Blog"
+    },
+    {
+      "id": "store",
+      "label": "Online Store"
+    },
+    {
+      "id": "documentation",
+      "label": "Documentation"
+    },
+    {
+      "id": "event",
+      "label": "Event"
+    },
+    {
+      "id": "publication",
+      "label": "Publication"
+    },
+    {
+      "id": "community",
+      "label": "Community"
+    },
+    {
+      "id": "technology",
+      "label": "Technology"
+    },
+    {
+      "id": "academic",
+      "label": "Academic"
+    },
+    {
+      "id": "education",
+      "label": "Education"
+    },
+    {
+      "id": "nonprofit",
+      "label": "Nonprofit"
+    },
+    {
+      "id": "local-business",
+      "label": "Local Business"
+    },
+    {
+      "id": "professional-services",
+      "label": "Professional Services"
+    },
+    {
+      "id": "health",
+      "label": "Health & Wellness"
+    },
+    {
+      "id": "food",
+      "label": "Food & Drink"
+    },
+    {
+      "id": "real-estate",
+      "label": "Real Estate"
+    },
+    {
+      "id": "arts",
+      "label": "Arts & Culture"
+    },
+    {
+      "id": "photography",
+      "label": "Photography"
+    },
+    {
+      "id": "music",
+      "label": "Music"
+    },
+    {
+      "id": "travel",
+      "label": "Travel"
+    }
+  ]
+}

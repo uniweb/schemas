@@ -1,7 +1,7 @@
 {
   "name": "@uniweb/schemas",
   "version": "0.3.1",
-  "description": "The Uniweb data-schema format, its standard schema definitions, and the standard section families",
+  "description": "The Uniweb data-schema format, its standard schema definitions, and the standard section families and site tags",
   "type": "module",
   "main": "src/index.js",
   "exports": {
@@ -9,6 +9,8 @@
     "./families": "./src/families.js",
     "./families.json": "./src/families.json",
     "./family-aliases": "./src/family-aliases.js",
+    "./site-tags": "./src/site-tags.js",
+    "./site-tags.json": "./src/site-tags.json",
     "./locales/*": "./src/locales/*.json",
     "./format": "./src/format.js",
     "./conform": "./src/conform.js",
@@ -23,7 +25,7 @@
   ],
   "scripts": {
     "test": "vitest run",
-    "gen:families": "node scripts/gen-families-json.mjs"
+    "gen:vocabulary": "node scripts/gen-vocabulary.mjs"
   },
   "devDependencies": {
     "@uniweb/content-reader": "workspace:*",

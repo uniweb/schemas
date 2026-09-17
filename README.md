@@ -1,10 +1,11 @@
 # @uniweb/schemas
 
-Uniweb's standard names, and the language they're written in. Five things, and it helps to know which one you're reaching for:
+Uniweb's standard names, and the language they're written in. Six things, and it helps to know which one you're reaching for:
 
 - **The data-schema format** — the language schemas are written in: its type vocabulary, the normalizer that folds friendly type names to canonical kinds, and the conformance checker that validates a record against a schema.
 - **The standard schemas** — a shared vocabulary of common content types (`person`, `article`, `event`, …) written in that format, referenced as `@std/<name>`.
 - **The section families** — the standard section types a component can claim with `family:` in its `meta.js`, so an editor can show the right illustration and a label it can translate. [Section families](#section-families).
+- **The site tags** — the standard words for what a site is for, declared with `tags:` in `site.yml`, so a list of sites can be filtered and labelled the same way everywhere. [Site tags](#site-tags).
 - **The content declaration** — a reader for the `content:` block a section type writes, so a tool can show what a component expects without learning the grammar. [The content declaration](#the-content-declaration).
 - **Starter content** — a component's `content:` declaration turned into something an author can edit instead of an empty box. [Starter content](#starter-content).
 
@@ -523,9 +524,34 @@ import { resolveFamily, FAMILIES, GROUPS } from '@uniweb/schemas/families'
 resolveFamily(component)   // → { id, label, group, source, unknown }
 ```
 
-`@uniweb/schemas/families.json` is the same data as JSON. English and French labels are at `@uniweb/schemas/locales/en` and `/fr` — 83 keys each, keyed by id, never by label.
+`@uniweb/schemas/families.json` is the same data as JSON. English and French labels are at `@uniweb/schemas/locales/en` and `/fr`, keyed by id, never by label (`family.<id>.label`, `group.<id>.label`, `group.<id>.description`).
 
 ⛔ Nothing in the build, the runtime or a delivered site reads `family`. It is a claim about **shape** — never about entitlement, tier or capability — and a component that declares none renders identically. An unrecognized value is legal: it falls back rather than failing.
+
+---
+
+## Site tags
+
+A site says **what it is for** with standard tags in `site.yml`:
+
+```yaml
+tags: [blog, personal]
+```
+
+Apps use them to filter and label a list of sites, such as a template picker. The standard tags:
+
+`business` · `landing-page` · `portfolio` · `personal` · `resume` · `blog` · `store` · `documentation` · `event` · `publication` · `community` · `technology` · `academic` · `education` · `nonprofit` · `local-business` · `professional-services` · `health` · `food` · `real-estate` · `arts` · `photography` · `music` · `travel`
+
+```js
+import { resolveSiteTags, SITE_TAGS } from '@uniweb/schemas/site-tags'
+
+resolveSiteTags(['blog', 'landingpage'])
+// → { tags: [{ id: 'blog', label: 'Blog' }], unknown: ['landingpage'] }
+```
+
+`@uniweb/schemas/site-tags.json` is the same list as JSON. The labels are in the same locale files as the families, as `site-tag.<id>.label`.
+
+⛔ A tag says what a site is **for**, never what it can do: there is no `multilingual` or `searchable` tag. The list only grows — an id, once shipped, is never renamed or removed — and a tag that is not on it is legal: it stays on the site and simply has no standard label.
 
 ---
 

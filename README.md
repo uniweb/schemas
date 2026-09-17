@@ -540,7 +540,7 @@ tags: [blog, personal]
 
 Apps use them to filter and label a list of sites, such as a template picker. The standard tags:
 
-`business` · `landing-page` · `portfolio` · `personal` · `resume` · `blog` · `store` · `documentation` · `event` · `publication` · `community` · `technology` · `academic` · `education` · `nonprofit` · `local-business` · `professional-services` · `health` · `food` · `real-estate` · `arts` · `photography` · `music` · `travel`
+`business` · `landing-page` · `portfolio` · `personal` · `resume` · `blog` · `store` · `documentation` · `event` · `publication` · `community` · `technology` · `academic` · `research` · `education` · `nonprofit` · `local-business` · `professional-services` · `health` · `food` · `real-estate` · `arts` · `photography` · `music` · `travel`
 
 ```js
 import { resolveSiteTags, SITE_TAGS } from '@uniweb/schemas/site-tags'

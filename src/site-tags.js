@@ -49,6 +49,7 @@ export const SITE_TAGS = [
   ['community', 'Community'],
   ['technology', 'Technology'],
   ['academic', 'Academic'],
+  ['research', 'Research'],
   ['education', 'Education'],
   ['nonprofit', 'Nonprofit'],
   ['local-business', 'Local Business'],

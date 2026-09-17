@@ -27,7 +27,7 @@ describe('the list', () => {
     const shipped = [
       'business', 'landing-page', 'portfolio', 'personal', 'resume', 'blog', 'store',
       'documentation', 'event', 'publication', 'community', 'technology', 'academic',
-      'education', 'nonprofit', 'local-business', 'professional-services', 'health',
+      'research', 'education', 'nonprofit', 'local-business', 'professional-services', 'health',
       'food', 'real-estate', 'arts', 'photography', 'music', 'travel',
     ]
     for (const id of shipped) expect(isSiteTag(id), id).toBe(true)

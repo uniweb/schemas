@@ -398,9 +398,11 @@ Its value is a field *name*, not `true`/`false`, and it doesn't go on the field 
 
 ### How a source file maps onto sections
 
-One source file — a `.md` with frontmatter, a `.yml`, one `.json` object — carries the fields of **every single section**, flat. Field names are unique across a schema's sections, so there's no prefixing. `many` sections are skipped: a repeating list can't be expressed by one flat record.
+Sections are namespaces: each groups its own fields, and two sections may declare fields with the same name.
 
-That's why `@std/article` splits `article` (the card) from `article_body` (the heavy body) and a single markdown file still populates both.
+A record file — a `.md` with frontmatter, a `.yml`, one `.json` object — is one flat record. Its keys are field names, with no section prefix, matched by name to the fields of the schema's **single** sections. So a flat record cannot give two same-named fields different values — pushing it writes the one value into both — and pushing it sends no `many` section.
+
+`@std/article` keeps its card (`article`) apart from its body (`article_body`) so a reference carries the card without the body; one markdown file still fills both.
 
 ---
 

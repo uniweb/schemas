@@ -210,8 +210,8 @@ export function briefFields(schema) {
  *                    order, first occurrence winning a name collision
  *
  * The sections rule is not invented here: it is the convention
- * `collectionRecordsToEntities` implements when it turns a collection's source
- * files into entities (`@uniweb/build`, `src/uwx/collections.js`) — "a record
+ * `recordsToEntities` implements when it turns a site's record files into
+ * entities (`@uniweb/build`, `src/uwx/records.js`) — "a record
  * maps to the Model's SINGLE sections in declared order — the brief (the card)
  * plus any sibling single sections". `multi` sections are skipped there as they
  * are here, because both functions describe the same FLAT-RECORD shape: one file
@@ -221,7 +221,9 @@ export function briefFields(schema) {
  * been relied on:
  *
  * 1. It used to add "with field names unique across a Model's sections". That is
- *    FALSE — no such convention holds and nothing validates it. Where a name is
+ *    FALSE, and it was never the design: sections are namespaces for groups of
+ *    fields, so two of them may declare the same field name. A flat record is
+ *    what cannot tell them apart — where a name is
  *    declared in two sections the mapper writes the same value into both, each
  *    encoded per its own field's type. The merge below inherits the ambiguity and
  *    keeps the first occurrence, which is a choice, not a guarantee.

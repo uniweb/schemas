@@ -24,15 +24,18 @@
  *
  *   authoring   what a human writes: `many: true`, `number`, `richtext`,
  *               `{ ref: '@/x' }`, `tree: true`, the flat `fields:` form
- *        ↓  normalizeSchema (this file)
+ *        ↓  validateAndNormalizeSchema (this file)
  *   IR          what tooling reads: `kind: single|multi|binder`, `array` +
  *               `items`, `type: ref`, `nestable`, canonical scalar kinds
- *        ↓  toDataSchemaDeclaration (@uniweb/build, publish time only)
+ *        ↓  toDataSchemaDeclaration (@uniweb/build — at `uniweb register`, and
+ *           at push to shape each record into its sections)
  *   wire        what the registry ingests: always `sections:`, `multiple: true`,
  *               `entity_ref`, `localized` computed, no `kind`, no `array`
  *
  * This file owns the first arrow only. It performs **normalization and nothing
- * else** — no lowering to any storage model, no I/O, no network.
+ * else** — no lowering to any storage model, no I/O, no network. (`normalizeSchema`
+ * in `./editor-form.js` is a different arrow — a data schema to an editor form —
+ * despite the name.)
  */
 
 // Extensions a schema file may use, in resolution order. Declared here (rather

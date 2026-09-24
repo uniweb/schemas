@@ -57,9 +57,9 @@ import { SCALAR_KINDS, FORMAT_TYPES } from './format.js'
  * returned `[]` for such a schema, and `@uniweb/build` deferred or skipped it.
  *
  * ⚠️ ONE ENTITY, not one element of a list. A VALUE delivered under a key — a data
- * block's array, a query's records, a concept block's items — is the bare list:
- * check it whole with `validateBound`. Handing its elements here one at a time would
- * treat each as an entity of the list schema, which finds nothing to check.
+ * block's array, a query's records — is the bare list: check it whole with
+ * `validateBound`. Handing its elements here one at a time would treat each as an
+ * entity of the list schema, which finds nothing to check.
  *
  * @param {Object} schema - a normalized data schema (`{ fields }` or `{ sections }`)
  * @param {*} item - the data item to check
@@ -168,10 +168,9 @@ export function rootListSection(schema) {
  * WHY THIS IS NOT `validateItem`. That one takes ONE ENTITY as a file holds it — for
  * a list-rooted schema, the list under its section's key. This takes the VALUE a key
  * receives, which for a list-rooted schema is the bare array. So a caller holding a
- * list of items — a query's records, a concept block's items — passes the whole list
- * here, never each element to `validateItem`: that would treat each as an entity of
- * the list schema, which is the opposite of what it says. Two questions, two
- * functions.
+ * list of items — a query's records — passes the whole list here, never each element
+ * to `validateItem`: that would treat each as an entity of the list schema, which is
+ * the opposite of what it says. Two questions, two functions.
  *
  * @param {Object} schema - a normalized data schema
  * @param {*} value - the whole bound value

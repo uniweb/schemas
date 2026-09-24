@@ -338,7 +338,7 @@ sections:
       href:  { type: string, translatable: false }
 ```
 
-The content is then a bare list, with no wrapping key:
+A block's content is then a bare list, with no wrapping key:
 
 ````markdown
 ```yaml:nav
@@ -355,6 +355,8 @@ Two consequences worth knowing:
 - **Exactly one section.** Two `many` sections and no single one would leave "which one is the value?" unanswerable, so it isn't treated as a root list — nothing would be checked.
 
 Everything else works the same: `validate` checks each record and names its index (`[1].label`), and `applyDefaults` fills each entry's defaults.
+
+A **record file** holding one such list — a record kept in `records/` — writes it under the section's key (`items:`), since a file whose top level is a list holds several records. `uniweb validate` checks it; a push cannot send it from a file yet.
 
 ### Tree sections
 
@@ -401,6 +403,8 @@ Its value is a field *name*, not `true`/`false`, and it doesn't go on the field 
 Sections are namespaces: each groups its own fields, and two sections may declare fields with the same name.
 
 A record file — a `.md` with frontmatter, a `.yml`, one `.json` object — is one flat record. Its keys are field names, with no section prefix, matched by name to the fields of the schema's **single** sections. So a flat record cannot give two same-named fields different values — pushing it writes the one value into both — and pushing it sends no `many` section.
+
+A file can also hold a record **written by section** — each section under its own key: a single section as an object, a `many` section as a list of records. `uniweb validate` checks that shape too, but a push refuses it for now: a push reads a record's fields from the top of its file, and cannot send a `many` section from a file yet.
 
 `@std/article` keeps its card (`article`) apart from its body (`article_body`) so a reference carries the card without the body; one markdown file still fills both.
 
@@ -468,7 +472,7 @@ const filled = applyDefaults(data, person)
 const blanks = getDefaults('person')
 ```
 
-`validate` and `applyDefaults` accept a schema **as authored** — the friendly vocabulary (`many:`, `number`, `richtext`, `{ ref: '@/x' }`) and both schema forms are normalized first. They check a record against the flat surface described in [How a source file maps onto sections](#how-a-source-file-maps-onto-sections), so a `sections:`-form schema works too.
+`validate` and `applyDefaults` accept a schema **as authored** — the friendly vocabulary (`many:`, `number`, `richtext`, `{ ref: '@/x' }`) and both schema forms are normalized first. They check a record in either shape a source file can hold it — flat, or written by section (see [How a source file maps onto sections](#how-a-source-file-maps-onto-sections)) — so a `sections:`-form schema works too.
 
 They **throw** when the *schema* is malformed — a bad schema is a programming error, and the message names the offending field. Invalid *data* comes back as findings.
 
@@ -484,7 +488,8 @@ import { validateItem, isStaticallyCheckable, flatRecordFields } from '@uniweb/s
 | `validateAndNormalizeSchema(schema, ref)` | Validates the authoring format and returns the normalized schema (friendly aliases folded to canonical kinds). Throws, naming the offending field |
 | `parseSchemaRef(ref)` | `'@std/person'` → `{ scope: 'std', name: 'person' }` |
 | `collectNestedRefs(schema)` | Every `ref`/`options` target a normalized schema depends on |
-| `validateItem(schema, item)` | Findings for one **record** against a normalized schema |
+| `validateItem(schema, item)` | Findings for one **record** as a file holds it — flat or written by section. For a schema whose root is a list, the record holds that list under its section's key |
+| `isStaticallyCheckable(schema)` | Whether one record of the schema can be checked from a file — true for any schema that declares fields or sections |
 | `validateBound(schema, value)` | Findings for a whole bound **value** — a record or a list. Dispatches on the schema's root shape and descends into a `tree`'s children |
 | `flatRecordFields(schema)` | The field map one flat source file is checked against |
 | `rootListSection(schema)` | The section whose records *are* the value, when the root is a list |

@@ -33,11 +33,26 @@ import { SCALAR_KINDS, FORMAT_TYPES } from './format.js'
  * carries. Pass an authored schema through `validateAndNormalizeSchema` first;
  * the friendly vocabulary (`many:`, `number`, `richtext`) is not read here.
  *
- * Scope: a `fields`-form schema (the locally-testable case). A `sections`-form
- * (rich) schema describes the backend's section/item graph, which a flat file
- * can't reproduce — callers defer those rather than pass them here; given one,
- * this returns `[]`. Ask `isStaticallyCheckable()` first when the answer matters:
- * an empty finding list from a deferred schema means "not checked", not "clean".
+ * Scope: ONE RECORD. A `fields`-form schema — the shorthand for a single brief
+ * section — checks the record's fields. A `sections`-form schema checks a record
+ * in either of the shapes a file can hold it in:
+ *
+ *   - FLAT — the single sections' fields at the top of the record, brief first
+ *     (`flatRecordFields`). A `many` section has no flat form, so it is not checked
+ *     there — and that is the whole of what a flat file can say about it.
+ *   - WRITTEN BY SECTION — each section under its own key, the shape
+ *     docs/reference/entity-content.md gives a sections-form record: a single
+ *     section an object, a `many` section a list of records, a binder an object of
+ *     its child sections. Checked section by section, child sections included.
+ *
+ * ⛔ Until 2026-09-24 a `sections`-form schema was not checked at all — "deferred",
+ * even one with nothing but a brief — because a flat file was taken to be unable to
+ * mirror it. The flat surface was already defined beside it (`flatRecordFields`),
+ * and the records a project keeps in files are exactly what a push sends.
+ *
+ * A schema whose root is a LIST is not a record, and this returns `[]` for it: use
+ * `validateBound`, which takes the list as the whole value. Ask
+ * `isStaticallyCheckable()` first when "not checked" and "clean" must differ.
  *
  * @param {Object} schema - a normalized data schema (`{ fields }` or `{ sections }`)
  * @param {*} item - the data item to check
@@ -46,11 +61,67 @@ import { SCALAR_KINDS, FORMAT_TYPES } from './format.js'
 export function validateItem(schema, item) {
   if (!schema || typeof schema !== 'object') return []
   if (schema.fields) return validateFields(schema.fields, item, '')
-  // `sections`-form schemas are deferred upstream (rich model — not reproducible
-  // from a flat file); this is a no-op safety net. For a schema whose root is a
-  // LIST rather than a record, use `validateBound` — see below for why that is a
-  // separate entry point rather than a widening of this one.
-  return []
+  if (!schema.sections || rootListSection(schema)) return []
+  return validateSectionedRecord(schema, item, '')
+}
+
+// Which shape a sections-form record is written in: BY SECTION when a top-level key
+// names one of the schema's sections and is not also one of its flat fields — a
+// name may be both, since sections are namespaces, and there the field reading wins.
+function writtenBySection(schema, record) {
+  const flat = flatRecordFields(schema) || {}
+  return Object.keys(schema.sections).some(
+    (name) => Object.prototype.hasOwnProperty.call(record, name) && !(name in flat)
+  )
+}
+
+function validateSectionedRecord(schema, item, prefix) {
+  const record = isPlainObject(item) ? item : {}
+  if (!writtenBySection(schema, record)) {
+    const flat = flatRecordFields(schema)
+    return flat ? validateFields(flat, record, prefix) : []
+  }
+  const out = []
+  for (const [name, section] of Object.entries(schema.sections)) {
+    out.push(...validateSection(section, record[name], prefix ? `${prefix}.${name}` : name))
+  }
+  return out
+}
+
+// A section's value in a record written by section. An absent single section is an
+// empty record — its `required` fields are still owed; an absent list or binder is
+// an empty one.
+function validateSection(section, value, path) {
+  if (section.kind === 'multi') {
+    if (value == null) return []
+    if (!Array.isArray(value)) {
+      return [violation(path, 'type', `expected a list of records, got ${typeName(value)}`)]
+    }
+    return validateRecords(section, value, path)
+  }
+  if (value != null && !isPlainObject(value)) {
+    const expected = section.kind === 'binder' ? 'an object of sections' : 'a record'
+    return [violation(path, 'type', `expected ${expected}, got ${typeName(value)}`)]
+  }
+  if (section.kind === 'binder') {
+    const out = []
+    for (const [name, child] of Object.entries(section.sections || {})) {
+      out.push(...validateSection(child, value?.[name], `${path}.${name}`))
+    }
+    return out
+  }
+  return validateSectionRecord(section, value || {}, path)
+}
+
+// One record of a section: its own fields, and each child section under its key —
+// "a nested section is an inline field on the parent's records"
+// (docs/reference/entity-content.md).
+function validateSectionRecord(section, record, path) {
+  const out = validateFields(section.fields || {}, record, path)
+  for (const [name, child] of Object.entries(section.sections || {})) {
+    out.push(...validateSection(child, isPlainObject(record) ? record[name] : undefined, `${path}.${name}`))
+  }
+  return out
 }
 
 /**
@@ -106,9 +177,7 @@ export function validateBound(schema, value) {
     }
     return validateRecords(list, value, '')
   }
-  const fields = flatRecordFields(schema)
-  if (!fields) return []
-  return validateFields(fields, value, '')
+  return validateItem(schema, value)
 }
 
 /**
@@ -141,7 +210,7 @@ function validateRecords(section, records, prefix) {
   const out = []
   records.forEach((record, i) => {
     const path = `${prefix}[${i}]`
-    out.push(...validateFields(section.fields, record, path))
+    out.push(...validateSectionRecord(section, record, path))
 
     if (!section.nestable || !isPlainObject(record)) return
     const children = record[TREE_CHILDREN_KEY]
@@ -158,15 +227,18 @@ function validateRecords(section, records, prefix) {
 }
 
 /**
- * Whether a normalized schema can be checked statically against a flat file.
- * `fields`-form yes; `sections`-form no (the rich, backend-graph case).
+ * Whether ONE RECORD of a normalized schema can be checked from a file: every
+ * `fields`-form schema, and every `sections`-form schema whose root is a record —
+ * flat or written by section (`validateItem`). A schema whose root is a LIST is not
+ * a record, so the answer there is no: `validateBound` takes the list whole.
  *
- * This is `@uniweb/build`'s conservative gate for its own site-data join, and it
- * is deliberately narrower than `flatRecordFields` below — see that function's
- * note for why the two differ rather than one calling the other.
+ * ⛔ Until 2026-09-24 this was `!!schema.fields`, and `@uniweb/build` deferred every
+ * sections-form schema on it — "rich", even one holding nothing but a brief.
  */
 export function isStaticallyCheckable(schema) {
-  return !!(schema && typeof schema === 'object' && schema.fields)
+  if (!schema || typeof schema !== 'object') return false
+  if (schema.fields) return true
+  return !!schema.sections && !rootListSection(schema)
 }
 
 /**
@@ -235,14 +307,10 @@ export function briefFields(schema) {
  *    `flatRecordFields` returns null for exactly those, which is the honest
  *    answer to "what is this schema's flat surface?", not a limitation of theirs.
  *
- * WHY THIS IS NOT `isStaticallyCheckable`. That predicate guards a different
- * question — whether `@uniweb/build` should validate a site's data files at all
- * — and it answers "no" for every sections-form schema, conservatively, because
- * in that join the schema may describe a backend graph no local file mirrors.
- * A test pins that behavior. This function answers the narrower question a
- * caller holding an actual flat record has, so it can say something useful about
- * `@std/article` instead of nothing. Keeping them separate is deliberate: one
- * gate did not fit both jobs, and collapsing them would change build's contract.
+ * `validateItem` checks a FLAT sections-form record against this surface, and
+ * `isStaticallyCheckable` admits every schema a record can be checked against —
+ * ⛔ it used to answer "no" for every sections-form schema, deferring them, and
+ * this comment called that deliberate (until 2026-09-24).
  *
  * @param {Object} schema - a normalized data schema
  * @returns {Object|null} a field map, or null when the schema declares no
@@ -344,6 +412,20 @@ function validateValue(def, value, path) {
     return out
   }
 
+  // date / datetime — the value is the string as written (the build's YAML resolves
+  // no timestamps), and it must be one a backend stores: a real `YYYY-MM-DD` day for
+  // a date, a day and a time for a datetime. ⛔ Until 2026-09-24 any string passed —
+  // `joined: March 2021` included, which a backend refuses ("is not a valid date").
+  // A datetime's offset is not required here: which a backend demands is its to say.
+  if (typeof value === 'string' && kind === 'date' && !isIsoDate(value)) {
+    out.push(violation(path, 'format', `${fmt(value)} is not a date (YYYY-MM-DD)`))
+    return out
+  }
+  if (typeof value === 'string' && kind === 'datetime' && !isIsoDateTime(value)) {
+    out.push(violation(path, 'format', `${fmt(value)} is not a date and time (YYYY-MM-DDTHH:MM)`))
+    return out
+  }
+
   // format (url / email) — only on present string scalars
   if (typeof value === 'string' && FORMAT_TYPES.has(def.format)) {
     if (def.format === 'email' && !isEmailish(value)) {
@@ -389,6 +471,23 @@ function isKind(kind, value) {
     default:
       return true // unknown kind → forward-compatible, not a violation
   }
+}
+
+// A calendar day, `YYYY-MM-DD` — and a real one: `2026-02-30` is not.
+function isIsoDate(v) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v)
+  if (!m) return false
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])]
+  const day = new Date(Date.UTC(y, mo - 1, d))
+  return day.getUTCFullYear() === y && day.getUTCMonth() === mo - 1 && day.getUTCDate() === d
+}
+
+// A day and a time: `YYYY-MM-DD` then `T` (or a space) and `HH:MM`, optional seconds,
+// fraction and offset.
+function isIsoDateTime(v) {
+  const m = /^(\d{4}-\d{2}-\d{2})[Tt ](\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?(?:[Zz]|[+-]\d{2}:?\d{2})?$/.exec(v)
+  if (!m || !isIsoDate(m[1])) return false
+  return Number(m[2]) < 24 && Number(m[3]) < 60 && (m[4] === undefined || Number(m[4]) < 61)
 }
 
 // Lenient format checks — strict enough to catch garbage, loose enough not to

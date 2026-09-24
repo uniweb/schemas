@@ -173,3 +173,85 @@ describe('@std/nav — the shipped standard this was silently skipping', () => {
     expect(Object.values(n.sections).some((s) => s.brief)).toBe(false)
   })
 })
+
+// ⭐ A sections-form schema is checked, not deferred (2026-09-24). Asked for with a
+// measurement: a course schema checked 12 records written in the `fields:` shorthand
+// and 5 the moment it was written with `sections:` — a brief plus a modules list,
+// the way the app stores it — because `isStaticallyCheckable` was `!!schema.fields`.
+describe('a sections-form record — flat, or written by section', () => {
+  const course = norm({
+    name: 'course',
+    sections: {
+      identity: { brief: true, fields: { title: { type: 'string', required: true }, starts: { type: 'date' } } },
+      pricing: { fields: { amount: { type: 'number', required: true } } },
+      modules: {
+        many: true,
+        fields: { title: { type: 'string', required: true } },
+        sections: { lessons: { many: true, fields: { title: { type: 'string', required: true } } } },
+      },
+    },
+  })
+  const paths = (item) => validateItem(course, item).map((f) => `${f.field}:${f.rule}`)
+
+  it('is statically checkable — only a list-rooted schema is not', () => {
+    expect(isStaticallyCheckable(course)).toBe(true)
+    expect(isStaticallyCheckable(norm(LIST))).toBe(false)
+  })
+
+  it('FLAT: the single sections\' fields at the top, brief first', () => {
+    expect(paths({ starts: '2026-10-15' })).toEqual(['title:required', 'amount:required'])
+    expect(paths({ title: 'Rust 101', amount: 40 })).toEqual([])
+  })
+
+  it('FLAT: a list section has no flat form, so nothing is said about it', () => {
+    expect(paths({ title: 'Rust 101', amount: 40 })).toEqual([])
+  })
+
+  it('BY SECTION: each section under its key, lists and child sections included', () => {
+    expect(
+      paths({
+        identity: { title: 'Rust 101' },
+        pricing: { amount: 40 },
+        modules: [{ title: 'Basics', lessons: [{ title: 'Install' }, {}] }, {}],
+      })
+    ).toEqual(['modules[0].lessons[1].title:required', 'modules[1].title:required'])
+  })
+
+  it('BY SECTION: an absent single section still owes its required fields', () => {
+    expect(paths({ identity: { title: 'Rust 101' }, modules: [] })).toEqual(['pricing.amount:required'])
+  })
+
+  it('BY SECTION: a value of the wrong shape says which shape it should be', () => {
+    expect(paths({ identity: 'Rust 101', pricing: { amount: 40 }, modules: { title: 'x' } })).toEqual([
+      'identity:type',
+      'modules:type',
+    ])
+  })
+
+  it('validateBound takes a record root in either shape, the same way', () => {
+    expect(validateBound(course, { identity: {}, pricing: { amount: 1 } }).map((f) => f.field)).toEqual(['identity.title'])
+    expect(validateBound(course, { amount: 1 }).map((f) => f.field)).toEqual(['title'])
+  })
+})
+
+// ⛔ Any string was a date until 2026-09-24 — `joined: March 2021` passed here, and a
+// backend refuses it ("is not a valid date").
+describe('date and datetime values', () => {
+  const s = norm({ fields: { day: { type: 'date' }, at: { type: 'datetime' } } })
+  const rules = (item) => validateItem(s, item).map((f) => `${f.field}:${f.rule}`)
+
+  it('a date is a real YYYY-MM-DD day', () => {
+    expect(rules({ day: '2026-10-15' })).toEqual([])
+    expect(rules({ day: 'March 2021' })).toEqual(['day:format'])
+    expect(rules({ day: '2026-02-30' })).toEqual(['day:format'])
+    expect(rules({ day: '2026-10-15T00:00:00Z' })).toEqual(['day:format'])
+  })
+
+  it('a datetime is a day and a time; the offset is optional here', () => {
+    expect(rules({ at: '2026-10-15T09:00' })).toEqual([])
+    expect(rules({ at: '2026-10-15T09:00:30.5Z' })).toEqual([])
+    expect(rules({ at: '2026-10-15 09:00+02:00' })).toEqual([])
+    expect(rules({ at: 'noon on launch day' })).toEqual(['at:format'])
+    expect(rules({ at: '2026-10-15T25:00' })).toEqual(['at:format'])
+  })
+})

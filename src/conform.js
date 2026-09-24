@@ -50,9 +50,16 @@ import { SCALAR_KINDS, FORMAT_TYPES } from './format.js'
  * mirror it. The flat surface was already defined beside it (`flatRecordFields`),
  * and the records a project keeps in files are exactly what a push sends.
  *
- * A schema whose root is a LIST is not a record, and this returns `[]` for it: use
- * `validateBound`, which takes the list as the whole value. Ask
- * `isStaticallyCheckable()` first when "not checked" and "clean" must differ.
+ * A schema whose root is a LIST describes an entity whose content is that list. A
+ * file holds one such entity written by section — the list under its section's key,
+ * `{ items: [...] }` — since a file whose top level is an array holds several
+ * records, not one list; it is checked like any other. ⛔ Until 2026-09-24 this
+ * returned `[]` for such a schema, and `@uniweb/build` deferred or skipped it.
+ *
+ * ⚠️ ONE ENTITY, not one element of a list. A VALUE delivered under a key — a data
+ * block's array, a query's records, a concept block's items — is the bare list:
+ * check it whole with `validateBound`. Handing its elements here one at a time would
+ * treat each as an entity of the list schema, which finds nothing to check.
  *
  * @param {Object} schema - a normalized data schema (`{ fields }` or `{ sections }`)
  * @param {*} item - the data item to check
@@ -61,7 +68,7 @@ import { SCALAR_KINDS, FORMAT_TYPES } from './format.js'
 export function validateItem(schema, item) {
   if (!schema || typeof schema !== 'object') return []
   if (schema.fields) return validateFields(schema.fields, item, '')
-  if (!schema.sections || rootListSection(schema)) return []
+  if (!schema.sections) return []
   return validateSectionedRecord(schema, item, '')
 }
 
@@ -156,14 +163,15 @@ export function rootListSection(schema) {
  * key. It dispatches on the schema's root shape:
  *
  *   root is a LIST    → the value is an array of that section's records
- *   root is a RECORD  → the value is one record (`flatRecordFields`)
+ *   root is a RECORD  → the value is one record (`validateItem`)
  *
- * WHY THIS IS NOT `validateItem`, and why `isStaticallyCheckable` is untouched.
- * Both of those answer "does ONE RECORD match this schema?", and callers rely on
- * exactly that: `@uniweb/build` checks each concept-block item and each collection
- * record with them. Teaching them about root-lists would make a root-list schema
- * apply per-item, which is the opposite of what it says — the list is the whole
- * value, not each element of some outer one. Two questions, two functions.
+ * WHY THIS IS NOT `validateItem`. That one takes ONE ENTITY as a file holds it — for
+ * a list-rooted schema, the list under its section's key. This takes the VALUE a key
+ * receives, which for a list-rooted schema is the bare array. So a caller holding a
+ * list of items — a query's records, a concept block's items — passes the whole list
+ * here, never each element to `validateItem`: that would treat each as an entity of
+ * the list schema, which is the opposite of what it says. Two questions, two
+ * functions.
  *
  * @param {Object} schema - a normalized data schema
  * @param {*} value - the whole bound value
@@ -227,18 +235,17 @@ function validateRecords(section, records, prefix) {
 }
 
 /**
- * Whether ONE RECORD of a normalized schema can be checked from a file: every
- * `fields`-form schema, and every `sections`-form schema whose root is a record —
- * flat or written by section (`validateItem`). A schema whose root is a LIST is not
- * a record, so the answer there is no: `validateBound` takes the list whole.
+ * Whether ONE ENTITY of a normalized schema can be checked from a file: any schema
+ * that declares fields or sections (`validateItem`) — a list-rooted one included,
+ * whose entity is written by section.
  *
  * ⛔ Until 2026-09-24 this was `!!schema.fields`, and `@uniweb/build` deferred every
- * sections-form schema on it — "rich", even one holding nothing but a brief.
+ * sections-form schema on it — "rich", even one holding nothing but a brief. The same
+ * day it still answered "no" for a list-rooted schema; there was never a reason to.
  */
 export function isStaticallyCheckable(schema) {
   if (!schema || typeof schema !== 'object') return false
-  if (schema.fields) return true
-  return !!schema.sections && !rootListSection(schema)
+  return !!(schema.fields || schema.sections)
 }
 
 /**

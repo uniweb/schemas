@@ -12,11 +12,16 @@
  * Two multi sections and no singles leaves "which one is the value?"
  * unanswerable, and guessing there would be worse than checking nothing.
  *
- * `validateItem` and `isStaticallyCheckable` are deliberately NOT widened to
- * cover this — both answer "does one RECORD match?", and `@uniweb/build` relies
- * on exactly that when it checks each concept-block item and each collection
- * record. A root-list schema applied per-item would mean the opposite of what it
- * says.
+ * Two entry points, two questions. `validateBound` takes the VALUE a key
+ * receives — for a root list, the bare array. `validateItem` takes ONE ENTITY as a
+ * file holds it — for a root list, the list under its section's key. A caller
+ * holding a list of items passes it whole to `validateBound`; handing its elements
+ * to `validateItem` would treat each as an entity of the list schema.
+ *
+ * ⛔ Until 2026-09-24 `validateItem` and `isStaticallyCheckable` were deliberately
+ * NOT widened to root lists, because `@uniweb/build` called them per item of a list.
+ * Build now checks a delivered list with `validateBound`, so an entity of a root-list
+ * schema — which a record file holds — is checked like any other.
  */
 
 import { describe, expect, it } from 'vitest'
@@ -129,15 +134,23 @@ describe('a tree section descends into its children', () => {
   })
 })
 
-describe('the per-record entry points are untouched', () => {
-  it('validateItem still reports nothing for a root-list schema', () => {
-    // Widening it would make the list apply per element of some outer list.
-    expect(validateItem(norm(LIST), [{ label: 'Home' }, {}])).toEqual([])
+describe('validateItem takes an entity; validateBound takes a value', () => {
+  it('validateItem checks an ENTITY of a root-list schema, written by section', () => {
+    const found = validateItem(norm(LIST), { items: [{ label: 'Home' }, {}] }).map((f) => `${f.field}:${f.rule}`)
+    expect(found).toEqual(['items[1].label:required'])
   })
 
-  it('isStaticallyCheckable still answers about a RECORD', () => {
-    expect(isStaticallyCheckable(norm(LIST))).toBe(false)
+  it('CONTROL: validateItem given the bare list finds nothing — a list is a value, for validateBound', () => {
+    expect(validateItem(norm(LIST), [{ label: 'Home' }, {}])).toEqual([])
+    expect(validateBound(norm(LIST), [{ label: 'Home' }, {}]).map((f) => `${f.field}:${f.rule}`)).toEqual([
+      '[1].label:required',
+    ])
+  })
+
+  it('isStaticallyCheckable answers yes for a root-list schema too', () => {
+    expect(isStaticallyCheckable(norm(LIST))).toBe(true)
     expect(isStaticallyCheckable(norm({ fields: { a: 'string' } }))).toBe(true)
+    expect(isStaticallyCheckable(null)).toBe(false)
   })
 })
 
@@ -193,9 +206,9 @@ describe('a sections-form record — flat, or written by section', () => {
   })
   const paths = (item) => validateItem(course, item).map((f) => `${f.field}:${f.rule}`)
 
-  it('is statically checkable — only a list-rooted schema is not', () => {
+  it('is statically checkable — as every schema with fields or sections is', () => {
     expect(isStaticallyCheckable(course)).toBe(true)
-    expect(isStaticallyCheckable(norm(LIST))).toBe(false)
+    expect(isStaticallyCheckable(norm(LIST))).toBe(true)
   })
 
   it('FLAT: the single sections\' fields at the top, brief first', () => {

@@ -86,6 +86,8 @@ export {
   toDeliveredRecord,
   contentBodyField,
   misplacedFields,
+  referencesOf,
+  mapReferences,
   flatRecordFields,
   rootListSection,
   validateBound,

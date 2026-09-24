@@ -288,6 +288,81 @@ const isContentBody = (f) =>
   ((f.type === 'text' && (f.format === 'markdown' || f.format === 'html')) ||
     (f.type === 'json' && f.format === 'prosemirror'))
 
+/**
+ * Every reference a record holds — a `ref` field, or each element of a list of them, at
+ * any depth — with its path, the data schema it points at (as the schema names it,
+ * `@/speaker`) and the value written there. Read as the record's FILE holds it (flat, or
+ * by section); `delivered: true` reads it as a component receives it.
+ *
+ * @param {Object} schema - a normalized data schema
+ * @param {*} record
+ * @param {{ delivered?: boolean }} [opts]
+ * @returns {Array<{ path: string, ref: string, value: * }>}
+ */
+export function referencesOf(schema, record, { delivered = false } = {}) {
+  const out = []
+  mapRefs(recordFieldMap(schema, delivered), record, '', (value, at) => {
+    out.push({ path: at.path, ref: at.ref, value })
+    return value
+  })
+  return out
+}
+
+/**
+ * The record with each reference replaced by `fn(value, { path, ref })` — a list of them
+ * element by element, an element `fn` answers `undefined` for left out. The record
+ * itself is not changed: only what holds a changed reference is copied.
+ *
+ * @param {Object} schema - a normalized data schema
+ * @param {*} record
+ * @param {(value: *, at: { path: string, ref: string }) => *} fn
+ * @param {{ delivered?: boolean }} [opts] - as `referencesOf`
+ * @returns {*}
+ */
+export function mapReferences(schema, record, fn, { delivered = false } = {}) {
+  return mapRefs(recordFieldMap(schema, delivered), record, '', fn)
+}
+
+// The field map one record is read by: as delivered (`deliveredFields`), or as its file
+// holds it — the one section's fields when flat, else each section as one field.
+function recordFieldMap(schema, delivered) {
+  if (delivered) return deliveredFields(schema)
+  const layout = recordLayout(schema)
+  if (!layout) return null
+  if (schema.fields) return schema.fields
+  if (layout.flat) return sectionFieldMap(layout.sections[0][1])
+  return Object.fromEntries(layout.sections.map(([name, section]) => [name, sectionAsField(section)]))
+}
+
+function mapRefs(fields, value, prefix, fn) {
+  if (!fields || !isPlainObject(value)) return value
+  let out = value
+  const set = (key, v) => {
+    if (out === value) out = { ...value }
+    if (v === undefined) delete out[key]
+    else out[key] = v
+  }
+  for (const [key, def] of Object.entries(fields)) {
+    const v = value[key]
+    if (v == null || !def || typeof def !== 'object') continue
+    const path = prefix ? `${prefix}.${key}` : key
+    if (def.type === 'ref') {
+      const next = fn(v, { path, ref: def.ref })
+      if (next !== v) set(key, next)
+    } else if (def.type === 'array' && def.items?.type === 'ref' && Array.isArray(v)) {
+      const next = v.map((x, i) => fn(x, { path: `${path}[${i}]`, ref: def.items.ref }))
+      if (next.some((x, i) => x !== v[i])) set(key, next.filter((x) => x !== undefined))
+    } else if (def.type === 'object' && def.fields) {
+      const next = mapRefs(def.fields, v, path, fn)
+      if (next !== v) set(key, next)
+    } else if (def.type === 'array' && def.items?.type === 'object' && def.items.fields && Array.isArray(v)) {
+      const next = v.map((x, i) => mapRefs(def.items.fields, x, `${path}[${i}]`, fn))
+      if (next.some((x, i) => x !== v[i])) set(key, next)
+    }
+  }
+  return out
+}
+
 // A section's own fields and its child sections, as one field map.
 function sectionFieldMap(section) {
   const out = { ...(section.fields || {}) }
@@ -576,10 +651,11 @@ function validateValue(def, value, path) {
   const out = []
   const kind = def.type
 
-  // ref / options — a reference into the entity graph (entity_ref / item_ref).
-  // Its target isn't resolvable without the backend, so the value can't be
-  // checked statically. `required` already ran in validateFields; presence is
-  // all we can assert here.
+  // ref / options — a reference into the entity graph (entity_ref / item_ref). Its
+  // target is not checked here: a record file names it by handle, which only a
+  // project's records can answer (`referencesOf`, which `uniweb validate` reads), and
+  // a delivered one arrives hydrated by whoever delivered it. `required` already ran
+  // in validateFields; presence is all this asserts.
   if (kind === 'ref' || def.options !== undefined) return out
 
   // enum (inline picklist) — the value must be one of the allowed set. Mirrors

@@ -36,6 +36,8 @@ import {
   toDeliveredRecord,
   contentBodyField,
   misplacedFields,
+  referencesOf,
+  mapReferences,
 } from '../src/conform.js'
 import { validateAndNormalizeSchema } from '../src/format.js'
 import { validate, applyDefaults, getDefaults, nav } from '../src/index.js'
@@ -349,5 +351,53 @@ describe('date and datetime values', () => {
     expect(rules({ at: '2026-10-15 09:00+02:00' })).toEqual([])
     expect(rules({ at: 'noon on launch day' })).toEqual(['at:format'])
     expect(rules({ at: '2026-10-15T25:00' })).toEqual(['at:format'])
+  })
+})
+
+describe('references in a record — found and rewritten, in its file or as delivered', () => {
+  // A talk names its speaker by handle; a course lists its instructors, and each module
+  // names a reviewer — a reference at the top, in a list, and inside a list of records.
+  const talk = norm({ name: 'talk', fields: { title: 'string', speaker: { ref: '@/speaker' } } })
+  const course = norm({
+    name: 'course',
+    sections: {
+      identity: {
+        brief: true,
+        fields: { title: 'string', instructors: { ref: '@/person', many: true } },
+      },
+      modules: { many: true, fields: { title: 'string', reviewer: { ref: '@/person' } } },
+    },
+  })
+
+  it('finds each reference with its path, its target and its value — in the file', () => {
+    expect(referencesOf(talk, { title: 'Opening', speaker: 'ada' })).toEqual([
+      { path: 'speaker', ref: '@/speaker', value: 'ada' },
+    ])
+    expect(
+      referencesOf(course, {
+        identity: { title: 'Rust', instructors: ['ada', 'grace'] },
+        modules: [{ title: 'A', reviewer: 'alan' }, { title: 'B' }],
+      })
+    ).toEqual([
+      { path: 'identity.instructors[0]', ref: '@/person', value: 'ada' },
+      { path: 'identity.instructors[1]', ref: '@/person', value: 'grace' },
+      { path: 'modules[0].reviewer', ref: '@/person', value: 'alan' },
+    ])
+  })
+
+  it('reads a delivered record by its delivered shape — the brief at the top', () => {
+    const delivered = { title: 'Rust', instructors: ['ada'], modules: [{ reviewer: 'alan' }] }
+    expect(referencesOf(course, delivered, { delivered: true }).map((r) => r.path)).toEqual([
+      'instructors[0]',
+      'modules[0].reviewer',
+    ])
+  })
+
+  it('rewrites each reference, copying only what holds one, and drops what the rewrite leaves out', () => {
+    const file = { identity: { title: 'Rust', instructors: ['ada', 'nobody'] }, modules: [{ title: 'A' }] }
+    const out = mapReferences(course, file, (v) => (v === 'nobody' ? undefined : { brief: { name: v } }))
+    expect(out.identity.instructors).toEqual([{ brief: { name: 'ada' } }])
+    expect(out.modules).toBe(file.modules) // held no reference — not copied
+    expect(file.identity.instructors).toEqual(['ada', 'nobody']) // the record itself is untouched
   })
 })

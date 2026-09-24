@@ -513,6 +513,8 @@ import { validateItem, validateRecordFile, recordLayout, toDeliveredRecord } fro
 | `deliveredFields(schema)` | The field map of a record as a component receives it |
 | `contentBodyField(schema)` | Where a markdown body goes — in the record a component receives, and in its file |
 | `misplacedFields(schema, record)` | The keys of a record file written flat where the schema is written by section, with the section each belongs under |
+| `referencesOf(schema, record, { delivered })` | Every reference a record holds, with its path, the schema it points at and the value written there — in its file, or as delivered |
+| `mapReferences(schema, record, fn, { delivered })` | The record with each reference replaced by `fn(value, { path, ref })` |
 | `validateBound(schema, value)` | Findings for a whole bound **value** — a record or a list. Dispatches on the schema's root shape and descends into a `tree`'s children |
 | `rootListSection(schema)` | The section whose records *are* the value, when the root is a list |
 | `AUTHORING_TYPES` | Every word valid as a `type:` — derived from the vocabulary, so it never drifts |

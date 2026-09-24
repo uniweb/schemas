@@ -356,7 +356,7 @@ Two consequences worth knowing:
 
 Everything else works the same: `validate` checks each record and names its index (`[1].label`), and `applyDefaults` fills each entry's defaults.
 
-A **record file** holding one such list — a record kept in `records/` — writes it under the section's key (`items:`), since a file whose top level is a list holds several records. `uniweb validate` checks it; a push cannot send it from a file yet.
+A **record file** holding one such list — a record kept in `records/` — writes it under the section's key (`items:`), since a file whose top level is a list holds several records. `uniweb validate` checks it, and a push sends it.
 
 ### Tree sections
 
@@ -402,11 +402,28 @@ Its value is a field *name*, not `true`/`false`, and it doesn't go on the field 
 
 Sections are namespaces: each groups its own fields, and two sections may declare fields with the same name.
 
-A record file — a `.md` with frontmatter, a `.yml`, one `.json` object — is one flat record. Its keys are field names, with no section prefix, matched by name to the fields of the schema's **single** sections. So a flat record cannot give two same-named fields different values — pushing it writes the one value into both — and pushing it sends no `many` section.
+A record file — a `.md` with frontmatter, a `.yml`, one `.json` object — is written in one of two layouts, decided by the schema:
 
-A file can also hold a record **written by section** — each section under its own key: a single section as an object, a `many` section as a list of records. `uniweb validate` checks that shape too, but a push refuses it for now: a push reads a record's fields from the top of its file, and cannot send a `many` section from a file yet.
+- **Flat** — a schema with one section (the `fields:` form, or `sections:` with a single one that is not a list): the record's keys are that section's fields.
+- **By section** — any other schema: each top-level section under its own name, an object for a single section and a list of records for a `many` one. A field written at the top of such a record is the flat form, which it does not have; a check reports it (the rule `section`), naming the section it belongs in.
 
-`@std/article` keeps its card (`article`) apart from its body (`article_body`) so a reference carries the card without the body; one markdown file still fills both.
+```yaml
+# a record of @std/article, by section
+article:
+  title: Hello
+  date: 2026-05-01
+article_body:
+  author: Ada
+```
+
+A markdown body is the value of the schema's content field — a markup `text` field or a `richtext` one — in whichever single section declares it: `article_body.content` for `@std/article`.
+
+**What a component receives is a third shape:** the brief's fields at the top, every other section under its own name. `@std/article` keeps its card (`article`) apart from its body (`article_body`) so a reference and a list carry the card without the body.
+
+```js
+// the same record, as a component receives it
+{ title: 'Hello', date: '2026-05-01', article_body: { author: 'Ada', content: { type: 'doc', … } } }
+```
 
 ---
 
@@ -472,7 +489,7 @@ const filled = applyDefaults(data, person)
 const blanks = getDefaults('person')
 ```
 
-`validate` and `applyDefaults` accept a schema **as authored** — the friendly vocabulary (`many:`, `number`, `richtext`, `{ ref: '@/x' }`) and both schema forms are normalized first. They check a record in either shape a source file can hold it — flat, or written by section (see [How a source file maps onto sections](#how-a-source-file-maps-onto-sections)) — so a `sections:`-form schema works too.
+`validate` and `applyDefaults` accept a schema **as authored** — the friendly vocabulary (`many:`, `number`, `richtext`, `{ ref: '@/x' }`) and both schema forms are normalized first. They take a record in the shape a component receives it — the brief's fields at the top, each other section under its name ([How a source file maps onto sections](#how-a-source-file-maps-onto-sections)) — and `applyDefaults` fills a section only when the record holds it.
 
 They **throw** when the *schema* is malformed — a bad schema is a programming error, and the message names the offending field. Invalid *data* comes back as findings.
 
@@ -480,7 +497,7 @@ Lower-level entry points, for tooling that needs the format directly:
 
 ```js
 import { validateAndNormalizeSchema, parseSchemaRef, collectNestedRefs } from '@uniweb/schemas/format'
-import { validateItem, isStaticallyCheckable, flatRecordFields } from '@uniweb/schemas/conform'
+import { validateItem, validateRecordFile, recordLayout, toDeliveredRecord } from '@uniweb/schemas/conform'
 ```
 
 | Export | Does |
@@ -488,10 +505,15 @@ import { validateItem, isStaticallyCheckable, flatRecordFields } from '@uniweb/s
 | `validateAndNormalizeSchema(schema, ref)` | Validates the authoring format and returns the normalized schema (friendly aliases folded to canonical kinds). Throws, naming the offending field |
 | `parseSchemaRef(ref)` | `'@std/person'` → `{ scope: 'std', name: 'person' }` |
 | `collectNestedRefs(schema)` | Every `ref`/`options` target a normalized schema depends on |
-| `validateItem(schema, item)` | Findings for one **record** as a file holds it — flat or written by section. For a schema whose root is a list, the record holds that list under its section's key |
-| `isStaticallyCheckable(schema)` | Whether one record of the schema can be checked from a file — true for any schema that declares fields or sections |
+| `validateItem(schema, item)` | Findings for one **record** as a component receives it, against a normalized schema |
+| `isStaticallyCheckable(schema)` | Whether a record of the schema can be checked at all — true for any schema that declares fields or sections |
+| `validateRecordFile(schema, record)` | Findings for one record as its **file** holds it — flat or by section — including a field written flat where the schema is written by section |
+| `recordLayout(schema)` | How a record of the schema is laid out: `{ flat, sections, brief }` |
+| `toDeliveredRecord(schema, record)` | A record as its file holds it → as a component receives it |
+| `deliveredFields(schema)` | The field map of a record as a component receives it |
+| `contentBodyField(schema)` | Where a markdown body goes — in the record a component receives, and in its file |
+| `misplacedFields(schema, record)` | The keys of a record file written flat where the schema is written by section, with the section each belongs under |
 | `validateBound(schema, value)` | Findings for a whole bound **value** — a record or a list. Dispatches on the schema's root shape and descends into a `tree`'s children |
-| `flatRecordFields(schema)` | The field map one flat source file is checked against |
 | `rootListSection(schema)` | The section whose records *are* the value, when the root is a list |
 | `AUTHORING_TYPES` | Every word valid as a `type:` — derived from the vocabulary, so it never drifts |
 | `SCALAR_KINDS`, `FORMAT_TYPES`, … | The type vocabulary |

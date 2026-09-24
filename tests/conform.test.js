@@ -25,7 +25,18 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { rootListSection, validateBound, validateItem, isStaticallyCheckable } from '../src/conform.js'
+import {
+  rootListSection,
+  validateBound,
+  validateItem,
+  validateRecordFile,
+  isStaticallyCheckable,
+  recordLayout,
+  deliveredFields,
+  toDeliveredRecord,
+  contentBodyField,
+  misplacedFields,
+} from '../src/conform.js'
 import { validateAndNormalizeSchema } from '../src/format.js'
 import { validate, applyDefaults, getDefaults, nav } from '../src/index.js'
 
@@ -191,7 +202,11 @@ describe('@std/nav — the shipped standard this was silently skipping', () => {
 // measurement: a course schema checked 12 records written in the `fields:` shorthand
 // and 5 the moment it was written with `sections:` — a brief plus a modules list,
 // the way the app stores it — because `isStaticallyCheckable` was `!!schema.fields`.
-describe('a sections-form record — flat, or written by section', () => {
+describe('a sections-form record — in its file, and as delivered', () => {
+  // ⭐ One record, two shapes. In a FILE a schema of several sections is written by
+  // section — the flat form is retired (2026-09-22 [Diego]) — and a component receives
+  // it DELIVERED: the brief's fields at the top, each other section under its name, the
+  // shape a host's records service answers (measured 2026-09-24).
   const course = norm({
     name: 'course',
     sections: {
@@ -204,25 +219,24 @@ describe('a sections-form record — flat, or written by section', () => {
       },
     },
   })
-  const paths = (item) => validateItem(course, item).map((f) => `${f.field}:${f.rule}`)
+  const file = (record) => validateRecordFile(course, record).map((f) => `${f.field}:${f.rule}`)
+  const delivered = (record) => validateItem(course, record).map((f) => `${f.field}:${f.rule}`)
 
   it('is statically checkable — as every schema with fields or sections is', () => {
     expect(isStaticallyCheckable(course)).toBe(true)
     expect(isStaticallyCheckable(norm(LIST))).toBe(true)
   })
 
-  it('FLAT: the single sections\' fields at the top, brief first', () => {
-    expect(paths({ starts: '2026-10-15' })).toEqual(['title:required', 'amount:required'])
-    expect(paths({ title: 'Rust 101', amount: 40 })).toEqual([])
+  it('its layout: by section, and the brief is the section marked brief', () => {
+    expect(recordLayout(course)).toMatchObject({ flat: false, brief: 'identity' })
+    expect(recordLayout(norm({ name: 'one', fields: { a: 'string' } }))).toMatchObject({ flat: true })
+    expect(recordLayout(norm({ name: 'one', sections: { only: { fields: { a: 'string' } } } }))).toMatchObject({ flat: true })
+    expect(recordLayout(norm(LIST))).toMatchObject({ flat: false, brief: null })
   })
 
-  it('FLAT: a list section has no flat form, so nothing is said about it', () => {
-    expect(paths({ title: 'Rust 101', amount: 40 })).toEqual([])
-  })
-
-  it('BY SECTION: each section under its key, lists and child sections included', () => {
+  it('FILE: each section under its key, lists and child sections included', () => {
     expect(
-      paths({
+      file({
         identity: { title: 'Rust 101' },
         pricing: { amount: 40 },
         modules: [{ title: 'Basics', lessons: [{ title: 'Install' }, {}] }, {}],
@@ -230,20 +244,89 @@ describe('a sections-form record — flat, or written by section', () => {
     ).toEqual(['modules[0].lessons[1].title:required', 'modules[1].title:required'])
   })
 
-  it('BY SECTION: an absent single section still owes its required fields', () => {
-    expect(paths({ identity: { title: 'Rust 101' }, modules: [] })).toEqual(['pricing.amount:required'])
+  it("FILE: the brief is always sent and owes its required fields; another section only once it is written", () => {
+    expect(file({ pricing: { amount: 40 } })).toEqual(['identity.title:required'])
+    expect(file({ identity: { title: 'Rust 101' } })).toEqual([])
+    expect(file({ identity: { title: 'Rust 101' }, pricing: {} })).toEqual(['pricing.amount:required'])
   })
 
-  it('BY SECTION: a value of the wrong shape says which shape it should be', () => {
-    expect(paths({ identity: 'Rust 101', pricing: { amount: 40 }, modules: { title: 'x' } })).toEqual([
+  it('FILE: ⛔ a field written flat is the retired form — reported, naming its section', () => {
+    expect(validateRecordFile(course, { title: 'Rust 101', amount: 40 }).map((f) => `${f.field}:${f.rule}`)).toEqual([
+      'title:section',
+      'amount:section',
+      'identity.title:required',
+    ])
+  })
+
+  it('misplacedFields: each flat-written key, with the sections it belongs under', () => {
+    expect(misplacedFields(course, { slug: 'rust', title: 'Rust 101', amount: 40, color: 'red', $uuid: 'u' })).toEqual([
+      { key: 'title', sections: ['identity'] },
+      { key: 'amount', sections: ['pricing'] },
+    ])
+    expect(misplacedFields(course, { identity: { title: 'Rust 101' } })).toEqual([])
+    expect(misplacedFields(norm({ name: 'one', fields: { title: 'string' } }), { title: 'x' })).toEqual([])
+  })
+
+  it('FILE: a value of the wrong shape says which shape it should be', () => {
+    expect(file({ identity: 'Rust 101', pricing: { amount: 40 }, modules: { title: 'x' } })).toEqual([
       'identity:type',
       'modules:type',
     ])
   })
 
-  it('validateBound takes a record root in either shape, the same way', () => {
-    expect(validateBound(course, { identity: {}, pricing: { amount: 1 } }).map((f) => f.field)).toEqual(['identity.title'])
-    expect(validateBound(course, { amount: 1 }).map((f) => f.field)).toEqual(['title'])
+  it('DELIVERED: the brief at the top, each other section under its name', () => {
+    expect(delivered({ title: 'Rust 101', starts: '2026-10-15', pricing: { amount: 40 } })).toEqual([])
+    expect(delivered({ starts: '2026-10-15' })).toEqual(['title:required'])
+    expect(delivered({ title: 'Rust 101', modules: [{ title: 'Basics', lessons: [{}] }] })).toEqual([
+      'modules[0].lessons[0].title:required',
+    ])
+  })
+
+  it('DELIVERED: a section other than the brief may be absent — a list delivers briefs', () => {
+    expect(delivered({ title: 'Rust 101' })).toEqual([])
+  })
+
+  it('validateBound takes a delivered record root', () => {
+    expect(validateBound(course, { pricing: { amount: 1 } }).map((f) => f.field)).toEqual(['title'])
+  })
+
+  it('toDeliveredRecord lifts the brief and keeps the rest under their names', () => {
+    expect(
+      toDeliveredRecord(course, { slug: 'rust', identity: { title: 'Rust 101' }, pricing: { amount: 40 } })
+    ).toEqual({ slug: 'rust', title: 'Rust 101', pricing: { amount: 40 } })
+  })
+
+  it('deliveredFields: the brief\'s fields, then each other section as one field', () => {
+    const fields = deliveredFields(course)
+    expect(Object.keys(fields)).toEqual(['title', 'starts', 'pricing', 'modules'])
+    expect(fields.pricing).toMatchObject({ type: 'object', section: true })
+    expect(fields.modules).toMatchObject({ type: 'array', items: { type: 'object' } })
+    expect(Object.keys(fields.modules.items.fields)).toEqual(['title', 'lessons'])
+  })
+
+  it('contentBodyField: where a markdown body goes, as delivered', () => {
+    const post = norm({
+      name: 'post',
+      sections: {
+        card: { brief: true, fields: { title: 'string' } },
+        body: { fields: { content: { type: 'markdown' } } },
+      },
+    })
+    expect(contentBodyField(post)).toMatchObject({ section: 'body', fileSection: 'body', key: 'content' })
+    expect(contentBodyField(norm({ name: 'bio', fields: { text: { type: 'richtext' } } }))).toMatchObject({
+      section: null,
+      fileSection: null,
+      key: 'text',
+    })
+    // In the brief: at the top once delivered, under the brief's name in the file.
+    const card = norm({
+      name: 'card',
+      sections: {
+        card: { brief: true, fields: { title: 'string', text: { type: 'markdown' } } },
+        extra: { fields: { note: 'string' } },
+      },
+    })
+    expect(contentBodyField(card)).toMatchObject({ section: null, fileSection: 'card', key: 'text' })
   })
 })
 

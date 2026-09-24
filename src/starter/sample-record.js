@@ -42,7 +42,7 @@
  */
 
 import { validateAndNormalizeSchema } from '../format.js'
-import { flatRecordFields, rootListSection } from '../conform.js'
+import { deliveredFields, rootListSection } from '../conform.js'
 
 /** Deeper than this and a sample stops being a sample. */
 const MAX_DEPTH = 4
@@ -344,7 +344,7 @@ export function sampleRecord(schema) {
     return Array.from({ length: LIST_LENGTH }, (_, i) => sampleFields(list.fields, 1, i, context))
   }
 
-  const fields = flatRecordFields(normalized)
+  const fields = deliveredFields(normalized)
   if (!fields) return null
   const record = sampleFields(fields, 1)
   return Object.keys(record).length > 0 ? record : null

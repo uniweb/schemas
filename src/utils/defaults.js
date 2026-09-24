@@ -7,13 +7,14 @@
  * `status: 'published'`), and `many:` was invisible. Normalizing first makes the
  * whole vocabulary work, and keeps this file to the one job it actually has.
  *
- * What counts as "the record" is `flatRecordFields` — the same surface
- * validation checks, so defaults and validation never disagree about which
- * fields a flat record has.
+ * What counts as "the record" is the DELIVERED record (`deliveredFields`) — the brief's
+ * fields at the top and each other section under its name — the same shape
+ * `validateItem` checks, so defaults and validation never disagree about where a field
+ * sits. ⛔ It was the retired flat form (`flatRecordFields`) until 2026-09-24.
  */
 
 import { validateAndNormalizeSchema } from '../format.js'
-import { flatRecordFields, rootListSection } from '../conform.js'
+import { deliveredFields, rootListSection } from '../conform.js'
 
 /**
  * Apply a schema's declared defaults to a record, without overwriting values the
@@ -60,7 +61,7 @@ function normalized(schema) {
 
 function recordFields(schema) {
   const n = normalized(schema)
-  return n && flatRecordFields(n)
+  return n && deliveredFields(n)
 }
 
 function listItemFields(schema) {
@@ -82,9 +83,10 @@ function applyFieldDefaults(data, fields) {
     }
 
     // A nested record: recurse when there is something already there, or when
-    // the nested shape has defaults worth materializing.
+    // the nested shape has defaults worth materializing — never for a SECTION, which a
+    // record holds or does not (a list delivers briefs), so an absent one stays absent.
     if (def.type === 'object' && def.fields) {
-      if (result[name] || hasDefaults(def.fields)) {
+      if (result[name] || (!def.section && hasDefaults(def.fields))) {
         result[name] = applyFieldDefaults(result[name] || {}, def.fields)
       }
       continue

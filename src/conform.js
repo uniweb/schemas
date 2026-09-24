@@ -25,74 +25,282 @@
 
 import { SCALAR_KINDS, FORMAT_TYPES } from './format.js'
 
+// ── The layout of one record ──────────────────────────────────────────────────
+//
+// ⭐ A RECORD HAS TWO SHAPES, and each has one definition here:
+//
+//   in a FILE      — FLAT when the schema has one top-level section holding one record
+//                    (the `fields:` shorthand, or a `sections:` schema whose only section
+//                    is single): the record's keys are that section's fields. Otherwise
+//                    BY SECTION: each top-level section under its own name — an object
+//                    for a single section, a list of records for a `many` one, an object
+//                    of child sections for a binder — the stored entity's own shape.
+//                    The push reads it and the pull writes it (`@uniweb/build`
+//                    `uwx/record-layout.js`); ⛔ the flat form for a schema with more than
+//                    one section is retired (2026-09-22 [Diego]).
+//
+//   DELIVERED      — what a component receives: the brief's fields at the top and every
+//                    other section under its own name. It is what a host's records
+//                    service answers — MEASURED 2026-09-24 on a local backend: a list
+//                    answers the brief's fields and `$uuid`/`$name`; `whole: true` adds
+//                    `article_body: { … }` beside them — and what a static build hands a
+//                    component too, so one component renders on both. A schema with no
+//                    brief is delivered by section.
+
+// Keys a record carries of its own, beside its sections — never a field of any.
+const RECORD_OWN_KEYS = new Set(['slug', 'draft'])
+
 /**
- * Validate one data item against a normalized data schema.
+ * The section that is a schema's brief — its card, the part a reference and a list
+ * carry: the one marked `brief: true`, else the first top-level single section. That is
+ * the rule `@uniweb/build`'s lowering applies, so every reader agrees on it. The
+ * `fields:` shorthand's one section is its brief, and has no name here (it is `brief` on
+ * the wire). Null when the schema has none — a list at its root, say.
+ *
+ * @param {Object} schema - a normalized data schema
+ * @returns {string|null}
+ */
+export function briefSectionName(schema) {
+  if (!schema || typeof schema !== 'object' || !schema.sections) return null
+  const entries = Object.entries(schema.sections).filter(([, s]) => s && typeof s === 'object')
+  const marked = entries.find(([, s]) => s.brief === true)
+  if (marked) return marked[0]
+  return entries.find(([, s]) => (s.kind || 'single') === 'single')?.[0] ?? null
+}
+
+/**
+ * How one record of a schema is laid out (see the header above).
+ *
+ * @param {Object} schema - a normalized data schema
+ * @returns {{ flat: boolean, sections: Array<[string, Object]>, brief: string|null }|null}
+ *   `sections` — the top-level sections in declared order (empty for the `fields:`
+ *   shorthand); null when the schema declares neither fields nor sections.
+ */
+export function recordLayout(schema) {
+  if (!schema || typeof schema !== 'object') return null
+  if (schema.fields) return { flat: true, sections: [], brief: null }
+  if (!schema.sections) return null
+  const sections = Object.entries(schema.sections).filter(([, s]) => s && typeof s === 'object')
+  if (sections.length === 0) return null
+  const flat = sections.length === 1 && sections[0][1].kind !== 'multi'
+  return { flat, sections, brief: briefSectionName(schema) }
+}
+
+/**
+ * Validate one DELIVERED record — what a component receives — against a normalized
+ * data schema: a flat record's fields; otherwise the brief's fields at the top and each
+ * other section under its own name.
  *
  * Operates on the *normalized* schema (canonical kinds + `required` / `enum` /
  * `format` / nested `fields` / `items` / `values`) — the shape `dataSchemas[ref]`
  * carries. Pass an authored schema through `validateAndNormalizeSchema` first;
  * the friendly vocabulary (`many:`, `number`, `richtext`) is not read here.
  *
- * Scope: ONE RECORD. A `fields`-form schema — the shorthand for a single brief
- * section — checks the record's fields. A `sections`-form schema checks a record
- * in either of the shapes a file can hold it in:
+ * A section other than the brief may be ABSENT: a list delivers briefs, and a
+ * `deferred:` query strips the rest. An absent one is not checked; a present one is,
+ * child sections included.
  *
- *   - FLAT — the single sections' fields at the top of the record, brief first
- *     (`flatRecordFields`). A `many` section has no flat form, so it is not checked
- *     there — and that is the whole of what a flat file can say about it.
- *   - WRITTEN BY SECTION — each section under its own key, the shape
- *     docs/reference/entity-content.md gives a sections-form record: a single
- *     section an object, a `many` section a list of records, a binder an object of
- *     its child sections. Checked section by section, child sections included.
+ * A schema whose root is a LIST describes an entity whose content is that list —
+ * `{ items: [...] }`, one entity. ⚠️ A VALUE delivered under a key — a data block's
+ * array, a query's records — is the bare list: check it whole with `validateBound`,
+ * never element by element here.
  *
- * ⛔ Until 2026-09-24 a `sections`-form schema was not checked at all — "deferred",
- * even one with nothing but a brief — because a flat file was taken to be unable to
- * mirror it. The flat surface was already defined beside it (`flatRecordFields`),
- * and the records a project keeps in files are exactly what a push sends.
- *
- * A schema whose root is a LIST describes an entity whose content is that list. A
- * file holds one such entity written by section — the list under its section's key,
- * `{ items: [...] }` — since a file whose top level is an array holds several
- * records, not one list; it is checked like any other. ⛔ Until 2026-09-24 this
- * returned `[]` for such a schema, and `@uniweb/build` deferred or skipped it.
- *
- * ⚠️ ONE ENTITY, not one element of a list. A VALUE delivered under a key — a data
- * block's array, a query's records — is the bare list: check it whole with
- * `validateBound`. Handing its elements here one at a time would treat each as an
- * entity of the list schema, which finds nothing to check.
+ * To check a record as a FILE holds it, use `validateRecordFile`. ⛔ Until 2026-09-24 a
+ * `sections`-form schema was not checked at all — "deferred", even one with nothing but
+ * a brief.
  *
  * @param {Object} schema - a normalized data schema (`{ fields }` or `{ sections }`)
- * @param {*} item - the data item to check
+ * @param {*} item - the delivered record
  * @returns {Array<{ field: string, rule: string, message: string }>}
  */
 export function validateItem(schema, item) {
-  if (!schema || typeof schema !== 'object') return []
+  const layout = recordLayout(schema)
+  if (!layout) return []
   if (schema.fields) return validateFields(schema.fields, item, '')
-  if (!schema.sections) return []
-  return validateSectionedRecord(schema, item, '')
-}
-
-// Which shape a sections-form record is written in: BY SECTION when a top-level key
-// names one of the schema's sections and is not also one of its flat fields — a
-// name may be both, since sections are namespaces, and there the field reading wins.
-function writtenBySection(schema, record) {
-  const flat = flatRecordFields(schema) || {}
-  return Object.keys(schema.sections).some(
-    (name) => Object.prototype.hasOwnProperty.call(record, name) && !(name in flat)
-  )
-}
-
-function validateSectionedRecord(schema, item, prefix) {
   const record = isPlainObject(item) ? item : {}
-  if (!writtenBySection(schema, record)) {
-    const flat = flatRecordFields(schema)
-    return flat ? validateFields(flat, record, prefix) : []
-  }
+  if (layout.flat) return validateSectionRecord(layout.sections[0][1], record, '')
   const out = []
-  for (const [name, section] of Object.entries(schema.sections)) {
-    out.push(...validateSection(section, record[name], prefix ? `${prefix}.${name}` : name))
+  for (const [name, section] of layout.sections) {
+    if (name === layout.brief) {
+      out.push(...validateSectionRecord(section, record, ''))
+      continue
+    }
+    if (record[name] == null) continue
+    out.push(...validateSection(section, record[name], name))
   }
   return out
+}
+
+/**
+ * Validate one record as a FILE holds it — the shape a push reads (see the header): a
+ * flat record for a schema of one single section, by section otherwise.
+ *
+ * Checked as a push sends it: the brief always (an absent one is empty, and its
+ * `required` fields are owed), another single section only when the record writes it,
+ * each list's records, and the records nested in them. A field written at the top of a
+ * record that a schema of several sections declares is the retired flat form — reported
+ * under the rule `section`, naming where it goes, since a push refuses it.
+ *
+ * @param {Object} schema - a normalized data schema
+ * @param {*} record - the record, as its file holds it (a markdown body already in its
+ *   content body field)
+ * @returns {Array<{ field: string, rule: string, message: string }>}
+ */
+export function validateRecordFile(schema, record) {
+  const layout = recordLayout(schema)
+  if (!layout) return []
+  if (schema.fields) return validateFields(schema.fields, record, '')
+  const rec = isPlainObject(record) ? record : {}
+  if (layout.flat) return validateSectionRecord(layout.sections[0][1], rec, '')
+  const out = []
+  for (const { key, sections } of misplacedFields(schema, rec)) {
+    out.push(
+      violation(
+        key,
+        'section',
+        `this schema's records are written by section — put '${key}' under ${sections.map((n) => `"${n}:"`).join(' or ')}`
+      )
+    )
+  }
+  for (const [name, section] of layout.sections) {
+    if (name !== layout.brief && rec[name] == null) continue
+    out.push(...validateSection(section, rec[name], name))
+  }
+  return out
+}
+
+/**
+ * The keys of a record FILE written in the retired flat form — at the top of a record
+ * whose schema is written by section, while a top-level single section declares them as
+ * fields — each with the sections it belongs under. Empty for a record written by
+ * section, and for a schema whose records are flat. A key no section declares is not
+ * one of these: it is only undeclared.
+ *
+ * @param {Object} schema - a normalized data schema
+ * @param {*} record - the record, as its file holds it
+ * @returns {Array<{ key: string, sections: string[] }>}
+ */
+export function misplacedFields(schema, record) {
+  const layout = recordLayout(schema)
+  if (!layout || layout.flat || !isPlainObject(record)) return []
+  const names = new Set(layout.sections.map(([n]) => n))
+  const out = []
+  for (const key of Object.keys(record)) {
+    if (names.has(key) || RECORD_OWN_KEYS.has(key) || key.startsWith('$')) continue
+    const sections = layout.sections
+      .filter(([, s]) => s.kind !== 'multi' && s.fields && Object.prototype.hasOwnProperty.call(s.fields, key))
+      .map(([n]) => n)
+    if (sections.length) out.push({ key, sections })
+  }
+  return out
+}
+
+/**
+ * The field map of a DELIVERED record — the brief's fields at the top, each other
+ * top-level section as one field under its name (an object for a single section, a list
+ * of objects for a `many` one). A flat schema's fields as they are. What the runtime
+ * fills defaults from, so a default lands where the record carries its field.
+ *
+ * ⚠️ A schema whose root is a list returns its ENTITY's map (`{ items: [...] }`). The
+ * value a key receives from a data block is the bare list — a caller filling that
+ * reads `rootListSection(schema)` first.
+ *
+ * @param {Object} schema - a normalized data schema
+ * @returns {Object|null}
+ */
+export function deliveredFields(schema) {
+  const layout = recordLayout(schema)
+  if (!layout) return null
+  if (schema.fields) return schema.fields
+  if (layout.flat) return sectionFieldMap(layout.sections[0][1])
+  const out = {}
+  const brief = layout.sections.find(([n]) => n === layout.brief)?.[1]
+  if (brief) Object.assign(out, sectionFieldMap(brief))
+  for (const [name, section] of layout.sections) {
+    if (name !== layout.brief) out[name] = sectionAsField(section)
+  }
+  return Object.keys(out).length ? out : null
+}
+
+/**
+ * A record as its FILE holds it → the record DELIVERED to a component: the brief
+ * section's fields lifted to the top, every other section kept under its name, the
+ * record's own keys (`slug`, …) kept. A flat record, a schema with no brief, or a record
+ * with no brief section to lift, is returned as it is.
+ *
+ * @param {Object} schema - a normalized data schema
+ * @param {Object} record
+ * @returns {Object}
+ */
+export function toDeliveredRecord(schema, record) {
+  const layout = recordLayout(schema)
+  if (!layout || layout.flat || !layout.brief || !isPlainObject(record)) return record
+  const brief = record[layout.brief]
+  if (!isPlainObject(brief)) return record
+  const own = {}
+  const sections = {}
+  const names = new Set(layout.sections.map(([n]) => n))
+  for (const [key, value] of Object.entries(record)) {
+    if (key === layout.brief) continue
+    if (names.has(key)) sections[key] = value
+    else own[key] = value
+  }
+  return { ...own, ...brief, ...sections }
+}
+
+/**
+ * The schema's content body field — the one a markdown record's body fills: a markup
+ * `text` field (`format: markdown|html`) or a `format: prosemirror` json field, declared
+ * directly on a top-level single section (the brief or another). `section` is where the
+ * field sits in the DELIVERED record: null when at the top (a flat schema, or the
+ * brief), else the section's name. `fileSection` is where it sits in the record's FILE:
+ * null when the file is flat, else the section's name — the brief's included. Null when
+ * the schema declares none.
+ *
+ * @param {Object} schema - a normalized data schema
+ * @returns {{ section: string|null, fileSection: string|null, key: string, field: Object }|null}
+ */
+export function contentBodyField(schema) {
+  const layout = recordLayout(schema)
+  if (!layout) return null
+  const find = (fields) => Object.entries(fields || {}).find(([, f]) => isContentBody(f))
+  if (schema.fields) {
+    const hit = find(schema.fields)
+    return hit ? { section: null, fileSection: null, key: hit[0], field: hit[1] } : null
+  }
+  for (const [name, section] of layout.sections) {
+    if (section.kind === 'multi') continue
+    const hit = find(section.fields)
+    if (hit) {
+      return {
+        section: layout.flat || name === layout.brief ? null : name,
+        fileSection: layout.flat ? null : name,
+        key: hit[0],
+        field: hit[1],
+      }
+    }
+  }
+  return null
+}
+
+const isContentBody = (f) =>
+  !!f && typeof f === 'object' &&
+  ((f.type === 'text' && (f.format === 'markdown' || f.format === 'html')) ||
+    (f.type === 'json' && f.format === 'prosemirror'))
+
+// A section's own fields and its child sections, as one field map.
+function sectionFieldMap(section) {
+  const out = { ...(section.fields || {}) }
+  for (const [name, child] of Object.entries(section.sections || {})) out[name] = sectionAsField(child)
+  return out
+}
+
+// A section as the one field it is inside a record. `section: true` marks it: a section
+// is present in a record or not at all — a list delivers briefs — so nothing fills an
+// absent one from its defaults.
+function sectionAsField(section) {
+  const record = { type: 'object', fields: sectionFieldMap(section), section: true }
+  return section.kind === 'multi' ? { type: 'array', items: record } : record
 }
 
 // A section's value in a record written by section. An absent single section is an
@@ -165,12 +373,12 @@ export function rootListSection(schema) {
  *   root is a LIST    → the value is an array of that section's records
  *   root is a RECORD  → the value is one record (`validateItem`)
  *
- * WHY THIS IS NOT `validateItem`. That one takes ONE ENTITY as a file holds it — for
- * a list-rooted schema, the list under its section's key. This takes the VALUE a key
- * receives, which for a list-rooted schema is the bare array. So a caller holding a
- * list of items — a query's records — passes the whole list here, never each element
- * to `validateItem`: that would treat each as an entity of the list schema, which is
- * the opposite of what it says. Two questions, two functions.
+ * WHY THIS IS NOT `validateItem`. That one takes ONE delivered RECORD — for a
+ * list-rooted schema, one entity, the list under its section's key. This takes the VALUE
+ * a key receives, which for a list-rooted schema is the bare array. So a caller holding a
+ * list of items — a query's records — passes the whole list here, never each element to
+ * `validateItem`: that would treat each as an entity of the list schema, which is the
+ * opposite of what it says. Two questions, two functions.
  *
  * @param {Object} schema - a normalized data schema
  * @param {*} value - the whole bound value
@@ -280,6 +488,13 @@ export function briefFields(schema) {
 
 
 /**
+ * ⛔ THE RETIRED FLAT FORM, for a schema of several sections (2026-09-22 [Diego]). A
+ * record file is flat only when its schema has one top-level section holding one
+ * record; every other is written by section (`recordLayout`, `validateRecordFile`), and
+ * a component receives the brief's fields at the top (`deliveredFields`). Kept, and still
+ * exported, because it names that form's surface exactly — nothing in this package or
+ * the build reads it any more.
+ *
  * The field map ONE FLAT RECORD is checked against — the surface a single source
  * file (a `.md` with frontmatter, a `.yml`, one `.json` object) can populate.
  *
@@ -313,7 +528,6 @@ export function briefFields(schema) {
  *    `flatRecordFields` returns null for exactly those, which is the honest
  *    answer to "what is this schema's flat surface?", not a limitation of theirs.
  *
- * `validateItem` checks a FLAT sections-form record against this surface, and
  * `isStaticallyCheckable` admits every schema a record can be checked against —
  * ⛔ it used to answer "no" for every sections-form schema, deferring them, and
  * this comment called that deliberate (until 2026-09-24).

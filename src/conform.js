@@ -46,8 +46,18 @@ import { SCALAR_KINDS, FORMAT_TYPES, enumValues } from './format.js'
 //                    `article_body: { … }` beside them — and what a static build hands a
 //                    component too, so one component renders on both. A schema with no
 //                    brief is delivered by section.
+//
+// ⚠️ THE DELIVERED SHAPE PUTS TWO NAMESPACES IN ONE OBJECT — the brief's fields and the
+// names of its sibling sections. Sections are field namespaces, so a brief field may
+// share its name with a sibling section, and then this shape cannot hold both:
+// `toDeliveredRecord` keeps the section, `deliveredFields` describes the section, and
+// `validateItem` fails the record it delivered. A FILE by section keeps them apart.
+// (Read once as a shape a file could adopt; it cannot, for this reason.)
 
-// Keys a record carries of its own, beside its sections — never a field of any.
+// Keys a record carries of its own, beside its sections. ⚠️ Nothing stops a schema from
+// declaring a field or a section of the same name, and then the two meet: in a flat file
+// at the same level, in a file by section beside the section. Not "never a field of any",
+// as this read until 2026-09-26.
 const RECORD_OWN_KEYS = new Set(['slug', 'draft'])
 
 /**

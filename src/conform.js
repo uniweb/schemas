@@ -23,7 +23,7 @@
  * whether they fail a build (CI treats them as errors).
  */
 
-import { SCALAR_KINDS, FORMAT_TYPES } from './format.js'
+import { SCALAR_KINDS, FORMAT_TYPES, enumValues } from './format.js'
 
 // ── The layout of one record ──────────────────────────────────────────────────
 //
@@ -661,9 +661,13 @@ function validateValue(def, value, path) {
   // enum (inline picklist) — the value must be one of the allowed set. Mirrors
   // the runtime, which checks enum membership regardless of the base type, so a
   // wrong-type-and-wrong-value lands as one clear enum finding (not two).
+  // ⛔ By VALUE: an entry written `{ value, label }` allows its `value` (`enumValues`). Until
+  // 2026-09-26 the entry itself was compared, so every value of such an enum was rejected — and a
+  // push, which gates on this check, refused every record holding one.
   if (Array.isArray(def.enum)) {
-    if (!def.enum.includes(value)) {
-      out.push(violation(path, 'enum', `${fmt(value)} is not one of [${def.enum.map(fmt).join(', ')}]`))
+    const allowed = enumValues(def.enum)
+    if (!allowed.includes(value)) {
+      out.push(violation(path, 'enum', `${fmt(value)} is not one of [${allowed.map(fmt).join(', ')}]`))
     }
     return out
   }

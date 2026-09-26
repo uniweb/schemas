@@ -560,7 +560,8 @@ function normalizeField(field, ref, path) {
     )
   }
 
-  // Picklists: enum = inline list; options = a curated '@/x' ref (item_ref).
+  // Picklists: enum = inline list; options = a curated '@/x' ref (item_ref). An entry is a value, or
+  // `{ value, label }` where the label is what an editor shows — `enumValues` reads either.
   if (field.enum !== undefined) {
     if (!Array.isArray(field.enum)) {
       throw new Error(`Data schema '${ref}': field '${path}' 'enum' must be a list of values.`)
@@ -651,4 +652,18 @@ export function collectNestedRefs(schema) {
   if (schema?.fields) walkFields(schema.fields)
   if (schema?.sections) walkSections(schema.sections)
   return [...found]
+}
+
+/**
+ * The values an `enum:` allows — each entry's own, whether written bare (`draft`) or as
+ * `{ value, label }`, the form that gives an editor a label to show. The value is what a record
+ * stores; the label never is.
+ *
+ * @param {Array} list - a field's `enum`
+ * @returns {Array}
+ */
+export function enumValues(list) {
+  return (Array.isArray(list) ? list : []).map((entry) =>
+    entry && typeof entry === 'object' && !Array.isArray(entry) && 'value' in entry ? entry.value : entry
+  )
 }

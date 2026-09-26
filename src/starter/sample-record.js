@@ -41,7 +41,7 @@
  * control was carrying `accept`, `multiple`, `format` and `default` too).
  */
 
-import { validateAndNormalizeSchema } from '../format.js'
+import { validateAndNormalizeSchema, enumValues } from '../format.js'
 import { deliveredFields, rootListSection } from '../conform.js'
 
 /** Deeper than this and a sample stops being a sample. */
@@ -219,7 +219,7 @@ function sampleField(name, def, depth, index = 0, parent = null) {
   if (!def || typeof def !== 'object') return null
 
   if (usefulDefault(def.default)) return def.default
-  if (Array.isArray(def.enum) && def.enum.length > 0) return def.enum[0]
+  if (Array.isArray(def.enum) && def.enum.length > 0) return enumValues(def.enum)[0]
 
   if (def.type === 'array') {
     if (depth >= MAX_DEPTH) return []

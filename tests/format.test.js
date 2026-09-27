@@ -213,7 +213,7 @@ describe('flatRecordFields — the surface one source file can populate', () => 
   })
 
   it('unions the SINGLE sections of a sections-form schema', () => {
-    // `@std/article` splits the card (`article`) from the body (`article_body`)
+    // `@std/article` splits the card (`brief`) from the body (`body`)
     // so a reference card never drags the ProseMirror body along. A source file
     // still carries both, which is the whole point of this function.
     const norm = validateAndNormalizeSchema(schemas.article, '@std/article')

@@ -409,20 +409,20 @@ A record file — a `.md` with frontmatter, a `.yml`, one `.json` object — is 
 
 ```yaml
 # a record of @std/article, by section
-article:
+brief:
   title: Hello
   date: 2026-05-01
-article_body:
+body:
   author: Ada
 ```
 
-A markdown body is the value of the schema's content field — a markup `text` field or a `richtext` one — in whichever single section declares it: `article_body.content` for `@std/article`.
+A markdown body is the value of the schema's content field — a markup `text` field or a `richtext` one — in whichever single section declares it: `body.content` for `@std/article`.
 
-**What a component receives is a third shape:** the brief's fields at the top, every other section under its own name. `@std/article` keeps its card (`article`) apart from its body (`article_body`) so a reference and a list carry the card without the body.
+**What a component receives is a third shape:** the brief's fields at the top, every other section under its own name. `@std/article` keeps its card (`brief`) apart from its body (`body`) so a reference and a list carry the card without the body.
 
 ```js
 // the same record, as a component receives it
-{ title: 'Hello', date: '2026-05-01', article_body: { author: 'Ada', content: { type: 'doc', … } } }
+{ title: 'Hello', date: '2026-05-01', body: { author: 'Ada', content: { type: 'doc', … } } }
 ```
 
 ---

@@ -46,9 +46,9 @@ describe('regressions — answers this API used to get wrong', () => {
   })
 
   it('a sections-form schema yields its defaults (was: {}) — shaped like the delivered record', () => {
-    // `status` is declared in `article_body`, a non-brief single section, so a delivered
-    // record carries it under `article_body` — and that is where its default goes.
-    expect(getDefaults('article')).toMatchObject({ article_body: { status: 'published', featured: false } })
+    // `status` is declared in `body`, a non-brief single section, so a delivered
+    // record carries it under `body` — and that is where its default goes.
+    expect(getDefaults('article')).toMatchObject({ body: { status: 'published', featured: false } })
   })
 
   it('canonical kinds are type-checked (was: no case in the switch)', () => {
@@ -93,7 +93,7 @@ describe('validate', () => {
   })
 
   it('reports enum and format violations', () => {
-    expect(paths(validate({ title: 'T', article_body: { status: 'nope' } }, 'article'))).toContain('article_body.status:enum')
+    expect(paths(validate({ title: 'T', body: { status: 'nope' } }, 'article'))).toContain('body.status:enum')
     expect(paths(validate({ name: 'A', email: 'not-an-email' }, 'person'))).toContain('email:format')
   })
 
@@ -147,14 +147,14 @@ describe('defaults', () => {
   })
 
   it('materializes a nested record when the nested shape has defaults', () => {
-    expect(getDefaults('article').article_body.seo).toEqual({ noindex: false })
+    expect(getDefaults('article').body.seo).toEqual({ noindex: false })
   })
 
   it('never fills an absent SECTION from its defaults — a list delivers briefs', () => {
     const brief = applyDefaults({ title: 'T' }, 'article')
-    expect(brief).not.toHaveProperty('article_body')
+    expect(brief).not.toHaveProperty('body')
     // …but a section the record holds gets its defaults.
-    expect(applyDefaults({ title: 'T', article_body: {} }, 'article').article_body).toMatchObject({
+    expect(applyDefaults({ title: 'T', body: {} }, 'article').body).toMatchObject({
       status: 'published',
       featured: false,
     })

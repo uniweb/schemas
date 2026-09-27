@@ -43,7 +43,7 @@ import { SCALAR_KINDS, FORMAT_TYPES, enumValues } from './format.js'
 //                    other section under its own name. It is what a host's records
 //                    service answers — MEASURED 2026-09-24 on a local backend: a list
 //                    answers the brief's fields and `$uuid`/`$name`; `whole: true` adds
-//                    `article_body: { … }` beside them — and what a static build hands a
+//                    `body: { … }` beside them — and what a static build hands a
 //                    component too, so one component renders on both. A schema with no
 //                    brief is delivered by section.
 //

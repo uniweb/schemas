@@ -1,20 +1,23 @@
 /**
  * Article schema - blog posts, news items, documentation
  *
- * Two sections. The brief `article` is the lean entity_ref card (title,
- * excerpt, date, image, tags). The non-brief `article_body` holds the heavy
- * ProseMirror body plus the secondary metadata, so the body is never dragged
- * into a reference card. The visual app's article editor reads/writes
- * `article_body.content[lang]` as a ProseMirror document.
+ * Two sections. The `brief` is the lean card a reference and a list carry (title,
+ * excerpt, date, image, tags). `body` holds the heavy ProseMirror content and the
+ * secondary metadata, so the content is never dragged into a reference card.
+ * `body.content` is the article as a ProseMirror document, per language.
+ *
+ * ⛔ The sections were named `article` and `article_body` until version 3.0.0: every
+ * standard schema names its brief section `brief`, and a section name needs no
+ * prefix, since sections are namespaces of their own.
  */
 export default {
   name: 'article',
-  version: '2.0.0',
+  version: '3.0.0',
   description: 'A blog post, news item, or documentation page',
 
   sections: {
     // The card — what hydrates into an entity_ref reference.
-    article: {
+    brief: {
       brief: true,
       fields: {
         title: {
@@ -44,7 +47,7 @@ export default {
     },
 
     // The full record — not pulled into reference cards.
-    article_body: {
+    body: {
       fields: {
         // Content — a ProseMirror document on the wire (md authoring side).
         content: {

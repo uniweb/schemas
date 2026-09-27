@@ -258,6 +258,162 @@ export function toDeliveredRecord(schema, record) {
   return { ...own, ...brief, ...sections }
 }
 
+// The name the `fields:` shorthand's one section takes where a record is stored and answered —
+// `brief` (ruled 2026-09-22 [Diego]; `@uniweb/build`'s lowering, `SHORTHAND_SECTION`, names it).
+const SHORTHAND_SECTION = 'brief'
+
+// The name of the section a schema's brief is — the shorthand's `brief`, a flat schema's one
+// section, else the section marked `brief: true` (or the first single one). Null with none.
+function briefNameOf(schema, layout) {
+  if (schema.fields) return SHORTHAND_SECTION
+  if (layout.flat) return layout.sections[0][0]
+  return layout.brief
+}
+
+/**
+ * The field map of a BRIEF as a component receives it (ruled 2026-09-27 [Diego]) — the brief
+ * section's fields at the top, its child sections as fields beside them; a flat schema's fields as
+ * they are. A schema with no brief is answered whole, so its brief is its whole record
+ * (`wholeFieldMap`). What the runtime fills a key's defaults from when its component expects briefs.
+ *
+ * @param {Object} schema - a normalized data schema
+ * @returns {Object|null}
+ */
+export function briefFieldMap(schema) {
+  const layout = recordLayout(schema)
+  if (!layout) return null
+  if (schema.fields) return schema.fields
+  const name = briefNameOf(schema, layout)
+  const brief = name ? layout.sections.find(([n]) => n === name)?.[1] : null
+  if (!brief) return wholeFieldMap(schema)
+  const out = sectionFieldMap(brief)
+  return Object.keys(out).length ? out : null
+}
+
+/**
+ * The field map of a WHOLE record — the record as stored (ruled 2026-09-27 [Diego]): one field per
+ * top-level section, under its name, the brief included — an object for a single section, a list
+ * for a `many` one. The `fields:` shorthand's one section is `brief`. What the runtime fills a key's
+ * defaults from when its component declares `'@x/y/*'`.
+ *
+ * @param {Object} schema - a normalized data schema
+ * @returns {Object|null}
+ */
+export function wholeFieldMap(schema) {
+  const layout = recordLayout(schema)
+  if (!layout) return null
+  if (schema.fields) return { [SHORTHAND_SECTION]: { type: 'object', fields: schema.fields } }
+  const out = Object.fromEntries(layout.sections.map(([name, section]) => [name, sectionAsField(section)]))
+  return Object.keys(out).length ? out : null
+}
+
+/**
+ * A record as its FILE holds it → the record AS STORED: each top-level section under its name
+ * beside the record's own `$` keys — what a records service answers for `whole: true`, and what a
+ * static build writes to a record's own file. A flat file's fields go under its one section
+ * (`brief` for the `fields:` shorthand); a file by section is stored already, less what no section
+ * declares. The record's own keys that are not `$` keys (`slug`, `draft`) are not part of it.
+ *
+ * @param {Object} schema - a normalized data schema
+ * @param {Object} record - the record as its file holds it
+ * @returns {Object}
+ */
+export function toStoredRecord(schema, record) {
+  const layout = recordLayout(schema)
+  if (!layout || !isPlainObject(record)) return record
+  const own = {}
+  const rest = {}
+  for (const [key, value] of Object.entries(record)) {
+    if (key.startsWith('$')) own[key] = value
+    else if (!RECORD_OWN_KEYS.has(key)) rest[key] = value
+  }
+  if (schema.fields || layout.flat) return { ...own, [briefNameOf(schema, layout)]: rest }
+  const out = { ...own }
+  for (const [name] of layout.sections) if (rest[name] !== undefined) out[name] = rest[name]
+  return out
+}
+
+/**
+ * Where a query's PATH reads a record AS STORED — the records service's rule (ruled 2026-09-27
+ * [Diego]): a bare field is the brief's; a dotted path whose first step
+ * names a top-level section is that section's; one whose first step names none is the brief's — a
+ * field of it, or a section nested in it. So where a section shares a brief field's name, `details`
+ * is the brief's field and `details.pages` the section's, and `brief.details` names the field
+ * through the brief section's own name. A `$` key is the record's own; a schema with no brief
+ * reads a path as written.
+ *
+ * @param {Object} schema - a normalized data schema
+ * @param {string} path - a `where` key or a `sort` field
+ * @returns {string} the path in the stored record
+ */
+export function storedPath(schema, path) {
+  if (typeof path !== 'string' || path === '' || path.startsWith('$')) return path
+  const layout = recordLayout(schema)
+  const brief = layout ? briefNameOf(schema, layout) : null
+  if (!brief) return path
+  const dot = path.indexOf('.')
+  if (dot !== -1) {
+    const first = path.slice(0, dot)
+    const sections = schema.fields ? [SHORTHAND_SECTION] : layout.sections.map(([name]) => name)
+    if (sections.includes(first)) return path
+  }
+  return `${brief}.${path}`
+}
+
+/**
+ * A record AS STORED → the MERGED view: the brief's fields at the top and every other section under
+ * its name (`toDeliveredRecord`'s shape) — what a static build's record translation walks
+ * (`@uniweb/build`'s `i18n/records.js`). ⚠️ Internal to a build — a component never receives it, and
+ * a query is evaluated over the stored record (`storedPath`) — and lossy exactly where a brief field
+ * shares a sibling section's name, which is why nothing is delivered in it.
+ *
+ * @param {Object} schema - a normalized data schema
+ * @param {Object} stored
+ * @returns {Object}
+ */
+export function mergedFromStored(schema, stored) {
+  const layout = recordLayout(schema)
+  if (!layout || !isPlainObject(stored)) return stored
+  const name = briefNameOf(schema, layout)
+  if (!name) return stored
+  const own = {}
+  const sections = {}
+  for (const [key, value] of Object.entries(stored)) {
+    if (key === name) continue
+    if (key.startsWith('$')) own[key] = value
+    else sections[key] = value
+  }
+  return { ...own, ...(isPlainObject(stored[name]) ? stored[name] : {}), ...sections }
+}
+
+/**
+ * The MERGED view → the record AS STORED (`mergedFromStored`, backwards): the brief section's
+ * declared fields gathered under its name, every other declared section under its own, the `$`
+ * keys beside them, anything else left out.
+ *
+ * @param {Object} schema - a normalized data schema
+ * @param {Object} merged
+ * @returns {Object}
+ */
+export function storedFromMerged(schema, merged) {
+  const layout = recordLayout(schema)
+  if (!layout || !isPlainObject(merged)) return merged
+  const name = briefNameOf(schema, layout)
+  if (!name) return merged
+  const briefDef = schema.fields ? { fields: schema.fields } : layout.sections.find(([n]) => n === name)?.[1]
+  const briefKeys = new Set(Object.keys(briefDef ? sectionFieldMap(briefDef) : {}))
+  const sectionNames = new Set(layout.sections.map(([n]) => n).filter((n) => n !== name))
+  const own = {}
+  const brief = {}
+  const sections = {}
+  for (const [key, value] of Object.entries(merged)) {
+    if (key.startsWith('$')) own[key] = value
+    else if (sectionNames.has(key)) sections[key] = value
+    else if (briefKeys.has(key)) brief[key] = value
+  }
+  return { ...own, [name]: brief, ...sections }
+}
+
 /**
  * The schema's content body field — the one a markdown record's body fills: a markup
  * `text` field (`format: markdown|html`) or a `format: prosemirror` json field, declared

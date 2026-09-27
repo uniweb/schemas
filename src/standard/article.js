@@ -1,7 +1,7 @@
 /**
  * Article schema - blog posts, news items, documentation
  *
- * Two sections. The brief `article` is the lean entity_ref card (title, slug,
+ * Two sections. The brief `article` is the lean entity_ref card (title,
  * excerpt, date, image, tags). The non-brief `article_body` holds the heavy
  * ProseMirror body plus the secondary metadata, so the body is never dragged
  * into a reference card. The visual app's article editor reads/writes
@@ -22,11 +22,6 @@ export default {
           required: true,
           description: 'Article title',
         },
-        slug: {
-          type: 'string',
-          translatable: false,
-          description: 'URL-friendly identifier',
-        },
         excerpt: {
           type: 'string',
           description: 'Short summary or teaser',
@@ -42,7 +37,7 @@ export default {
         tags: {
           type: 'string',
           many: true,
-          translatable: false, // a grouping key, not prose — see `slug`
+          translatable: false, // a grouping key, not prose
           description: 'Tags or keywords',
         },
       },

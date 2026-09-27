@@ -13,11 +13,6 @@ export default {
       required: true,
       description: 'Project title',
     },
-    slug: {
-      type: 'string',
-      translatable: false,
-      description: 'URL-friendly identifier',
-    },
     tagline: {
       type: 'string',
       description: 'Short tagline or subtitle',
@@ -99,7 +94,7 @@ export default {
     technologies: {
       type: 'string',
       many: true,
-      translatable: false, // a grouping key, not prose — see `slug`
+      translatable: false, // a grouping key, not prose
       description: 'Technologies and tools used',
     },
     category: {
@@ -109,7 +104,7 @@ export default {
     tags: {
       type: 'string',
       many: true,
-      translatable: false, // a grouping key, not prose — see `slug`
+      translatable: false, // a grouping key, not prose
       description: 'Tags or keywords',
     },
 

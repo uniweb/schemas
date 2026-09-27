@@ -13,10 +13,6 @@ export default {
       required: true,
       description: 'Event title',
     },
-    slug: {
-      type: 'string',
-      description: 'URL-friendly identifier',
-    },
     description: {
       type: 'markdown',
       description: 'Event description',
@@ -93,7 +89,7 @@ export default {
     tags: {
       type: 'string',
       many: true,
-      translatable: false, // a grouping key, not prose — see `slug`
+      translatable: false, // a grouping key, not prose
       description: 'Tags or keywords',
     },
 

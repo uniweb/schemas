@@ -13,11 +13,6 @@ export default {
       required: true,
       description: 'Opportunity title',
     },
-    slug: {
-      type: 'string',
-      translatable: false,
-      description: 'URL-friendly identifier',
-    },
 
     // Content
     description: {
@@ -129,7 +124,7 @@ export default {
     tags: {
       type: 'string',
       many: true,
-      translatable: false, // a grouping key, not prose — see `slug`
+      translatable: false, // a grouping key, not prose
       description: 'Tags or keywords',
     },
 

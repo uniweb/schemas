@@ -13,11 +13,6 @@ export default {
       required: true,
       description: 'Publication title',
     },
-    slug: {
-      type: 'string',
-      translatable: false,
-      description: 'URL-friendly identifier',
-    },
 
     // Authors
     authors: {
@@ -51,7 +46,7 @@ export default {
     keywords: {
       type: 'string',
       many: true,
-      translatable: false, // a grouping key, not prose — see `slug`
+      translatable: false, // a grouping key, not prose
       description: 'Keywords',
     },
 
@@ -152,7 +147,7 @@ export default {
     tags: {
       type: 'string',
       many: true,
-      translatable: false, // a grouping key, not prose — see `slug`
+      translatable: false, // a grouping key, not prose
       description: 'Tags or topics',
     },
 

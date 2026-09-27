@@ -106,8 +106,8 @@ export function recordLayout(schema) {
  * carries. Pass an authored schema through `validateAndNormalizeSchema` first;
  * the friendly vocabulary (`many:`, `number`, `richtext`) is not read here.
  *
- * A section other than the brief may be ABSENT: a list delivers briefs, and a
- * `deferred:` query strips the rest. An absent one is not checked; a present one is,
+ * A section other than the brief may be ABSENT: a list delivers briefs. An absent
+ * one is not checked; a present one is,
  * child sections included.
  *
  * A schema whose root is a LIST describes an entity whose content is that list —

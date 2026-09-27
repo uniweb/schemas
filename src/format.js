@@ -340,9 +340,24 @@ function normalizeSections(sections, ref) {
   const briefState = { count: 0 }
   const out = {}
   for (const [name, section] of Object.entries(sections)) {
+    refuseSystemName(name, ref, 'section', `sections.${name}`)
     out[name] = normalizeSection(section, ref, `sections.${name}`, briefState)
   }
   return out
+}
+
+/**
+ * ⛔ A `$` NAME IS THE SYSTEM'S (ruled 2026-09-27 [Diego]) — `$uuid`, `$name` and `$tags` sit beside
+ * a record's sections, and a brief's fields beside them, so no field or section may start with `$`,
+ * at any level. A records service refuses such a schema when it is registered; this refuses it where
+ * it is written.
+ */
+function refuseSystemName(name, ref, kind, path) {
+  if (typeof name === 'string' && name.startsWith('$')) {
+    throw new Error(
+      `Data schema '${ref}': ${kind} '${path}' starts with '$' — a '$' name is the system's ('$uuid', '$name', '$tags'). Rename the ${kind}.`
+    )
+  }
 }
 
 function normalizeSection(section, ref, path, briefState) {
@@ -398,6 +413,7 @@ function normalizeSection(section, ref, path, briefState) {
     const childBrief = { count: 0 }
     out.sections = {}
     for (const [n, s] of Object.entries(section.sections)) {
+      refuseSystemName(n, ref, 'section', `${path}.sections.${n}`)
       out.sections[n] = normalizeSection(s, ref, `${path}.sections.${n}`, childBrief)
     }
   }
@@ -447,6 +463,7 @@ function normalizeFields(fields, ref, path) {
   }
   const out = {}
   for (const [name, field] of Object.entries(fields)) {
+    refuseSystemName(name, ref, 'field', path ? `${path}.${name}` : name)
     out[name] = normalizeField(field, ref, path ? `${path}.${name}` : name)
   }
   return out

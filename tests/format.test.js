@@ -330,3 +330,27 @@ describe('model-level keys', () => {
     warn.mockRestore()
   })
 })
+
+// ⛔ A `$` name is the system's (ruled 2026-09-27): `$uuid`, `$name` and `$tags` sit beside a
+// record's sections and a brief's fields, so no field or section may take one — at any level.
+describe('a `$` name is the system\'s', () => {
+  const refuses = (schema, pattern) => expect(() => validateAndNormalizeSchema(schema, '@demo/x')).toThrow(pattern)
+
+  it('refuses a `$` field, in the shorthand and in a section', () => {
+    refuses({ fields: { $name: 'string' } }, /field '\$name' starts with '\$'/)
+    refuses({ sections: { brief: { brief: true, fields: { title: 'string', $tags: 'string' } } } }, /field 'sections\.brief\.\$tags'/)
+  })
+
+  it('refuses a `$` section, at the top and nested', () => {
+    refuses({ sections: { brief: { brief: true, fields: { title: 'string' } }, $meta: { fields: { a: 'string' } } } }, /section 'sections\.\$meta'/)
+    refuses({ sections: { layout: { sections: { $rooms: { many: true, fields: { name: 'string' } } } } } }, /section 'sections\.layout\.sections\.\$rooms'/)
+  })
+
+  it('refuses a `$` key inside an object field', () => {
+    refuses({ fields: { born: { type: 'object', fields: { $place: 'string' } } } }, /field 'born\.\$place'/)
+  })
+
+  it('CONTROL — a `$` inside a name, not at its start, is a name like any other', () => {
+    expect(() => validateAndNormalizeSchema({ fields: { price$: 'string', 'a$b': 'string' } }, '@demo/x')).not.toThrow()
+  })
+})

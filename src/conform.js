@@ -57,7 +57,9 @@ import { SCALAR_KINDS, FORMAT_TYPES, enumValues } from './format.js'
 // Keys a record carries of its own, beside its sections. ⚠️ Nothing stops a schema from
 // declaring a field or a section of the same name, and then the two meet: in a flat file
 // at the same level, in a file by section beside the section. Not "never a field of any",
-// as this read until 2026-09-26.
+// as this read until 2026-09-26. `slug` is how a reader hands a record's name — its file's —
+// beside its data; ⛔ since 2026-09-27 a record FILE may not state one (`@uniweb/build`
+// refuses it where the file is read), so it never arrives as the author's.
 const RECORD_OWN_KEYS = new Set(['slug', 'draft'])
 
 /**

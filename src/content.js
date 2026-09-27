@@ -34,8 +34,8 @@
  * ⛔ **`label` IS NEITHER, and the difference is load-bearing.** When a developer
  * wrote it, it is the foundation's own words in whatever language they chose:
  * show it verbatim and never translate it. When they did not, it is ours.
- * `labelSource` is how you tell — the same statement `titleInferred` makes about
- * a section title the build invented.
+ * `labelSource` is how you tell — as a schema entry tells its title: present only
+ * when the developer wrote one (`titleInferred` said it until 2026-09-27).
  */
 
 /**

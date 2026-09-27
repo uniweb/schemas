@@ -58,6 +58,19 @@ export function describePlacement(entry) {
 const CHILDREN_KEYS = ['label', 'hint', 'min', 'max', 'types', 'grid']
 
 /**
+ * Text a developer may write in one language or several — a string, or an
+ * `{ en, fr, … }` map of strings. The convention every `label`, `name` and
+ * `description` in `meta.js` follows (the component-metadata reference, § Localized
+ * labels); a consumer shows the active locale's.
+ */
+function isLocalizedText(value) {
+  if (typeof value === 'string') return true
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false
+  const entries = Object.values(value)
+  return entries.length > 0 && entries.every((text) => typeof text === 'string')
+}
+
+/**
  * What a component says about the child sections it arranges.
  *
  *     children: true | 'many'         it arranges child sections, any number, any type
@@ -68,10 +81,13 @@ const CHILDREN_KEYS = ['label', 'hint', 'min', 'max', 'types', 'grid']
  * `grid: [2, 3, '40/60', '60/40']` — each a value of the section's reserved `grid:` key
  * (`./grid`). A single value offers one layout.
  *
+ * `label` and `hint` are a string, or an `{ en, fr, … }` map of strings, returned as
+ * written — show the active locale's.
+ *
  * @param {object} entry
  * @returns {{
  *   declared: boolean,
- *   label: string|null, hint: string|null,
+ *   label: string|Object<string,string>|null, hint: string|Object<string,string>|null,
  *   min: number|null, max: number|null,
  *   types: string[]|null,
  *   grid: Array<{ value: number|string, columns: number, widths: number[], template: string }>|null,
@@ -106,8 +122,8 @@ export function describeChildren(entry) {
 
   for (const key of ['label', 'hint']) {
     if (spec[key] === undefined) continue
-    if (typeof spec[key] === 'string') out[key] = spec[key]
-    else problems.push(`\`children.${key}\` should be text.`)
+    if (isLocalizedText(spec[key])) out[key] = spec[key]
+    else problems.push(`\`children.${key}\` should be text, or a { en, fr, … } map of text.`)
   }
 
   if (spec.min !== undefined) {

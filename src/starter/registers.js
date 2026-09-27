@@ -7,8 +7,8 @@
  * [Diego, 2026-09-16]: developers do not want to write sample content, it drifts
  * against the `content:` declaration it is supposed to match, and — decisively —
  * **it can never be localized.** An authored string is the foundation's own
- * words and is shown verbatim in every UI language, which is the rule `title` /
- * `titleInferred` already states. Paragraphs of a developer's English would ship
+ * words and is shown verbatim in every UI language, which is the rule a
+ * component's `title` already follows. Paragraphs of a developer's English would ship
  * to every author in the world with no way to translate them.
  *
  * ⇒ Deriving the copy here makes it OURS, which puts it in the one category we
@@ -69,8 +69,8 @@ const GENERIC = {
   // of them with a perfectly clear family (`marketing/Hero`, `conference/Hero`).
   // Refusing them would hand an author an empty box for a section whose shape
   // we know — so the family answers when the developer did not, and the caller
-  // is TOLD that is what happened (`elementsInferred` on the result), the same
-  // way `titleInferred` marks a title the build invented.
+  // is TOLD that is what happened (`elementsInferred` on the result), the way a
+  // schema entry leaves out a title its developer did not write.
   elements: ['title', 'paragraphs'],
 }
 

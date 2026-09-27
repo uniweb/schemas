@@ -252,9 +252,10 @@ export function starterContent(component, options = {}) {
   // so the family's canonical element set answers when the developer did not.
   //
   // ⛔ AND THE CALLER IS TOLD. `elementsInferred` says the element list is ours
-  // rather than the developer's — the same statement `titleInferred` makes about
-  // a title the build invented, and for the same reason: a consumer cannot tell
-  // from the output alone, and the two deserve different treatment.
+  // rather than the developer's — the distinction a schema entry draws by carrying
+  // `title` only when the developer wrote one (`titleInferred` drew it until
+  // 2026-09-27), and for the same reason: a consumer cannot tell from the output
+  // alone, and the two deserve different treatment.
   const elementsInferred = !component.content || Object.keys(component.content).length === 0
   const declared = elementsInferred
     ? Object.fromEntries((register.elements || []).map((el) => [el, '']))

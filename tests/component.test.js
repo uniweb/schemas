@@ -54,6 +54,22 @@ describe('describeChildren', () => {
     expect(d.problems).toEqual([])
   })
 
+  test('a label or hint may be written in several languages, and comes back as written', () => {
+    const label = { en: 'Tab panels', fr: 'Panneaux' }
+    const d = describeChildren({ children: { label, hint: 'One per tab' } })
+    expect(d.label).toEqual(label)
+    expect(d.hint).toBe('One per tab')
+    expect(d.problems).toEqual([])
+  })
+
+  test('a label that is neither text nor a map of text is a problem', () => {
+    for (const label of [3, { en: 3 }, {}, ['a']]) {
+      const d = describeChildren({ children: { label } })
+      expect(d.label, JSON.stringify(label)).toBeNull()
+      expect(d.problems).toHaveLength(1)
+    }
+  })
+
   test('one type may be written without a list', () => {
     expect(describeChildren({ children: { types: 'Card' } }).types).toEqual(['Card'])
   })

@@ -27,6 +27,13 @@
  *                 the same way everywhere. Standard names again, same reason.
  *                 → `./site-tags`, `./site-tags.json`
  *
+ *   the COMPONENT what a section type's `meta.js` declares, read for an editor:
+ *                 its expected content (`./content`), and where it may be placed,
+ *                 the children it arranges, the visual it takes and its title
+ *                 (`./component`). A grid layout value (`grid: '40/60'`) has its
+ *                 own dependency-free module, since kit renders with it.
+ *                 → `./content`, `./component`, `./grid`
+ *
  * Both vocabularies' labels are translated in `./locales/*`, keyed by id.
  */
 

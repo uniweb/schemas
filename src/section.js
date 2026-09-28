@@ -1,20 +1,25 @@
 /**
  * The names framework reserves in a section's params.
  *
- * Every key an author writes in a section's frontmatter, other than `type`, `id` and the
- * section's data (`query:` / `fetch:`), is one of its params, and is stored and synced
- * with the rest. A few of those names are framework's own: the runtime reads them to
- * lay out, paint or theme the section, whatever its component. An editor offers them as
- * the section's settings rather than the component's.
+ * Every key an author writes in a section's frontmatter, other than `type`, `id`, `hidden`
+ * and the section's data (`query:` / `fetch:`), is one of its params, and is stored and
+ * synced with the rest. A few of those names are framework's own: they are settings OF
+ * the section, which framework applies — a component does not interpret them. An editor
+ * offers them as the section's settings rather than the component's.
  *
- * `component` says whether the component also receives the value as a param. A
- * component that declares one of these in its `meta.js` `params:` shares it with
- * framework, and the runtime reads the value either way. It never receives `grid` at
- * all, which the build warns about.
+ * ⭐ A component never receives them as params [2026-09-28]. Core lifts each onto the
+ * section's block, normalized once for every renderer, and framework applies it: the
+ * runtime paints the background and the color context around the component, the page
+ * stylesheet applies the section's theme and component variables, and kit's `ChildGrid`
+ * lays out the child sections. A component that needs one reads it from the block — or
+ * with kit: `useColorContext`, `SectionBackground`, `ChildGrid`. ⛔ Until 2026-09-28 a
+ * component received `theme` (the mode), `background` and `vars` as params too, and
+ * nothing read them there.
  *
- * An inset is built the same way, so core lifts `grid` out of an inset's params too. But
- * the runtime renders an inset bare, with no background layer and no color context, so
- * `background` and `theme` are plain params to an inset's component.
+ * `component` says whether the component also receives the value as a param — `false`
+ * for every name here. A component that declares one in its `meta.js` `params:` never
+ * receives what an author writes, which the build warns about. An inset is built the same
+ * way, so the same holds for an inset's params.
  *
  * Dependency-free, like `./grid`.
  */
@@ -22,22 +27,31 @@
 export const SECTION_PARAMS = Object.freeze({
   /**
    * What the runtime draws behind the section: an image or video URL, a CSS color or
-   * gradient, or `{ mode, image, video, gradient, color, overlay }`.
+   * gradient, or `{ image, video, gradient, color, overlay }`. On the block as
+   * `block.background`, normalized.
    */
-  background: Object.freeze({ component: true }),
+  background: Object.freeze({ component: false }),
 
   /**
    * The layout of the section's child sections, `3` or `'40/60'` (read with `./grid`).
-   * Lifted to `block.grid`, where kit's `ChildGrid` reads it.
+   * On the block as `block.grid`, where kit's `ChildGrid` reads it.
    */
   grid: Object.freeze({ component: false }),
 
   /**
-   * The section's color context: `light`, `medium` or `dark`, or `{ mode, ...tokens }`
-   * to override tokens too. Left out, the section follows the site. The component
-   * receives the mode.
+   * The section's theme: `theme.yml`'s own keys, scoped to the section — `colors`,
+   * `contexts`, `vars` — plus `mode`, the color context it pins (`light`, `medium`,
+   * `dark`; left out, it follows the site's scheme). `theme: dark` is the shorthand for
+   * `{ mode: dark }`, and a token written beside `mode` applies to the section in any
+   * context. On the block as `block.themeName` and `block.themeOverrides`.
    */
-  theme: Object.freeze({ component: true }),
+  theme: Object.freeze({ component: false }),
+
+  /**
+   * Values for the CSS variables the section's component declares in its `meta.js`
+   * `vars:`. The page stylesheet scopes them to the section.
+   */
+  vars: Object.freeze({ component: false }),
 })
 
 /**

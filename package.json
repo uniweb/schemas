@@ -20,6 +20,7 @@
     "./section": "./src/section.js",
     "./editor-form": "./src/editor-form.js",
     "./starter": "./src/starter.js",
+    "./system": "./src/system.js",
     "./standard/*": "./src/standard/*.js",
     "./utils/*": "./src/utils/*.js"
   },

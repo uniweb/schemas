@@ -401,3 +401,18 @@ describe('references in a record — found and rewritten, in its file or as deli
     expect(file.identity.instructors).toEqual(['ada', 'nobody']) // the record itself is untouched
   })
 })
+
+describe('a `file` value — a path, or an asset (2026-09-28)', () => {
+  const schema = validateAndNormalizeSchema({ name: 'doc', fields: { file: { type: 'file', required: true } } }, '@/doc')
+  it('a path or URL string conforms', () => {
+    expect(validateItem(schema, { file: '/files/brochure.pdf' })).toEqual([])
+  })
+  it('an asset object — `{ url, … }`, what a file record holds — conforms', () => {
+    const asset = { url: '/records/uniweb/file/brochure.pdf', name: 'brochure.pdf', mime: 'application/pdf', size: 48213 }
+    expect(validateItem(schema, { file: asset })).toEqual([])
+    expect(validateItem(schema, { file: { ...asset, assetId: 'a1', assetExt: 'pdf' } })).toEqual([])
+  })
+  it('CONTROL — an object with no url does not', () => {
+    expect(validateItem(schema, { file: { name: 'brochure.pdf' } }).length).toBeGreaterThan(0)
+  })
+})

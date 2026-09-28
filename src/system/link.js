@@ -16,7 +16,7 @@ export default {
   name: 'link',
   label: 'Link',
   fields: {
-    // A plain string, as the backend declares it — no `format: url`.
-    url: { type: 'string', translatable: false, required: true },
+    // An absolute URL — `format: url`, as the backend declares it (2026-09-28 [Diego]). Never translated.
+    url: { type: 'url', required: true },
   },
 }

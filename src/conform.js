@@ -922,8 +922,11 @@ function isKind(kind, value) {
   switch (kind) {
     case 'string':
     case 'text':
-    case 'file':
       return typeof value === 'string'
+    case 'file':
+      // A path or URL — or an ASSET, `{ url, … }`: what a file record holds (`@uniweb/file`), the
+      // one form that carries an uploaded asset's identity beside its URL (2026-09-28).
+      return typeof value === 'string' || isAssetValue(value)
     case 'int':
       return typeof value === 'number' && Number.isInteger(value)
     case 'decimal':
@@ -971,6 +974,11 @@ function isUrlish(v) {
   if (s.startsWith('//') || s.startsWith('/') || s.startsWith('./') || s.startsWith('../')) return true
   if (/^[\w-]+(\.[\w-]+)+/.test(s)) return true // bare domain (example.com, sub.site.io/x)
   return false
+}
+
+/** An asset value: an object whose `url` is a string — `{ url, name?, mime?, size?, preview?, assetId?, … }`. */
+function isAssetValue(v) {
+  return Boolean(v) && typeof v === 'object' && !Array.isArray(v) && typeof v.url === 'string' && v.url.length > 0
 }
 
 function violation(field, rule, message) {

@@ -1,11 +1,12 @@
 /**
  * The names framework reserves in a section's params.
  *
- * Every key an author writes in a section's frontmatter, other than `type`, `id`, `hidden`
- * and the section's data (`query:` / `fetch:`), is one of its params, and is stored and
- * synced with the rest. A few of those names are framework's own: they are settings OF
- * the section, which framework applies — a component does not interpret them. An editor
- * offers them as the section's settings rather than the component's.
+ * Every key an author writes in a section's frontmatter, other than `type`, `id` and
+ * `hidden`, is one of its params, and is stored and synced with the rest — the section's
+ * data too, which its `query:` or `fetch:` declares, stored as `fetch`. A few of those
+ * names are framework's own: they are settings OF the section, which framework applies —
+ * a component does not interpret them. An editor offers them as the section's settings
+ * rather than the component's.
  *
  * ⭐ A component never receives them as params [2026-09-28]. Core lifts each onto the
  * section's block, normalized once for every renderer, and framework applies it: the
@@ -52,6 +53,13 @@ export const SECTION_PARAMS = Object.freeze({
    * `vars:`. The page stylesheet scopes them to the section.
    */
   vars: Object.freeze({ component: false }),
+
+  /**
+   * The section's own data — what its `query:` or `fetch:` declares, as framework resolves
+   * it. The runtime fetches it and hands the component `content.data`. On the block as
+   * `block.fetch`.
+   */
+  fetch: Object.freeze({ component: false }),
 })
 
 /**

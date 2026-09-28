@@ -35,7 +35,7 @@
  *                 → `./content`, `./component`, `./grid`
  *
  *   the SECTION   the names framework reserves in a section's params —
- *                 `background`, `grid`, `theme`, `vars` — settings of the section
+ *                 `background`, `grid`, `theme`, `vars`, `fetch` — settings of the section
  *                 that framework applies, which an editor offers as the section's
  *                 settings rather than its component's.
  *                 → `./section`

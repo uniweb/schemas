@@ -3,7 +3,7 @@ import { SECTION_PARAMS, isSectionParam } from '../src/section.js'
 
 describe('SECTION_PARAMS', () => {
   test('names the settings of a section that framework applies', () => {
-    expect(Object.keys(SECTION_PARAMS).sort()).toEqual(['background', 'grid', 'theme', 'vars'])
+    expect(Object.keys(SECTION_PARAMS).sort()).toEqual(['background', 'fetch', 'grid', 'theme', 'vars'])
   })
 
   test('a component receives none of them as a param', () => {

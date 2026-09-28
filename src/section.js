@@ -22,6 +22,10 @@
  * receives what an author writes, which the build warns about. An inset is built the same
  * way, so the same holds for an inset's params.
  *
+ * ⭐ `SECTION_KEYS`, below, are the rest of a section's frontmatter that is not a param —
+ * taken out before the params are stored. The two lists together are every name a
+ * component cannot declare as a param [Diego, 2026-09-28], and the build warns on each.
+ *
  * Dependency-free, like `./grid`.
  */
 
@@ -70,4 +74,38 @@ export const SECTION_PARAMS = Object.freeze({
  */
 export function isSectionParam(name) {
   return Object.hasOwn(SECTION_PARAMS, name)
+}
+
+/**
+ * The keys of a section's frontmatter that are not params at all. The build takes each out
+ * before the section's params are stored, so a param of the same name never receives what an
+ * author writes. `is` says what the key is.
+ */
+export const SECTION_KEYS = Object.freeze({
+  /** The section type — the component that renders the section. */
+  type: Object.freeze({ is: 'the section type' }),
+  /** The section's own id — the target a link to the section scrolls to. */
+  id: Object.freeze({ is: "the section's id" }),
+  /** A draft: `hidden: true` leaves the section out of a published build; `uniweb dev` keeps it. */
+  hidden: Object.freeze({ is: 'a draft section (hidden: true)' }),
+  /** The shorthand for `fetch: { query }` — the section's data, stored as `fetch`. */
+  query: Object.freeze({ is: "the section's data — the shorthand for fetch:" }),
+  /** Params written as one map: its keys are merged into the params, and `props` is not one. */
+  props: Object.freeze({ is: 'params written as one map, merged into the params' }),
+  /** Refused — `query:`'s old name. */
+  data: Object.freeze({ is: "refused — the old name of query:" }),
+  /** Ignored, with a warning: nothing reads it. A preset is offered by `meta.js`. */
+  preset: Object.freeze({ is: 'ignored, with a warning' }),
+  /** Ignored, with a warning: nothing reads it. */
+  input: Object.freeze({ is: 'ignored, with a warning' }),
+})
+
+/**
+ * Whether `name` is a key of a section's frontmatter that is not a param.
+ *
+ * @param {string} name
+ * @returns {boolean}
+ */
+export function isSectionKey(name) {
+  return Object.hasOwn(SECTION_KEYS, name)
 }

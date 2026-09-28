@@ -12,6 +12,10 @@
  * framework, and the runtime reads the value either way. It never receives `grid` at
  * all, which the build warns about.
  *
+ * An inset is built the same way, so core lifts `grid` out of an inset's params too. But
+ * the runtime renders an inset bare, with no background layer and no color context, so
+ * `background` and `theme` are plain params to an inset's component.
+ *
  * Dependency-free, like `./grid`.
  */
 

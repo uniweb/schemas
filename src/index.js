@@ -34,6 +34,11 @@
  *                 own dependency-free module, since kit renders with it.
  *                 → `./content`, `./component`, `./grid`
  *
+ *   the SECTION   the names framework reserves in a section's params —
+ *                 `background`, `grid`, `theme` — which an editor offers as the
+ *                 section's settings rather than its component's.
+ *                 → `./section`
+ *
  * Both vocabularies' labels are translated in `./locales/*`, keyed by id.
  */
 

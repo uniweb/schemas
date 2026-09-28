@@ -17,6 +17,7 @@
     "./content": "./src/content.js",
     "./component": "./src/component.js",
     "./grid": "./src/grid.js",
+    "./section": "./src/section.js",
     "./editor-form": "./src/editor-form.js",
     "./starter": "./src/starter.js",
     "./standard/*": "./src/standard/*.js",

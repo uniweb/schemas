@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { describeChildren, describeVisuals, describePlacement, inferTitle } from '../src/component.js'
+import { describeChildren, describeVisuals, describePlacement, inferTitle, lowerChildren } from '../src/component.js'
 
 describe('inferTitle', () => {
   test('splits a PascalCase name into words, keeping acronyms whole', () => {
@@ -101,6 +101,40 @@ describe('describeChildren', () => {
     const d = describeChildren({ children: 0 })
     expect(d.declared).toBe(true)
     expect(d.problems).toHaveLength(1)
+  })
+})
+
+describe('lowerChildren — `children:` as a foundation registers it', () => {
+  test('always the object form, holding only what was said', () => {
+    expect(lowerChildren({ children: true })).toEqual({})
+    expect(lowerChildren({ children: 'many' })).toEqual({})
+    expect(lowerChildren({ children: 3 })).toEqual({ max: 3 })
+    expect(lowerChildren({ children: { label: 'Tabs', types: 'Tab', min: 1 } })).toEqual({
+      label: 'Tabs', min: 1, types: ['Tab'],
+    })
+  })
+
+  test('nothing declared is nothing registered', () => {
+    expect(lowerChildren({ name: 'Hero' })).toBeUndefined()
+    expect(lowerChildren({ children: false })).toBeUndefined()
+  })
+
+  test('each layout offered is carried as describeChildren reads it', () => {
+    expect(lowerChildren({ children: { grid: [2, '40/60'] } }).grid).toEqual([
+      { value: 2, columns: 2, widths: [1, 1], template: 'repeat(2, minmax(0, 1fr))' },
+      { value: '40/60', columns: 2, widths: [40, 60], template: expect.any(String) },
+    ])
+  })
+
+  test('what cannot be read is left out', () => {
+    expect(lowerChildren({ children: { label: 'Items', max: 0, colums: 3 } })).toEqual({ label: 'Items' })
+  })
+
+  test('describeChildren reads the lowered form as itself', () => {
+    const meta = { children: { label: { en: 'Tabs', fr: 'Onglets' }, max: 6, types: ['Tab'], grid: [3, '60/40'] } }
+    const lowered = { children: lowerChildren(meta) }
+    expect(describeChildren(lowered)).toEqual(describeChildren(meta))
+    expect(lowerChildren(lowered)).toEqual(lowered.children)
   })
 })
 

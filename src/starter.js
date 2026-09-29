@@ -13,14 +13,18 @@
  * shown verbatim in every UI language. Deriving the copy makes it framework's,
  * which is the one category we already translate. See `starter/registers.js`.
  *
+ * ⭐ It reads the declaration through `describeContent`, so a `meta.js` and a
+ * registered schema entry — whose `content` is the lowered list — give the same
+ * starter.
+ *
  * ## Why this package
  *
  * It is the zero-dependency leaf that already owns both standard vocabularies
- * this reads — the section FAMILIES (`./families`) and the data SCHEMAS. It is
- * browser-safe, and `frontend` already depends on it. `@uniweb/core` was the
- * wrong home for the same reason `editor-form.js` is not there: core is loaded
- * by every site in every lane and is not tree-shaken on the hosted one, so an
- * editor-only function on its entry is paid for by every visitor of every site.
+ * this reads — the section FAMILIES (`./families`) and the content declaration.
+ * It is browser-safe, and `frontend` already depends on it. `@uniweb/core` was
+ * the wrong home for the same reason `editor-form.js` is not there: core is
+ * loaded by every site in every lane and is not tree-shaken on the hosted one, so
+ * an editor-only function on its entry is paid for by every visitor of every site.
  *
  * ## ⛔ IT RETURNS A STRUCTURE, NOT A DOCUMENT
  *
@@ -41,75 +45,49 @@
  */
 
 import { resolveFamily } from './families.js'
-import { elementSpec, parseExpectation, declarationKey } from './content.js'
+import { describeContent } from './content.js'
 import { registerFor } from './starter/registers.js'
 import { starterImage } from './starter/placeholder.js'
 import { sampleRecord } from './starter/sample-record.js'
-// ⚖️ The package BARREL, deliberately: it is the one registry of `@std/*`, so a
-// standard added there is samplable here with no second list to update. Safe
-// because `index.js` does not import this module — a subpath export, not part of
-// the entry — and adding such an import there would be the cycle to avoid.
-import { schemas as STANDARD_SCHEMAS } from './index.js'
 
 /**
  * Elements this generator does not fill, though the vocabulary allows them.
  *
- * ⛔ The element VOCABULARY is not here — it is `./content.js`, which owns the
- * `content:` grammar and is what `describeContent` reads. This file used to
- * carry its own copy of the declared-name → delivered-key table; two copies of
- * one mapping is the drift this package keeps warning about.
+ * - `documents`: a document is a real file, which a generator cannot make up.
+ * - `tables`, `math`, `quotes`: `buildDoc` writes none of them, so filling one
+ *   here would put content in the structure that no serialization keeps.
  */
-// `documents`: a document is a real file, which a generator cannot make up.
-const UNFILLABLE = new Set(['insets', 'quotes', 'headings', 'documents'])
+const UNFILLABLE = new Set(['documents', 'tables', 'math', 'quotes'])
 
-/** How many to generate when the declaration states no count. */
+/** How many to generate when the declaration states no count, by element. */
 const DEFAULT_ARITY = {
-  title: 1,
-  pretitle: 1,
-  subtitle: 1,
   paragraphs: 2,
   links: 2,
   lists: 1,
   items: 3,
-  images: 1,
+  media: 1,
   icons: 1,
-  videos: 1,
   snippets: 1,
 }
-
-/**
- * Slots a count cannot describe, so no arity is computed for them.
- *
- * A heading is one string — ⚠️ `buildDoc` does accept a string ARRAY for a
- * multi-line title, and a declared `title: 'Headline [2]'` would be the way to
- * ask for one. Nothing in the official templates does (the only count on a
- * heading is `[0-1]`, meaning optional), and the registers carry one headline
- * per family, so asking would produce a repeat. Left unsupported deliberately
- * rather than by oversight.
- *
- * `data` is a MAP keyed by tag: its size is how many keys the component
- * declares in `data:`, never a number in the label.
- */
-const UNCOUNTED = new Set(['title', 'pretitle', 'subtitle', 'data'])
 
 /** Generating more than this is noise, whatever the declaration asks for. */
 const ARITY_CAP = 8
 
 /**
- * How many of an element to generate.
+ * How many of an element to generate, from its lowered count.
  *
  * ⛔ A declared `[0-n]` still generates n, not zero. The floor is the author's
  * option, not our instruction — a starter section that renders nothing teaches
  * nothing, and removing content is the one edit that needs no explanation.
  */
-function arityFor(slot, expectation) {
-  const { min, max, open } = parseExpectation(expectation)
-  const fallback = DEFAULT_ARITY[slot] ?? 1
+function arityFor(entry) {
+  const min = typeof entry.min === 'number' ? entry.min : null
+  const max = typeof entry.max === 'number' ? entry.max : null
+  const fallback = DEFAULT_ARITY[entry.element] ?? 1
   let n
-  // `[n+]` always parses a digit before the `+`, so `min` is a number here.
   if (max !== null) n = max
-  else if (open) n = Math.max(min + 1, fallback)
-  else if (min !== null) n = min
+  // A count with a floor and no ceiling is `[n+]` — open.
+  else if (min !== null) n = Math.max(min + 1, fallback)
   else n = fallback
   return Math.min(Math.max(n, 1), ARITY_CAP)
 }
@@ -166,66 +144,21 @@ function frontmatterFor(component, presetName) {
   return { type: component.name, ...params }
 }
 
-/**
- * Resolve one `data:` value to a schema this can sample.
- *
- * A value is a named ref (`'@std/person'`, `{ schema: '@/member' }`), an inline
- * field map, an inline rich-form, or `{}` for a key with no schema at all.
- *
- * ⭐ `@std/*` RESOLVES HERE, WITH NO HELP. Those schemas are this package's own,
- * so the commonest ref in the wild costs a caller nothing. ⛔ `@/x` and `@org/x`
- * cannot: they live on the foundation's disk, and resolving them is the build's
- * job (`dataSchemas` in `schema.json`). A caller holding that map passes it in;
- * one that does not gets no block for those keys rather than a wrong one.
- */
-function resolveDataSchema(value, dataSchemas) {
-  const ref =
-    typeof value === 'string'
-      ? value
-      : value && typeof value === 'object' && typeof value.schema === 'string'
-        ? value.schema
-        : null
-
-  if (ref) {
-    if (dataSchemas && dataSchemas[ref]) return dataSchemas[ref]
-    const std = ref.startsWith('@std/') ? STANDARD_SCHEMAS[ref.slice('@std/'.length)] : null
-    return std || null
-  }
-
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null
-  // `{}` declares a key and no shape — there is nothing to sample.
-  return Object.keys(value).length > 0 ? value : null
-}
-
-/**
- * One tagged block per key the component declares in `data:`, keyed by the tag
- * an author would write (```yaml:<key>). Returns null when nothing resolved, so
- * the caller can report the element unfilled rather than emit an empty map.
- */
-function sampleDataBlocks(declared, dataSchemas) {
-  if (!declared || typeof declared !== 'object' || Array.isArray(declared)) return null
-  const blocks = {}
-  for (const [tag, value] of Object.entries(declared)) {
-    const schema = resolveDataSchema(value, dataSchemas)
-    if (!schema) continue
-    const record = sampleRecord(schema)
-    if (record !== null) blocks[tag] = record
-  }
-  return Object.keys(blocks).length > 0 ? blocks : null
+/** A name for an unfilled entry: the element, or a concept block's key as its fence is written. */
+function nameOf(entry) {
+  return entry.kind === 'concept' ? `md:${entry.key}` : entry.element
 }
 
 /**
  * Generate starter content for one section type.
  *
- * @param {object} component - a `schema.json` component entry. It needs `name`,
- *   and reads `content`, `params`, `presets` and `family` when present. This is
- *   the same argument `resolveFamily` takes, on purpose: a consumer holding a
+ * @param {object} component - a `meta.js` default export, or a `schema.json`
+ *   component entry. It needs `name`, and reads `content` (a declaration, or the
+ *   lowered list), `params`, `presets` and `family` when present. This is the
+ *   same argument `resolveFamily` takes, on purpose: a consumer holding a
  *   foundation schema passes an entry straight through to either one.
  * @param {object} [options]
  * @param {string} [options.preset] - use this preset's params as the frontmatter.
- * @param {object} [options.dataSchemas] - resolved schemas by ref, as
- *   `schema.json`'s `dataSchemas` carries them. Needed only for `@/x` and
- *   `@org/x` refs; `@std/*` resolves without it.
  * @param {Array}  [options.assets] - images the CALLER can offer, as
  *   `{ url, alt?, width?, height? }`. Used in order, then the built-in
  *   placeholders. ⛔ Framework never constructs an image address; this is the
@@ -233,9 +166,10 @@ function sampleDataBlocks(declared, dataSchemas) {
  * @returns {{params: object, content: object, family: object, unfilled: string[],
  *   elementsInferred: boolean}}
  *   `content` is the flat structure — feed it to `buildDoc`. `unfilled` names
- *   declared elements this cannot fill, so a caller can say so rather than
- *   silently omit them. `elementsInferred` is true when the component declared
- *   no `content:` and the element list came from its family instead.
+ *   declared elements this cannot fill (by their canonical name; a concept block
+ *   as `md:<tag>`), so a caller can say so rather than silently omit them.
+ *   `elementsInferred` is true when the component declared no `content:` and the
+ *   element list came from its family instead.
  */
 export function starterContent(component, options = {}) {
   if (!component || typeof component !== 'object' || !component.name) {
@@ -254,18 +188,16 @@ export function starterContent(component, options = {}) {
   //
   // ⛔ AND THE CALLER IS TOLD. `elementsInferred` says the element list is ours
   // rather than the developer's — the distinction a schema entry draws by carrying
-  // `title` only when the developer wrote one (`titleInferred` drew it until
-  // 2026-09-27), and for the same reason: a consumer cannot tell from the output
-  // alone, and the two deserve different treatment.
-  const elementsInferred = !component.content || Object.keys(component.content).length === 0
-  const declared = elementsInferred
-    ? Object.fromEntries((register.elements || []).map((el) => [el, '']))
-    : component.content
+  // `title` only when the developer wrote one, and for the same reason: a consumer
+  // cannot tell from the output alone, and the two deserve different treatment.
+  const described = describeContent(component)
+  const elementsInferred = !described.declared
+  const list = elementsInferred
+    ? describeContent({ content: Object.fromEntries((register.elements || []).map((el) => [el, true])) }).elements
+    : described.elements
 
-  const content = {}
   const unfilled = []
   let assetCursor = 0
-
   const nextImage = (alt) => {
     const supplied = assets[assetCursor++]
     if (supplied && supplied.url) {
@@ -275,95 +207,95 @@ export function starterContent(component, options = {}) {
     return starterImage(shape, alt)
   }
 
-  for (const [element, expectation] of Object.entries(declared)) {
-    // ⛔ One test covers three cases, and that is the point of a single
-    // vocabulary: `background` (a real meta.js key, just not a content one) and
-    // an outright typo both have no element spec, so both decline here.
-    // `describeContent` is what tells them apart, for a consumer that cares.
-    const spec = UNFILLABLE.has(element) ? null : elementSpec(element)
-    if (!spec) {
-      unfilled.push(element)
-      continue
-    }
-    const slot = spec.key
-
-    const n = UNCOUNTED.has(slot) ? 0 : arityFor(slot, expectation)
-
-    switch (slot) {
-      case 'title':
-        content.title = register.headline
-        break
-      case 'pretitle':
-        content.pretitle = register.eyebrow
-        break
-      case 'subtitle':
-        content.subtitle = register.subhead
-        break
-      case 'paragraphs':
-        content.paragraphs = take(register.sentences, n)
-        break
-      case 'links':
-        content.links = take(register.actions, n).map((a) => ({ label: a.label, href: a.href }))
-        break
-      case 'lists':
-        // One list of several entries — `n` counts the LISTS, and the bullets
-        // inside one are the register's, not a second arity to invent.
-        content.lists = Array.from({ length: n }, () => [...register.bullets])
-        break
-      case 'items':
-        content.items = take(register.records, n).map((r) => ({
-          title: r.title,
-          ...(r.line ? { paragraphs: [r.line] } : {}),
-        }))
-        break
-      case 'images':
-        content.images = Array.from({ length: n }, () =>
-          nextImage(register.image?.alt || 'Placeholder image'),
-        )
-        break
-      case 'icons':
-        content.icons = take(register.icons, n).map((name) => ({ library: 'lu', name }))
-        break
-      case 'snippets':
-        content.snippets = take(register.snippets, n)
-        break
-      case 'data': {
-        // ⭐ `content: { data: … }` IS THE DISCRIMINATOR, and it is the whole
-        // reason this is not filled whenever `data:` exists.
-        //
-        // `data:` in meta.js declares the `content.data` keys a component
-        // RECEIVES — and a key is filled either by a FETCH the site declares or
-        // by a tagged block the author writes. `store/ProductGrid` declares
-        // `data: { products: … }` filled by a query; writing a ```yaml:products
-        // block for it would invent content the site is supposed to supply.
-        // `docs/ApiReference` declares `content: { data: 'API definition' }`,
-        // which says the author writes it inline. Only that says so.
-        //
-        // ⚠️ It cannot separate two keys of ONE component when some are fetched
-        // and some authored — nothing in meta.js distinguishes them. A component
-        // in that position gets a block per key and its developer deletes the
-        // ones a query fills.
-        const blocks = sampleDataBlocks(component.data, options.dataSchemas)
-        if (blocks) content.data = blocks
-        else unfilled.push(element)
-        break
+  /**
+   * Fill a group — the section, or one entry — from a lowered list. `record` is
+   * the register's entry an item is made from: its title and line are the
+   * entry's headline and text.
+   */
+  const fill = (entries, record = null) => {
+    const group = {}
+    for (const entry of entries) {
+      if (entry.kind === 'concept' || UNFILLABLE.has(entry.element)) {
+        // ⚠️ A concept block too: `buildDoc` writes a tagged prose fence as no
+        // node yet, so a structure for one would not survive serializing.
+        unfilled.push(nameOf(entry))
+        continue
       }
-      case 'videos':
-        // No placeholder video exists and inventing an address is exactly what
-        // this package must not do — so a declared video slot is reported
-        // unfilled rather than filled with a URL nobody can serve.
-        unfilled.push(element)
-        break
-      default:
-        unfilled.push(element)
+      // An entry is one of several: one of each thing it holds.
+      const n = record ? 1 : arityFor(entry)
+
+      switch (entry.element) {
+        case 'title':
+          group.title = record ? record.title : register.headline
+          break
+        case 'pretitle':
+          group.pretitle = register.eyebrow
+          break
+        case 'subtitle':
+          group.subtitle = register.subhead
+          break
+        case 'paragraphs':
+          group.paragraphs = record ? (record.line ? [record.line] : []) : take(register.sentences, n)
+          break
+        case 'links':
+          group.links = take(register.actions, n).map((a) => ({ label: a.label, href: a.href }))
+          break
+        case 'lists':
+          // One list of several entries — `n` counts the LISTS, and the bullets
+          // inside one are the register's, not a second arity to invent.
+          group.lists = Array.from({ length: n }, () => [...register.bullets])
+          break
+        case 'items': {
+          // ⭐ What each entry holds is the entry's own `content:` when the
+          // developer declared one — the same list a section's lowers to — and a
+          // headline with a line of text when they did not.
+          const holds = entry.content || [
+            { element: 'title', kind: 'heading' },
+            { element: 'paragraphs', kind: 'prose' },
+          ]
+          group.items = take(register.records, n).map((r) => fill(holds, r))
+          break
+        }
+        case 'media':
+          // Only an image can be made up: no placeholder video exists, and an
+          // embedded component is the author's choice of component. A slot that
+          // takes images gets images, whatever else it also takes.
+          if (entry.types.includes('image')) {
+            group.images = [
+              ...(group.images || []),
+              ...Array.from({ length: n }, () => nextImage(register.image?.alt || 'Placeholder image')),
+            ]
+          } else {
+            unfilled.push(nameOf(entry))
+          }
+          break
+        case 'icons':
+          group.icons = take(register.icons, n).map((name) => ({ library: 'lu', name }))
+          break
+        case 'snippets':
+          group.snippets = take(register.snippets, n)
+          break
+        case 'sequence':
+          // The whole section, as written. Its prose is what a starter can
+          // write; what else it takes, the author adds where they want it.
+          if (!(entry.except || []).includes('prose') && !entries.some((e) => e.element === 'paragraphs')) {
+            group.paragraphs = take(register.sentences, 2)
+          }
+          break
+        default:
+          unfilled.push(nameOf(entry))
+      }
     }
+    return group
   }
+
+  const content = fill(list)
 
   return {
     params: frontmatterFor(component, options.preset),
     content,
     family,
-    unfilled,
+    unfilled: [...new Set(unfilled)],
     elementsInferred,
   }
 }

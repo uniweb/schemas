@@ -28,10 +28,11 @@
  *                 → `./site-tags`, `./site-tags.json`
  *
  *   the COMPONENT what a section type's `meta.js` declares, read for an editor:
- *                 its expected content (`./content`), and where it may be placed,
- *                 the children it arranges, the visual it takes and its title
- *                 (`./component`). A grid layout value (`grid: '40/60'`) has its
- *                 own dependency-free module, since kit renders with it.
+ *                 its expected content (`./content` — lowered to the canonical
+ *                 list a foundation registers), and where it may be placed, the
+ *                 children it arranges and its title (`./component`). A grid
+ *                 layout value (`grid: '40/60'`) has its own dependency-free
+ *                 module, since kit renders with it.
  *                 → `./content`, `./component`, `./grid`
  *
  *   the SECTION   the names framework reserves in a section's params —

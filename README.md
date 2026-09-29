@@ -592,43 +592,44 @@ A section type says what content it expects:
 
 ```js
 content: {
-  title:      'Headline',
+  title:      'Headline [1]',
   paragraphs: 'Short pitch [0-1]',
-  items:      { label: 'Feature cards [3-6]', hint: 'Each H3 becomes a card' },
+  media:      'Photo, video or diagram [1]',
+  items:      { label: 'Feature cards [3-6]', content: { title: 'Feature', paragraphs: 'Description' } },
 }
 ```
 
-That's a small grammar — an element vocabulary, a count in brackets, two ways to write a value, and names whose singular declares what their plural delivers. `describeContent` reads it so a consumer doesn't have to:
+That's a small grammar — an element vocabulary, a count in brackets, a few ways to write a value, and spellings that read naturally (`image:`, `videos:`) for what is one element. `describeContent` **lowers** it into one canonical list — the form a foundation registers, so a reader never needs the grammar:
 
 ```js
 import { describeContent } from '@uniweb/schemas/content'
 
-const { elements, unknown, declared, summary } = describeContent(component)
+const { elements, problems, declared, summary } = describeContent(component)
 ```
-
-Each element comes back with what a UI needs to draw it:
 
 ```js
-{
-  key: 'items',            // what the component reads off `content`
-  declaredAs: 'items',     // what the developer wrote
-  label: 'Feature cards',
-  labelSource: 'declared', // 'standard' when the label is ours, not theirs
-  hint: 'Each H3 becomes a card',
-  kind: 'entries',         // one of CONTENT_KINDS
-  syntax: '# Section title\n\n### First entry\n…',
-  description: 'Repeated groups within one file — a heading starts each one. …',
-  arity: { min: 3, max: 6, required: true, repeatable: true, text: '3–6' },
-}
+[
+  { element: 'title',      kind: 'heading', label: 'Headline', min: 1, max: 1 },
+  { element: 'paragraphs', kind: 'prose',   label: 'Short pitch', min: 0, max: 1 },
+  { element: 'media',      kind: 'media',   types: ['image', 'video', 'inset'], label: 'Photo, video or diagram', min: 1, max: 1 },
+  { element: 'items',      kind: 'entries', label: 'Feature cards', min: 3, max: 6,
+    content: [{ element: 'title', kind: 'heading', label: 'Feature' }, { element: 'paragraphs', kind: 'prose', label: 'Description' }] },
+]
 ```
 
-- **`kind`** is a closed set — `heading` · `prose` · `list` · `link` · `image` · `icon` · `video` · `entries` · `code` · `data` · `inset`, published as `CONTENT_KINDS`.
-- **`syntax`** is a markdown sample that actually produces the element. A test asserts exactly that for every one of them, because a sample that doesn't parse is worse than none — it's copy-pasteable and it fails silently.
-- ⛔ **`labelSource` decides whether you may translate the label.** A declared label is the foundation's own words, in whatever language the developer chose; show it verbatim. A `'standard'` one is ours.
-- **`unknown`** names anything `content:` declared that isn't an element, with a reason. `background` gets its own — it's a real `meta.js` key, just a top-level one, so calling it a typo would hide that there's a correct place for it.
-- **`declared: false`** means the component declares no `content:` at all. That's supported and common, never an error.
+- **`element`** is what the component reads — `content.<element>`. **`kind`** is a closed set, `CONTENT_KINDS`.
+- **One element for the media slot.** `image`, `images` and `thumbnail` lower to `media` with `types: ['image']`, `videos` to `['video']`, `insets` to `['inset']`, and `media` to its `types` — all three when none are written (`MEDIA_TYPES`). Media is visual: a document is declared as `documents`.
+- **Only what the developer wrote.** `label` and `hint` appear only where written, and `min` / `max` only where a count was. ⛔ A declared label is the foundation's own words, in whatever language the developer chose — show it verbatim. Where there is none, supply your own words; framework's English ones, with a markdown sample and a description, are `elementSpec(element)`.
+- **`sequence`** declares content rendered as written — the whole section, in order, the headline included. `except` leaves kinds out (`SEQUENCE_KINDS`): `sequence: { label: 'Rich content', except: ['table', 'math'] }`.
+- **What an entry holds.** `items` takes `content:`, lowered to the list a section's is.
+- **Concept blocks.** A `'md:<tag>'` key in `data:` — `'md:faq': 'Questions and answers [3+]'`, or `{ label, hint, content }` — is a concept block the author writes, and joins the list as `{ key: 'faq', kind: 'concept', … }`. A count on its label counts the entries. `lowerData` gives the `data:` map with each such key as the key a component reads (`faq: {}`).
+- **`problems`** says, in words, what could not be read — an unknown name, a count on `sequence`, two declarations that would count one thing twice (`media` beside `image`), the retired `data` element. The rest is still returned.
+- **`declared: false`** means the component says nothing about its content. That's supported and common, never an error.
+- **A lowered list is read as itself**, so one call serves a `meta.js` and a registered schema entry.
 
 Nothing throws. A foundation is third-party, and one odd key shouldn't cost a section its panel.
+
+`children:` lowers too: `lowerChildren` (`@uniweb/schemas/component`) gives the object form `describeChildren` returns — `true` becomes `{}`, a count `{ max }`.
 
 ---
 
@@ -658,12 +659,11 @@ const md = serializeSection(params, doc)
 
 | from `meta.js` | what it decides |
 |---|---|
-| `content:` | which elements to fill, and **how many** — the count syntax (`[3-6]`, `[2+]`) is read here |
+| `content:` | which elements to fill, and **how many** — the count syntax (`[3-6]`, `[2+]`) is read here. An entry's `content:` decides what each item holds |
 | `family:` | the register the copy comes from — a `team` gets people, a `pricing` gets tiers |
 | `params:` / `presets:` | the frontmatter. `{ preset: 'split' }` uses that preset's params instead of the defaults |
-| `data:` | a tagged block per key, sampled from its schema — **only** when `content:` declares `data` |
 
-`content: { data: … }` is the discriminator, because `data:` declares the keys a component *receives* and a key is filled either by a fetch the site declares or by a block the author writes. Nothing else in `meta.js` separates them.
+It reads the declaration through `describeContent`, so a registered schema entry — its `content` already lowered — gives the same starter as its `meta.js`.
 
 ### Rules worth knowing
 
@@ -671,7 +671,7 @@ const md = serializeSection(params, doc)
 - **A component that declares no `content:`** gets its family's canonical elements, and `elementsInferred` says so.
 - **Nothing is repeated** to reach a count. Duplicated filler reads as a bug, not a placeholder.
 - **Placeholder images are self-contained SVG data URIs.** No host is invented. Pass `{ assets: [{ url, alt }] }` to supply real ones.
-- **`unfilled`** names declared elements this cannot fill, so a caller can say so rather than silently omit them.
+- **`unfilled`** names declared elements this cannot fill — a document, a table, an equation, a quote, a slot of videos or embedded components, a concept block (`md:<tag>`) — so a caller can say so rather than silently omit them.
 
 ### It is derived, never authored
 

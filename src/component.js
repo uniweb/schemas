@@ -1,12 +1,11 @@
 /**
- * What a component's schema entry declares about its PLACE — where it may go, what it
- * arranges, and what visual it takes — read once, here, so an editor does not learn
- * framework's grammar.
+ * What a component's schema entry declares about its PLACE — where it may go and what it
+ * arranges — read once, here, so an editor does not learn framework's grammar.
  *
  * The same arrangement as `describeContent` (`./content`): the grammar is framework's,
  * the shapes returned below are the contract, and a consumer may switch on them.
- * A foundation's schema carries what its developer wrote in `meta.js`, verbatim; these
- * functions derive the rest where it is used.
+ * ⭐ `children:` is registered LOWERED — `lowerChildren`, written into the entry by the
+ * build (✅ ruled 2026-09-29) — and `describeChildren` reads that form as itself.
  *
  * ⚖️ **Guidance, never enforcement.** Every declaration read here is editor metadata.
  * The runtime renders any section type in any position, and `block.childBlocks` is
@@ -150,7 +149,9 @@ export function describeChildren(entry) {
   if (spec.grid !== undefined) {
     const offered = Array.isArray(spec.grid) ? spec.grid : [spec.grid]
     const grid = []
-    for (const value of offered) {
+    for (const offer of offered) {
+      // A lowered entry holds each layout as this function returns it — read its `value`.
+      const value = offer && typeof offer === 'object' && 'value' in offer ? offer.value : offer
       const layout = parseGrid(value)
       if (layout) grid.push({ ...layout, template: gridTemplate(value) })
       else problems.push(`\`children.grid\` offers ${JSON.stringify(value)}, which is not a layout — write a column count (3) or relative widths ('40/60').`)
@@ -162,10 +163,38 @@ export function describeChildren(entry) {
   return out
 }
 
+/**
+ * `children:` as a foundation registers it: always the object form, holding only what
+ * was said — `true` and `'many'` become `{}`, a count `{ max }`, and `grid` each layout
+ * as `describeChildren` reads it (`{ value, columns, widths, template }`), so a reader
+ * needs no framework code to draw one. `undefined` when nothing is declared.
+ *
+ * ✅ Ruled [Diego, 2026-09-29]: `children:` lowers with `content:` — one predictable
+ * form in what a foundation registers. What could not be read is left out, and said in
+ * `describeChildren(entry).problems`.
+ *
+ * @param {object} entry - a `meta.js` default export, or a schema entry
+ * @returns {{ label?, hint?, min?, max?, types?, grid? }|undefined}
+ */
+export function lowerChildren(entry) {
+  const described = describeChildren(entry)
+  if (!described.declared) return undefined
+  const out = {}
+  for (const key of ['label', 'hint', 'min', 'max', 'types', 'grid']) {
+    if (described[key] !== null) out[key] = described[key]
+  }
+  return out
+}
+
 const VISUAL_TYPES = ['image', 'video', 'inset']
 
 /**
- * The visual a component takes.
+ * The visual a component takes — ⛔ RETIRED DECLARATION.
+ *
+ * `visuals` is retired [Diego, 2026-09-29]: a component declares its media slot as the
+ * `media` element of `content:` (`describeContent`), and the build refuses the top-level
+ * key, naming the move. This reads a schema built before. It goes once its readers
+ * confirm they read the element — a confirmation, not a version.
  *
  *     visuals: 1 | 2 | …                 up to that many, any type
  *     visuals: 'many'                    any number, any type

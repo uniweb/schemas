@@ -1,5 +1,6 @@
 import { describe, test, expect } from 'vitest'
 import { starterContent, parseExpectation } from '../src/starter.js'
+import { describeContent } from '../src/content.js'
 import { sampleRecord } from '../src/starter/sample-record.js'
 import person from '../src/standard/person.js'
 import form from '../src/standard/form.js'
@@ -70,14 +71,14 @@ describe('the declaration decides the slots', () => {
   })
 
   test('an element this cannot fill is REPORTED, never silently dropped', () => {
-    // `background:` is not a content element at all — it is the top-level
-    // meta.js key, rendered by the runtime from frontmatter — and a video needs
-    // an address this package must not invent.
+    // A video needs an address this package must not invent. (`background:` is
+    // not a content element at all — `describeContent` says so — so it is not
+    // an element left unfilled either.)
     const { content, unfilled } = starterContent({
       name: 'Lesson',
       content: { title: 'T', background: 'BG', videos: 'Clip' },
     })
-    expect(unfilled).toEqual(expect.arrayContaining(['background', 'videos']))
+    expect(unfilled).toEqual(['media'])
     expect(content).toHaveProperty('title')
   })
 })
@@ -199,54 +200,90 @@ describe('snippets', () => {
   })
 })
 
-describe('tagged data blocks', () => {
-  const declared = { title: 'T', data: 'The block the author writes' }
+describe('the lowered form', () => {
+  test('a registered entry — its content already lowered — gives the same starter as its meta.js', () => {
+    const meta = {
+      name: 'Features',
+      content: { title: 'Headline', items: { label: 'Cards [3]', content: { title: 'Feature', image: 'Art' } } },
+    }
+    const entry = { name: 'Features', content: describeContent(meta).elements }
+    expect(starterContent(entry)).toEqual(starterContent(meta))
+  })
+})
 
-  test('`content: { data }` is what asks for a block — a fetched key gets none', () => {
-    // `data:` declares the keys a component RECEIVES, and a key is filled by a
-    // fetch OR by an authored block. Only the content element says which.
-    const fetched = starterContent({
-      name: 'ProductGrid',
-      content: { title: 'T' },
-      data: { products: { price: { type: 'number' } } },
+describe('what an entry holds — `content:` on `items`', () => {
+  test('each entry is built from the entry declaration', () => {
+    const { content, unfilled } = starterContent({
+      name: 'Features',
+      content: { items: { label: 'Cards [3]', content: { title: 'Feature', paragraphs: 'Text', image: 'Art', links: 'More' } } },
     })
-    expect(fetched.content).not.toHaveProperty('data')
+    expect(unfilled).toEqual([])
+    expect(content.items).toHaveLength(3)
+    for (const item of content.items) {
+      expect(item.title).toBeTruthy()
+      expect(item.images).toHaveLength(1)
+      expect(item.links).toHaveLength(1)
+    }
+  })
 
-    const authored = starterContent({
+  test('with no entry declaration, an entry is a headline and a line', () => {
+    const { content } = starterContent({ name: 'List', content: { items: 'Entries [2]' } })
+    expect(Object.keys(content.items[0]).sort()).toEqual(['paragraphs', 'title'])
+  })
+})
+
+describe('the media slot', () => {
+  test('a slot that takes images is filled with images — whatever else it takes', () => {
+    expect(starterContent({ name: 'Hero', content: { media: 'Hero media [1]' } }).content.images).toHaveLength(1)
+  })
+
+  test('a slot of videos or embedded components only is left unfilled, and said', () => {
+    for (const media of [{ types: ['video'] }, { types: ['inset'] }]) {
+      const { content, unfilled } = starterContent({ name: 'X', content: { media } })
+      expect(content).not.toHaveProperty('images')
+      expect(unfilled).toEqual(['media'])
+    }
+  })
+})
+
+describe('sequence', () => {
+  test('a component that renders its content as written gets prose to edit', () => {
+    const { content, unfilled } = starterContent({ name: 'Article', content: { title: 'H', sequence: 'Prose and media' } })
+    expect(unfilled).toEqual([])
+    expect(content.title).toBeTruthy()
+    expect(content.paragraphs.length).toBeGreaterThan(0)
+  })
+
+  test('…unless it leaves prose out', () => {
+    const { content } = starterContent({ name: 'X', content: { sequence: { except: ['prose'] } } })
+    expect(content).not.toHaveProperty('paragraphs')
+  })
+})
+
+describe('what a starter cannot write', () => {
+  test('tables, math, quotes and documents are reported unfilled', () => {
+    const { unfilled } = starterContent({
+      name: 'X',
+      content: { tables: 'T', math: 'M', quotes: 'Q', documents: 'D' },
+    })
+    expect(unfilled).toEqual(['tables', 'math', 'quotes', 'documents'])
+  })
+
+  test('a concept block is reported by its key, as its fence is written', () => {
+    const { content, unfilled } = starterContent({ name: 'FAQ', data: { 'md:faq': 'Questions and answers [3+]' } })
+    expect(content).not.toHaveProperty('data')
+    expect(unfilled).toEqual(['md:faq'])
+  })
+
+  test('the retired `content:` element `data` asks for no block', () => {
+    // It was the only thing that said a `data:` key is authored as a block rather
+    // than fetched; with it retired, nothing in `meta.js` says so.
+    const { content } = starterContent({
       name: 'ApiReference',
-      content: declared,
+      content: { title: 'T', data: 'API definition (yaml:api block)' },
       data: { api: { method: { type: 'string', enum: ['GET', 'POST'] } } },
     })
-    expect(authored.content.data).toEqual({ api: { method: 'GET' } })
-  })
-
-  test('the tag is the declared key, so the author writes ```yaml:<key>', () => {
-    const { content } = starterContent({
-      name: 'X',
-      content: declared,
-      data: { api: { path: { type: 'string' } }, meta: { title: { type: 'string' } } },
-    })
-    expect(Object.keys(content.data)).toEqual(['api', 'meta'])
-  })
-
-  test('an @std ref resolves with no help from the caller', () => {
-    const { content } = starterContent({ name: 'Team', content: declared, data: { people: '@std/person' } })
-    expect(content.data.people.name).toBeTruthy()
-    expect(content.data.people.email).toContain('@')
-  })
-
-  test('a foundation ref needs the resolved map, and is skipped without it', () => {
-    const component = { name: 'X', content: declared, data: { members: '@/member' } }
-    expect(starterContent(component).unfilled).toContain('data')
-
-    const withMap = starterContent(component, {
-      dataSchemas: { '@/member': { name: 'member', fields: { name: { type: 'string' } } } },
-    })
-    expect(withMap.content.data.members.name).toBeTruthy()
-  })
-
-  test('a key declaring no shape produces no block', () => {
-    expect(starterContent({ name: 'X', content: declared, data: { quiz: {} } }).unfilled).toContain('data')
+    expect(content).not.toHaveProperty('data')
   })
 })
 

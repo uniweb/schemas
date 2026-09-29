@@ -135,6 +135,11 @@ const ELEMENTS = {
     syntax: '![A description](clip.mp4){role=video}',
     description: 'A video, marked with the video role.',
   },
+  documents: {
+    key: 'documents', kind: 'document', repeatable: true, label: 'Document',
+    syntax: '![Annual report](report.pdf){role=pdf}',
+    description: 'A file — a PDF — marked with the pdf role, with an optional preview image, author and description.',
+  },
   snippets: {
     key: 'snippets', kind: 'code', repeatable: true, label: 'Code sample',
     syntax: '```js\nconst x = 1\n```',
@@ -167,12 +172,12 @@ const NOT_CONTENT = {
 /** Every name a `content:` block may declare, in the order they are documented. */
 export const CONTENT_ELEMENTS = [
   'title', 'pretitle', 'subtitle', 'paragraphs', 'links', 'lists', 'items',
-  'image', 'images', 'thumbnail', 'icon', 'icons', 'videos', 'snippets', 'data', 'insets',
+  'image', 'images', 'thumbnail', 'icon', 'icons', 'videos', 'documents', 'snippets', 'data', 'insets',
 ]
 
 /** The closed set a consumer may switch on. */
 export const CONTENT_KINDS = [
-  'heading', 'prose', 'list', 'link', 'image', 'icon', 'video', 'entries', 'code', 'data', 'inset',
+  'heading', 'prose', 'list', 'link', 'image', 'icon', 'video', 'document', 'entries', 'code', 'data', 'inset',
 ]
 
 /**

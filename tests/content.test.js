@@ -171,3 +171,19 @@ describe('declarationKey', () => {
     expect(declarationKey('nonesuch')).toBe('nonesuch')
   })
 })
+
+describe('documents — declarable since the parser delivers content.documents', () => {
+  test('a documents declaration is an element of kind document, counted like any', () => {
+    const { elements, unknown } = describeContent({ content: { documents: 'Reports [2+]' } })
+    expect(unknown).toEqual([])
+    expect(elements).toHaveLength(1)
+    expect(elements[0]).toMatchObject({
+      key: 'documents',
+      declaredAs: 'documents',
+      kind: 'document',
+      label: 'Reports',
+      labelSource: 'declared',
+    })
+    expect(elements[0].arity).toMatchObject({ min: 2, max: null })
+  })
+})

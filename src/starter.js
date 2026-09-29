@@ -59,7 +59,8 @@ import { schemas as STANDARD_SCHEMAS } from './index.js'
  * carry its own copy of the declared-name → delivered-key table; two copies of
  * one mapping is the drift this package keeps warning about.
  */
-const UNFILLABLE = new Set(['insets', 'quotes', 'headings'])
+// `documents`: a document is a real file, which a generator cannot make up.
+const UNFILLABLE = new Set(['insets', 'quotes', 'headings', 'documents'])
 
 /** How many to generate when the declaration states no count. */
 const DEFAULT_ARITY = {

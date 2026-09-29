@@ -40,7 +40,7 @@ export default {
 - The **key** (`team`) is the `content.data` key — where the data lands and where the schema's defaults are applied. The site, author, or editor decides *how* that key gets filled (a fetched collection, a tagged code block, an editor form); the schema is the same regardless of source.
 - The **value** is a **named ref**, an **inline field map**, or an **inline rich-form** (distinguished by a `fields` **array** rather than a keyed object — it drives the editor's form UI).
 
-A `data:` declaration is a hint, **not a delivery gate**: delivery is default-on, so a component receives `content.data` whether or not it declares `data:`. A component that should receive no ambient data declares `data: false`.
+A `data:` declaration is **what the section receives**: `content.data` holds the keys the component declares and nothing else, each filled by whatever reaches the section under that key — or `null` when nothing does. A component with no `data:`, or `data: false`, receives no keys of its own.
 
 There is no separate `schemas:` key, no `entity:` field, and no `inheritData` — all folded into this one `data:` surface.
 

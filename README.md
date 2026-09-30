@@ -102,6 +102,8 @@ fields:
 |---|---|
 | `name` | Schema identity (short name) |
 | `version` | Schema version |
+| `label` | A display name, for people |
+| `plural` | What many entries are called — `label: Person`, `plural: People` |
 | `description` | Human-readable description |
 | `fields` | A flat record's fields — **xor** `sections` |
 | `sections` | Named sections of a structured type — **xor** `fields` |

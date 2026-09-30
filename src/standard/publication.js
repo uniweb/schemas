@@ -4,6 +4,7 @@
 export default {
   name: 'publication',
   version: '1.0.0',
+  plural: 'Publications',
   description: 'An academic paper, research document, or publication',
 
   fields: {

@@ -13,6 +13,7 @@
 export default {
   name: 'article',
   version: '3.0.0',
+  plural: 'Articles',
   description: 'A blog post, news item, or documentation page',
 
   sections: {

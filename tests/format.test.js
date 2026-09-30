@@ -108,6 +108,14 @@ describe('every shipped standard is valid in this format', () => {
     expect(out.fields !== undefined).not.toBe(out.sections !== undefined)
     expect(out.name).toBe(schemas[name].name)
   })
+
+  // Every standard says what many of its entries are called (2026-09-30 [Diego]) —
+  // a plural is written, never derived from the name.
+  it.each(names)("'%s' declares its plural", (name) => {
+    const out = validateAndNormalizeSchema(schemas[name], `@std/${name}`)
+    expect(typeof out.plural).toBe('string')
+    expect(out.plural.trim()).not.toBe('')
+  })
 })
 
 /**
@@ -318,6 +326,22 @@ describe('model-level keys', () => {
     expect(() =>
       validateAndNormalizeSchema(withSections({ label: { en: 'Session' } }), '@demo/session')
     ).toThrow(/must be a plain string/)
+  })
+
+  // ⛔ Until 2026-09-30 `plural` was warned about and dropped: "'plural' is not a
+  // model-level key and will not be carried".
+  it('carries plural, the name for many entries, as a model-level key', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const out = validateAndNormalizeSchema(withSections({ label: 'Person', plural: 'People' }), '@demo/person')
+    expect(out.plural).toBe('People')
+    expect(warn).not.toHaveBeenCalled()
+    warn.mockRestore()
+  })
+
+  it('refuses a per-locale object for plural, as for the label', () => {
+    expect(() =>
+      validateAndNormalizeSchema(withSections({ plural: { en: 'People' } }), '@demo/person')
+    ).toThrow(/'plural' on 'the model' must be a plain string/)
   })
 
   it('warns about an unknown model-level key rather than dropping it in silence', () => {

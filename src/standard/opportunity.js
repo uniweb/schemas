@@ -4,6 +4,7 @@
 export default {
   name: 'opportunity',
   version: '1.0.0',
+  plural: 'Opportunities',
   description: 'A job posting, grant, or call for proposals',
 
   fields: {

@@ -84,6 +84,7 @@ import { AUTHORING_TYPES } from '../format.js'
 export default {
   name: 'form',
   version: '2.0.0',
+  plural: 'Forms',
   description: 'A form designed by an author — the controls a visitor will be asked to fill',
 
   sections: {

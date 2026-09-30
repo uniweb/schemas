@@ -26,6 +26,7 @@
 export default {
   name: 'nav',
   version: '1.0.0',
+  plural: 'Navigation menus',
   description: 'Navigation menu or hierarchical link structure',
 
   sections: {

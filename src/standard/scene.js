@@ -23,6 +23,7 @@
 export default {
   name: 'scene',
   version: '1.0.0',
+  plural: 'Scenes',
   description: 'A Scene Composition Format document — a layered visual scene composited via CSS blend modes',
 
   fields: {

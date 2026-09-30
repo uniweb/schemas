@@ -94,7 +94,7 @@ export const SECTION_KINDS = new Set(['single', 'multi', 'binder'])
  * refuse — see `warnUnknownModelKeys`.
  */
 const MODEL_KEYS = new Set([
-  'name', 'version', 'label', 'description', 'source_locale', 'sourceLocale',
+  'name', 'version', 'label', 'plural', 'description', 'source_locale', 'sourceLocale',
   'linkable', 'sort_date', 'sortDate',
   'fields', 'sections'
 ])
@@ -215,7 +215,8 @@ function normalizeSectionFlags(node, ref, path, isRecordList) {
 }
 
 /**
- * `label` and `description` are plain strings, at every tier.
+ * `label` and `description` are plain strings, at every tier — and a Model's
+ * `plural`, which exists only at the model tier.
  *
  * They are carried inline as the SOURCE-LOCALE string; the other locales live in
  * translation rows. So an inline per-locale object — `label: { en: 'Name' }` — is
@@ -228,8 +229,8 @@ function normalizeSectionFlags(node, ref, path, isRecordList) {
  * `enum` and `options` — unlike a rule that merely reflects what the registry has
  * no slot for.
  */
-function assertProseStrings(node, ref, path) {
-  for (const k of ['label', 'description']) {
+function assertProseStrings(node, ref, path, keys = ['label', 'description']) {
+  for (const k of keys) {
     if (node[k] !== undefined && typeof node[k] !== 'string') {
       const got = Array.isArray(node[k]) ? 'a list' : `an ${typeof node[k]}`.replace(/^an ([^aeiou])/, 'a $1')
       throw new Error(
@@ -255,10 +256,13 @@ export function validateAndNormalizeSchema(schema, ref) {
     throw new Error(`Data schema '${ref}' did not export a schema object.`)
   }
 
-  assertProseStrings(schema, ref, 'the model')
+  assertProseStrings(schema, ref, 'the model', ['label', 'plural', 'description'])
 
+  // `plural` — the Model's name for many of its entries (`label: Person`,
+  // `plural: People`). Carried like `label` since 2026-09-30 [Diego]; until then it
+  // was warned about and dropped.
   const out = {}
-  for (const k of ['name', 'version', 'description', 'label']) {
+  for (const k of ['name', 'version', 'description', 'label', 'plural']) {
     if (schema[k] !== undefined) out[k] = schema[k]
   }
 

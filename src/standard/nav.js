@@ -28,6 +28,8 @@ export default {
   version: '1.0.0',
   plural: 'Navigation menus',
   description: 'Navigation menu or hierarchical link structure',
+  // Its entries are not referenced and not placed in a site's folder (2026-09-30 [Diego]).
+  linkable: false,
 
   sections: {
     items: {

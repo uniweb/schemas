@@ -280,9 +280,11 @@ export function validateAndNormalizeSchema(schema, ref) {
     out.sourceLocale = sourceLocale
   }
 
-  // `linkable` — may this Model's entities be `entity_ref` targets? Authored as a
-  // boolean; the producer reconciles it against whether a brief exists, since a
-  // model with no card to hydrate cannot be a target whatever it declares.
+  // `linkable` — `false` keeps this Model's entries out of references and out of a
+  // site's folder. Omitted, it is true, with or without a brief (2026-09-27 [Diego]);
+  // the producer sends only an authored `false`.
+  // ⛔ This said the producer reconciled it against whether a brief exists until
+  // 2026-09-30 — true only before 2026-09-27, when that derivation was removed.
   if (schema.linkable !== undefined) {
     if (typeof schema.linkable !== 'boolean') {
       throw new Error(

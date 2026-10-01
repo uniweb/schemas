@@ -28,6 +28,13 @@
  * Pure and browser-safe: an editor holding a version registered before may normalize it here
  * rather than keep a copy of the grammar — a format-1 or format-2 schema comes out format 3.
  *
+ * ⭐ TWO USES, TWO MODES. `register` is STRICT, the default: a `data:` value that cannot be
+ * normalized throws, so nothing registers half-normalized. A READER passes `strict: false`: an
+ * older version was never checked, and may hold an inline field map that is not a valid data
+ * schema — read mode normalizes it field by field, keeps a field it cannot normalize as written,
+ * and says why in the value's `problems`, never throwing. A registered format-3 schema never
+ * carries `problems`.
+ *
  * @module @uniweb/schemas/foundation
  */
 
@@ -54,28 +61,30 @@ const WHOLE_SUFFIX = '/*'
  * @param {object} [options]
  * @param {string} [options.scope] - the foundation's scope (`@acme` or `acme`), which `@/x` refs
  *   resolve into; without one they stay `@/x`
+ * @param {boolean} [options.strict=true] - throw for a `data:` value that cannot be normalized
+ *   (`register`); `false` to read an older version, which says so in the value's `problems`
  * @returns {object} the schema in format 3
- * @throws {Error} naming the component and key, when a `data:` value cannot be normalized — an
- *   inline field map that is not a valid data schema, or a value that is no schema at all
+ * @throws {Error} when strict, naming the component and key, for a `data:` value that cannot be
+ *   normalized — an inline field map that is not a valid data schema, or a value that is no schema
  */
-export function normalizeFoundationSchema(schema, { scope } = {}) {
+export function normalizeFoundationSchema(schema, { scope, strict = true } = {}) {
   if (!isPlainObject(schema)) throw new Error('normalizeFoundationSchema: expected a foundation schema object.')
   const format = Number(schema._self?.schemaFormat) || 1
   const out = {}
   for (const [key, value] of Object.entries(schema)) {
-    if (key === '_self') out._self = normalizeSelf(value, scope)
-    else if (key === '_layouts') out._layouts = mapValues(value, (layout, name) => normalizeEntry(layout, { format, scope, owner: `layout ${name}` }))
+    if (key === '_self') out._self = normalizeSelf(value, scope, strict)
+    else if (key === '_layouts') out._layouts = mapValues(value, (layout, name) => normalizeEntry(layout, { format, scope, strict, owner: `layout ${name}` }))
     else if (key.startsWith('_') || key === 'dataSchemas') out[key] = value
-    else out[key] = isPlainObject(value) ? normalizeEntry(value, { format, scope, owner: key }) : value
+    else out[key] = isPlainObject(value) ? normalizeEntry(value, { format, scope, strict, owner: key }) : value
   }
   out._self = { ...(isPlainObject(out._self) ? out._self : {}), schemaFormat: FOUNDATION_SCHEMA_FORMAT }
   return out
 }
 
-function normalizeSelf(self, scope) {
+function normalizeSelf(self, scope, strict) {
   if (!isPlainObject(self)) return self
   const out = { ...self }
-  const data = normalizeData(self.data, { scope, owner: 'the foundation (main.js)' })
+  const data = normalizeData(self.data, { scope, strict, owner: 'the foundation (main.js)' })
   if (data === undefined) delete out.data
   else out.data = data
   return out
@@ -85,7 +94,7 @@ function normalizeSelf(self, scope) {
  * One component's (or layout's) entry in format 3. A format-1 entry — its `meta.js` as written —
  * is lowered first, as the build lowers one (`content`, `children`).
  */
-function normalizeEntry(entry, { format, scope, owner }) {
+function normalizeEntry(entry, { format, scope, strict, owner }) {
   if (!isPlainObject(entry)) return entry
   const out = { ...entry }
 
@@ -100,7 +109,7 @@ function normalizeEntry(entry, { format, scope, owner }) {
     else delete out.children
   }
 
-  const data = normalizeData(entry.data, { scope, owner, concepts: conceptKeys(out.content) })
+  const data = normalizeData(entry.data, { scope, strict, owner, concepts: conceptKeys(out.content) })
   if (data === undefined) delete out.data
   else out.data = data
 
@@ -118,9 +127,11 @@ function normalizeEntry(entry, { format, scope, owner }) {
  * @param {Set<string>} [options.concepts] - the keys the entry's `content` declares as concept
  *   blocks, which a format-2 build lowered to `{}`
  * @param {string} [options.owner] - who declares it, for an error
+ * @param {boolean} [options.strict=true] - throw for a value that cannot be normalized; `false`
+ *   says so in its `problems` instead
  * @returns {object|undefined}
  */
-export function normalizeData(data, { scope, concepts, owner = 'a component' } = {}) {
+export function normalizeData(data, { scope, concepts, owner = 'a component', strict = true } = {}) {
   if (!isPlainObject(data)) return undefined
   const out = {}
   for (const [key, value] of Object.entries(data)) {
@@ -131,20 +142,22 @@ export function normalizeData(data, { scope, concepts, owner = 'a component' } =
       if (tag && !tag.includes(':') && !Object.hasOwn(data, tag)) out[tag] = { kind: 'concept' }
       continue
     }
-    out[key] = normalizeDataValue(value, { scope, concept: concepts?.has(key) === true, where: `${owner}: data.${key}` })
+    out[key] = normalizeDataValue(value, { scope, strict, concept: concepts?.has(key) === true, where: `${owner}: data.${key}` })
   }
   return Object.keys(out).length > 0 ? out : undefined
 }
 
-function normalizeDataValue(value, { scope, concept, where }) {
+function normalizeDataValue(value, { scope, strict, concept, where }) {
   if (typeof value === 'string') return schemaValue(value, false, scope)
   if (value === null) return { kind: 'untyped' }
   if (!isPlainObject(value)) {
-    throw new Error(`${where} is not a schema — a ref ('@/x'), an inline field map, a form or {} — got ${JSON.stringify(value)}.`)
+    const message = `${where} is not a schema — a ref ('@/x'), an inline field map, a form or {} — got ${JSON.stringify(value)}.`
+    if (strict) throw new Error(message)
+    return { kind: 'untyped', problems: [message] }
   }
 
   // Already format 3: normalized again, which changes nothing but an unqualified ref.
-  if (DATA_KINDS.includes(value.kind)) return renormalize(value, { scope, where })
+  if (DATA_KINDS.includes(value.kind)) return renormalize(value, { scope, strict, where })
 
   if (typeof value.schema === 'string') return schemaValue(value.schema, value.whole === true, scope)
   if (isForm(value)) return { kind: 'form', ...normalizeForm(value) }
@@ -157,12 +170,35 @@ function normalizeDataValue(value, { scope, concept, where }) {
   try {
     normalized = validateAndNormalizeSchema(fullFormat ? value : { fields: value }, '@/inline')
   } catch (err) {
-    throw new Error(`${where} is an inline field map that is not a valid data schema: ${err.message.replace(/^Data schema '@\/inline': /, '')}`)
+    if (strict) throw new Error(`${where} is an inline field map that is not a valid data schema: ${schemaMessage(err)}`)
+    return { kind: 'fields', ...qualifyFieldRefs(fieldByField(fullFormat ? value.fields : value), scope) }
   }
   return { kind: 'fields', ...qualifyFieldRefs(normalized, scope) }
 }
 
-function renormalize(value, { scope, where }) {
+/**
+ * Read mode: a map that is not a valid data schema, normalized one field at a time — each field
+ * the normalizer accepts written out, each it refuses kept as written, and why in `problems`.
+ */
+function fieldByField(map) {
+  const fields = {}
+  const problems = []
+  for (const [name, spec] of Object.entries(map)) {
+    try {
+      Object.assign(fields, validateAndNormalizeSchema({ fields: { [name]: spec } }, '@/inline').fields)
+    } catch (err) {
+      fields[name] = spec
+      problems.push(schemaMessage(err))
+    }
+  }
+  return { fields, problems }
+}
+
+function schemaMessage(err) {
+  return String(err?.message || err).replace(/^Data schema '@\/inline': /, '')
+}
+
+function renormalize(value, { scope, strict, where }) {
   switch (value.kind) {
     case 'schema':
       return schemaValue(String(value.schema ?? ''), value.whole === true, scope)
@@ -174,9 +210,12 @@ function renormalize(value, { scope, where }) {
     }
     case 'concept':
     case 'untyped':
-      return { kind: value.kind }
-    default:
-      throw new Error(`${where} has an unknown kind '${value.kind}'.`)
+      return Array.isArray(value.problems) ? { kind: value.kind, problems: value.problems } : { kind: value.kind }
+    default: {
+      const message = `${where} has an unknown kind '${value.kind}'.`
+      if (strict) throw new Error(message)
+      return { kind: 'untyped', problems: [message] }
+    }
   }
 }
 

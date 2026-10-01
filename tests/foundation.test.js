@@ -186,6 +186,49 @@ describe('an inline data shape — one tagged form each', () => {
   })
 })
 
+// ⭐ A READER OF AN OLDER VERSION never gets an exception: it was registered before anything checked
+// its inline maps, so one may not be a valid data schema. `register` is strict; a reader is not.
+describe('read mode — strict: false', () => {
+  const older = () => ({
+    _self: { name: '@acme/old', schemaFormat: 2 },
+    Article: {
+      name: 'Article',
+      data: {
+        articles: { title: 'string', author: { ref: '@/person' }, content: { type: 'object', default: null } },
+        junk: 3,
+      },
+    },
+  })
+
+  test('CONTROL — strict, what register runs, refuses it', () => {
+    expect(() => normalizeFoundationSchema(older(), { scope: 'acme' })).toThrow(/data\.articles is an inline field map/)
+  })
+
+  test('normalizes field by field, keeps a refused field as written, and says why', () => {
+    const out = normalizeFoundationSchema(older(), { scope: 'acme', strict: false })
+    expect(out.Article.data.articles).toEqual({
+      kind: 'fields',
+      fields: {
+        title: { type: 'string' },
+        author: { type: 'ref', ref: '@acme/person' },
+        content: { type: 'object', default: null },
+      },
+      problems: [expect.stringMatching(/object field 'content' must declare nested 'fields'/)],
+    })
+    expect(out.Article.data.junk).toEqual({ kind: 'untyped', problems: [expect.stringMatching(/data\.junk is not a schema/)] })
+  })
+
+  test('is idempotent, problems kept', () => {
+    const once = normalizeFoundationSchema(older(), { scope: 'acme', strict: false })
+    expect(normalizeFoundationSchema(once, { scope: 'acme', strict: false })).toEqual(once)
+  })
+
+  test('a valid schema reads the same in either mode — no problems key', () => {
+    const valid = { _self: {}, Team: { name: 'Team', data: { team: '@/member', links: { href: 'url' } } } }
+    expect(normalizeFoundationSchema(valid, { scope: 'acme', strict: false })).toEqual(normalizeFoundationSchema(valid, { scope: 'acme' }))
+  })
+})
+
 describe('a format-1 schema — each entry its meta.js as written', () => {
   const out = normalizeFoundationSchema(
     {

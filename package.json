@@ -16,6 +16,7 @@
     "./conform": "./src/conform.js",
     "./content": "./src/content.js",
     "./component": "./src/component.js",
+    "./foundation": "./src/foundation.js",
     "./grid": "./src/grid.js",
     "./section": "./src/section.js",
     "./editor-form": "./src/editor-form.js",

@@ -76,6 +76,17 @@ import { applySchemaDefaults, getSchemaDefaults } from './utils/defaults.js'
 // Export individual schemas
 export { person, article, event, project, opportunity, publication, nav, scene, form }
 
+// A foundation schema in its normalized form, format 3 — also the
+// `@uniweb/schemas/foundation` subpath, which `@uniweb/build`'s `register` imports.
+export {
+  FOUNDATION_SCHEMA_FORMAT,
+  DATA_KINDS,
+  normalizeFoundationSchema,
+  normalizeData,
+  normalizeParams,
+  qualifyRef,
+} from './foundation.js'
+
 // The format itself — normalization and conformance. Also available as the
 // `@uniweb/schemas/format` and `@uniweb/schemas/conform` subpaths, which is what
 // `@uniweb/build` imports.

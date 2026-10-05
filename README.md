@@ -9,7 +9,7 @@ Uniweb's standard names, and the language they're written in. Six things, and it
 - **The content declaration** — a reader for the `content:` block a section type writes, so a tool can show what a component expects without learning the grammar. [The content declaration](#the-content-declaration).
 - **Starter content** — a component's `content:` declaration turned into something an author can edit instead of an empty box. [Starter content](#starter-content).
 
-A data schema describes a structured content type: its fields, their types, their defaults. Write the shape once and it does three jobs — `uniweb validate` **checks** your data before it ships, the runtime **delivers** each record with defaults applied, and the visual editor renders a **form** authors fill in.
+A data schema describes a structured content type: its fields and their types. Write the shape once and it does three jobs — `uniweb validate` **checks** your data before it ships, a fetch of the type **reaches** the components that declare it, and the visual editor renders a **form** authors fill in. A schema never changes a record: a record reaches a component as it is, and a field it lacks is absent.
 
 ```bash
 pnpm add @uniweb/schemas
@@ -31,13 +31,13 @@ export default {
   data: {
     team:    '@/member',                                  // named ref (this foundation)
     authors: '@std/person',                               // named ref (shared standard)
-    specs:   { cpu: { type: 'string', default: '' } },    // inline field map
+    specs:   { cpu: { type: 'string' } },                 // inline field map
     signup:  { fields: [{ id: 'email', type: 'text' }] }, // inline rich-form (editor form)
   },
 }
 ```
 
-- The **key** (`team`) is the `content.data` key — where the data lands and where the schema's defaults are applied. The site, author, or editor decides *how* that key gets filled (a fetched collection, a tagged code block, an editor form); the schema is the same regardless of source.
+- The **key** (`team`) is the `content.data` key — where the data lands. The site, author, or editor decides *how* that key gets filled (a fetched collection, a tagged code block, an editor form); the schema is the same regardless of source.
 - The **value** is a **named ref**, an **inline field map**, or an **inline rich-form** (distinguished by a `fields` **array** rather than a keyed object — it drives the editor's form UI).
 
 A `data:` declaration is **what the section receives**: `content.data` holds the keys the component declares and nothing else, each filled by whatever reaches the section under that key — or `null` when nothing does. A component with no `data:`, or `data: false`, receives no keys of its own.
@@ -56,7 +56,7 @@ A ref names a **namespace, never a package path**:
 | `@std/person` | **shared standards** | the matching standard in this package |
 | `@acme/event` | **an org** | that org's `@acme/schemas` package (a workspace package locally; a registry scope once published) |
 
-The empty scope in `@/member` means "this foundation." Because an org scope is assigned only at publish time, a foundation **never writes its own org name in source** — `@/`-refs are portable and travel with the foundation, and the build resolves them to a real org scope when published.
+The empty scope in `@/member` means "this foundation" — the scope in the foundation's own name (`@acme/marketing` → `@acme/member`). A foundation's code never needs its org: `@/`-refs are portable and travel with the foundation, and `uniweb register` fills in the scope. The name, scope included, is the foundation's identity for registering and editing, and never reaches the bundle a page loads.
 
 `@uniweb` is reserved for the platform system namespace and is **not** a data-schema source — use `@std` for shared standards.
 
@@ -90,9 +90,9 @@ version: 1.0.0
 description: A research group member
 fields:
   name:       { type: string, required: true }
-  role:       { type: string, default: '' }
+  role:       { type: string }
   rank:       { type: string, enum: [assistant, associate, full] }
-  tenured:    { type: boolean, default: false }
+  tenured:    { type: boolean }
   start_year: { type: number }
 ```
 
@@ -148,7 +148,7 @@ fields:
       value:  { type: string }
 ```
 
-Collection-level metadata (`required`, `default`, `label`, `help`, `description`) rides on the **list**; the type-bearing keys (`type`, `ref`, `options`, `enum`, `fields`, `items`, `format`) describe **each item**.
+Collection-level metadata (`required`, `label`, `help`, `description`) rides on the **list**; the type-bearing keys (`type`, `ref`, `options`, `enum`, `fields`, `items`, `format`) describe **each item**.
 
 > **One limit worth knowing about `required`.** It is enforced on a list of *values* — `{ type: string, many: true, required: true }` — and on a list of references. It is **not** enforced on a list of *records*, or on a nested `object`: those become sections when the schema is registered, and `required` binds the record that is *written* — it cannot force a record to *exist*. Put the flag on a field *inside* the record, where it holds, and reach for `min_items` below when you mean "don't let this become empty".
 
@@ -245,7 +245,7 @@ Fields constrained by `enum:`, and strings carrying a value-validator `format` (
 | `type` | string | The field type (required, unless inferred from `ref:` or `options:`) |
 | `many` | boolean | Make it a list; the other keys describe each item |
 | `required` | boolean | The field must have a value |
-| `default` | any | Value used when none is supplied |
+| `default` | any | Only in a component's inline field map or form, where it is what an editor's form starts the field with. A named schema declares none — the build refuses one — and nothing applies one at render |
 | `label` | string | Short human-readable name (editor UI) |
 | `description` | string | Human-readable description |
 | `help` | string | Additional guidance (editor UI) |
@@ -356,7 +356,7 @@ Two consequences worth knowing:
 - **No brief, and that's correct.** There's no single record to be the card, so the schema isn't referenceable as an `entity_ref` target. `uniweb validate` and the runtime treat this as a normal shape, not a missing one.
 - **Exactly one section.** Two `many` sections and no single one would leave "which one is the value?" unanswerable, so it isn't treated as a root list — nothing would be checked.
 
-Everything else works the same: `validate` checks each record and names its index (`[1].label`), and `applyDefaults` fills each entry's defaults.
+Everything else works the same: `validate` checks each record and names its index (`[1].label`).
 
 A **record file** holding one such list — a record kept in `records/` — writes it under the section's key (`items:`), since a file whose top level is a list holds several records. `uniweb validate` checks it, and a push sends it.
 
@@ -465,7 +465,7 @@ The runtime never coerces an array to a single object and never synthesizes a se
 
 When a foundation is built, every distinct ref across all section bindings is resolved and loaded into its canonical form — `{ name, version, description?, fields }` for a flat schema, or `{ name, version, description?, sections }` for a structured one — and emitted into the foundation's published metadata under a top-level `dataSchemas` map keyed by the ref. A consumer of that metadata has every data schema inline and versioned, with no refs left to resolve.
 
-The lean runtime entry carries only what the runtime needs to apply defaults and shape data — `type`, `default`, `enum`, `options`, and nested `fields`/`items`. Descriptions, labels, and other editor hints stay in the full schema.
+The runtime entry carries none of a schema — only each declared key and its ref, which is how a fetch of another name fills the key. Fields, labels, descriptions and every other editor hint stay in the full schema.
 
 ---
 
@@ -485,15 +485,11 @@ import { validate } from '@uniweb/schemas'
 const { valid, errors } = validate(data, 'person')
 // errors: [{ path: 'email', rule: 'format', message: '"x" is not a valid email' }]
 
-// Apply a schema's defaults
-import { applyDefaults, getDefaults } from '@uniweb/schemas'
-const filled = applyDefaults(data, person)
-const blanks = getDefaults('person')
 ```
 
-`validate` and `applyDefaults` accept a schema **as authored** — the friendly vocabulary (`many:`, `number`, `richtext`, `{ ref: '@/x' }`) and both schema forms are normalized first. They take a record in the shape a component receives it — the brief's fields at the top, each other section under its name ([How a source file maps onto sections](#how-a-source-file-maps-onto-sections)) — and `applyDefaults` fills a section only when the record holds it.
+`validate` accepts a schema **as authored** — the friendly vocabulary (`many:`, `number`, `richtext`, `{ ref: '@/x' }`) and both schema forms are normalized first. It takes a record in the shape a component receives it — the brief's fields at the top, each other section under its name ([How a source file maps onto sections](#how-a-source-file-maps-onto-sections)).
 
-They **throw** when the *schema* is malformed — a bad schema is a programming error, and the message names the offending field. Invalid *data* comes back as findings.
+It **throws** when the *schema* is malformed — a bad schema is a programming error, and the message names the offending field. Invalid *data* comes back as findings.
 
 Lower-level entry points, for tooling that needs the format directly:
 
@@ -522,7 +518,7 @@ import { validateItem, validateRecordFile, recordLayout, toDeliveredRecord } fro
 | `AUTHORING_TYPES` | Every word valid as a `type:` — derived from the vocabulary, so it never drifts |
 | `SCALAR_KINDS`, `FORMAT_TYPES`, … | The type vocabulary |
 
-These are utilities for tooling — none is required to use a schema in a foundation. There you reference a schema by its namespace ref in `meta.js` and the build does the resolution and default application for you.
+These are utilities for tooling — none is required to use a schema in a foundation. There you reference a schema by its namespace ref in `meta.js` and the build does the resolution for you.
 
 ---
 

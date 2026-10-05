@@ -210,8 +210,9 @@ export function misplacedFields(schema, record) {
 /**
  * The field map of a DELIVERED record — the brief's fields at the top, each other
  * top-level section as one field under its name (an object for a single section, a list
- * of objects for a `many` one). A flat schema's fields as they are. What the runtime
- * fills defaults from, so a default lands where the record carries its field.
+ * of objects for a `many` one). A flat schema's fields as they are. Starter content reads it
+ * to sample a record (`./starter/sample-record.js`). ⛔ Until 2026-10-05 the runtime filled
+ * field defaults from it; it fills none now.
  *
  * ⚠️ A schema whose root is a list returns its ENTITY's map (`{ items: [...] }`). The
  * value a key receives from a data block is the bare list — a caller filling that
@@ -276,7 +277,8 @@ function briefNameOf(schema, layout) {
  * The field map of a BRIEF as a component receives it (ruled 2026-09-27 [Diego]) — the brief
  * section's fields at the top, its child sections as fields beside them; a flat schema's fields as
  * they are. A schema with no brief is answered whole, so its brief is its whole record
- * (`wholeFieldMap`). What the runtime fills a key's defaults from when its component expects briefs.
+ * (`wholeFieldMap`). A static build reads it to build each brief of a list. ⛔ Until 2026-10-05 the
+ * runtime filled a key's field defaults from it when its component expects briefs.
  *
  * @param {Object} schema - a normalized data schema
  * @returns {Object|null}
@@ -295,8 +297,8 @@ export function briefFieldMap(schema) {
 /**
  * The field map of a WHOLE record — the record as stored (ruled 2026-09-27 [Diego]): one field per
  * top-level section, under its name, the brief included — an object for a single section, a list
- * for a `many` one. The `fields:` shorthand's one section is `brief`. What the runtime fills a key's
- * defaults from when its component declares `'@x/y/*'`.
+ * for a `many` one. The `fields:` shorthand's one section is `brief`. ⛔ Until 2026-10-05 the runtime
+ * filled a key's field defaults from it when its component declares `'@x/y/*'`.
  *
  * @param {Object} schema - a normalized data schema
  * @returns {Object|null}

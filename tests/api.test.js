@@ -1,5 +1,5 @@
 /**
- * The package's public API — `validate`, `applyDefaults`, `getDefaults`.
+ * The package's public API — `validate`, and the standard schemas it ships.
  *
  * Every case in the first block is a REGRESSION. Each one used to give a wrong
  * answer, and none of them was caught, because this package shipped no tests and
@@ -15,7 +15,9 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { validate, applyDefaults, getDefaults, schemas } from '../src/index.js'
+import * as api from '../src/index.js'
+
+const { validate, schemas } = api
 
 const paths = (result) => result.errors.map((e) => `${e.path}:${e.rule}`)
 
@@ -43,12 +45,6 @@ describe('regressions — answers this API used to get wrong', () => {
     // `@std/nav` passed anything at all, including nothing at all.
     expect(paths(validate({}, 'article'))).toContain('title:required')
     expect(paths(validate({ title: 42 }, 'article'))).toContain('title:type')
-  })
-
-  it('a sections-form schema yields its defaults (was: {}) — shaped like the delivered record', () => {
-    // `status` is declared in `body`, a non-brief single section, so a delivered
-    // record carries it under `body` — and that is where its default goes.
-    expect(getDefaults('article')).toMatchObject({ body: { status: 'published', featured: false } })
   })
 
   it('canonical kinds are type-checked (was: no case in the switch)', () => {
@@ -130,66 +126,56 @@ describe('validate', () => {
   })
 })
 
-describe('defaults', () => {
-  it('fills declared defaults without overwriting supplied values', () => {
-    const filled = applyDefaults({ name: 'Ada', featured: true }, 'person')
-    expect(filled).toMatchObject({ name: 'Ada', featured: true })
+describe('no defaults', () => {
+  // A named data schema declares no default (2026-10-05): a record reaches a component as it
+  // is, and what an absent field renders as is the component's choice. The build refuses a
+  // named schema that declares one, so a standard that did would refuse every foundation
+  // binding it.
+  const withDefaults = (schema) => {
+    const found = []
+    const spec = (s, path) => {
+      if (!s || typeof s !== 'object') return
+      if (Object.hasOwn(s, 'default')) found.push(path)
+      fields(s.fields, `${path}.`)
+      spec(s.items, `${path}[]`)
+      spec(s.values, `${path}{}`)
+    }
+    const fields = (map, prefix) => {
+      if (!map || typeof map !== 'object' || Array.isArray(map)) return
+      for (const [name, s] of Object.entries(map)) spec(s, `${prefix}${name}`)
+    }
+    const sections = (map, prefix) => {
+      for (const [name, section] of Object.entries(map || {})) {
+        fields(section.fields, `${prefix}${name}.`)
+        sections(section.sections, `${prefix}${name}.`)
+      }
+    }
+    fields(schema.fields, '')
+    sections(schema.sections, '')
+    return found
+  }
+
+  it.each(Object.keys(schemas))('@std/%s declares no default', (name) => {
+    expect(withDefaults(schemas[name])).toEqual([])
   })
 
-  it('fills a default the record omits', () => {
-    expect(applyDefaults({ name: 'Ada' }, 'person').featured).toBe(false)
-  })
-
-  it('does not mutate the input', () => {
-    const input = { name: 'Ada' }
-    applyDefaults(input, 'person')
-    expect(input).toEqual({ name: 'Ada' })
-  })
-
-  it('materializes a nested record when the nested shape has defaults', () => {
-    expect(getDefaults('article').body.seo).toEqual({ noindex: false })
-  })
-
-  it('never fills an absent SECTION from its defaults — a list delivers briefs', () => {
-    const brief = applyDefaults({ title: 'T' }, 'article')
-    expect(brief).not.toHaveProperty('body')
-    // …but a section the record holds gets its defaults.
-    expect(applyDefaults({ title: 'T', body: {} }, 'article').body).toMatchObject({
-      status: 'published',
-      featured: false,
-    })
-  })
-
-  it('applies item defaults to the elements of a list that exists', () => {
+  it('CONTROL — the walk finds a default where one is declared', () => {
     const schema = {
-      name: 'team',
       fields: {
-        people: { type: 'object', many: true, fields: { name: 'string', active: { type: 'bool', default: true } } },
+        a: { type: 'string', default: 'x' },
+        b: { type: 'object', fields: { c: { type: 'bool', default: false } } },
       },
     }
-    expect(applyDefaults({ people: [{ name: 'Ada' }] }, schema).people).toEqual([{ name: 'Ada', active: true }])
+    expect(withDefaults(schema)).toEqual(['a', 'b.c'])
   })
 
-  it('does not invent a list element that is not there', () => {
-    const schema = {
-      name: 'team',
-      fields: { people: { type: 'object', many: true, fields: { active: { type: 'bool', default: true } } } },
-    }
-    expect(applyDefaults({}, schema).people).toBeUndefined()
+  it("a field NAMED `default` is not a default — @std/form keeps a control's starting value", () => {
+    expect(withDefaults(schemas.form)).toEqual([])
+    expect(JSON.stringify(schemas.form)).toContain('"default":{"type":"json"')
   })
 
-  it('applies value-shape defaults to each entry of an open map', () => {
-    const schema = {
-      name: 'f',
-      fields: {
-        controls: {
-          type: 'object',
-          values: { type: 'object', fields: { type: 'string', required: { type: 'bool', default: false } } },
-        },
-      },
-    }
-    expect(applyDefaults({ controls: { email: { type: 'string' } } }, schema).controls).toEqual({
-      email: { type: 'string', required: false },
-    })
+  it('applyDefaults and getDefaults are gone', () => {
+    expect(api).not.toHaveProperty('applyDefaults')
+    expect(api).not.toHaveProperty('getDefaults')
   })
 })

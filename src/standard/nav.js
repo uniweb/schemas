@@ -63,7 +63,6 @@ export default {
         target: {
           type: 'string',
           translatable: false,
-          default: '_self',
           description: 'Link target (_self, _blank)',
         },
 
@@ -74,12 +73,10 @@ export default {
         },
         hidden: {
           type: 'bool',
-          default: false,
           description: 'Hide this item from display',
         },
         current: {
           type: 'bool',
-          default: false,
           description: 'Mark as current/active page',
         },
       },

@@ -2,10 +2,11 @@
  * A believable record for a schema — what a tagged data block starts out
  * holding.
  *
- * ## ⭐ IT IS NOT `getSchemaDefaults`
+ * ## ⭐ IT IS NOT A RECORD OF DEFAULTS
  *
  * Defaults answer *what does this field hold when nobody said?* — and the honest
- * answer is usually nothing. `{ type: 'string', default: '' }` is the commonest
+ * answer is usually nothing. (Only a component's own inline field map or form
+ * declares one; a named data schema declares none.) `{ type: 'string', default: '' }` is the commonest
  * declaration in the templates, so a block built from defaults is a block of
  * empty strings, which teaches an author less than an empty block would.
  *

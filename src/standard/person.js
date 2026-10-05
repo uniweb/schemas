@@ -76,7 +76,6 @@ export default {
     // Metadata
     featured: {
       type: 'boolean',
-      default: false,
       description: 'Highlight this person',
     },
     order: {

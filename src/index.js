@@ -71,7 +71,6 @@ export { SITE_TAGS, getSiteTag, isSiteTag, resolveSiteTags } from './site-tags.j
 
 // Utilities
 import { validateAgainstSchema } from './utils/validate.js'
-import { applySchemaDefaults, getSchemaDefaults } from './utils/defaults.js'
 
 // Export individual schemas
 export { person, article, event, project, opportunity, publication, nav, scene, form }
@@ -186,32 +185,10 @@ export function validate(data, schema) {
   return validateAgainstSchema(data, schemaDef)
 }
 
-/**
- * Apply schema defaults to data
- * @param {object} data - Data to apply defaults to
- * @param {string|object} schema - Schema name or definition
- * @returns {object} Data with defaults applied
- */
-export function applyDefaults(data, schema) {
-  const schemaDef = typeof schema === 'string' ? schemas[schema] : schema
-  if (!schemaDef) {
-    return data
-  }
-  return applySchemaDefaults(data, schemaDef)
-}
-
-/**
- * Get all default values from a schema
- * @param {string|object} schema - Schema name or definition
- * @returns {object} Object with all defaults
- */
-export function getDefaults(schema) {
-  const schemaDef = typeof schema === 'string' ? schemas[schema] : schema
-  if (!schemaDef) {
-    return {}
-  }
-  return getSchemaDefaults(schemaDef)
-}
+// ⛔ No `applyDefaults` / `getDefaults` (removed 2026-10-05): a named data schema declares no
+// default, and a record reaches a component as it is — what an absent field renders as is the
+// component's choice. A default lives in a component's own inline field map or form, where an
+// editor pre-fills from it.
 
 // Default export
 export default schemas

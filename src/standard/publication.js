@@ -34,7 +34,7 @@ export default {
       fields: {
         name: { type: 'string', required: true },
         affiliation: { type: 'string' },
-        corresponding: { type: 'boolean', default: false },
+        corresponding: { type: 'boolean' },
         orcid: { type: 'string', translatable: false, description: 'ORCID identifier' },
       },
     },
@@ -138,7 +138,6 @@ export default {
     type: {
       type: 'string',
       enum: ['article', 'paper', 'book', 'chapter', 'thesis', 'preprint', 'report', 'poster'],
-      default: 'paper',
       description: 'Publication type',
     },
     category: {
@@ -162,12 +161,10 @@ export default {
     status: {
       type: 'string',
       enum: ['published', 'accepted', 'submitted', 'in-progress', 'preprint'],
-      default: 'published',
       description: 'Publication status',
     },
     featured: {
       type: 'boolean',
-      default: false,
       description: 'Feature prominently',
     },
     award: {

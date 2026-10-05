@@ -133,12 +133,10 @@ export default {
     status: {
       type: 'string',
       enum: ['in-progress', 'completed', 'archived'],
-      default: 'completed',
       description: 'Project status',
     },
     featured: {
       type: 'boolean',
-      default: false,
       description: 'Feature prominently',
     },
     order: {

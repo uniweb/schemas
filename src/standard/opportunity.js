@@ -50,8 +50,8 @@ export default {
       fields: {
         city: { type: 'string' },
         country: { type: 'string' },
-        remote: { type: 'boolean', default: false, description: 'Remote work available' },
-        hybrid: { type: 'boolean', default: false, description: 'Hybrid arrangement' },
+        remote: { type: 'boolean', description: 'Remote work available' },
+        hybrid: { type: 'boolean', description: 'Hybrid arrangement' },
       },
     },
 
@@ -79,8 +79,8 @@ export default {
       description: 'Compensation details',
       fields: {
         salary: { type: 'string', description: 'Salary or range' },
-        currency: { type: 'string', translatable: false, default: 'USD' },
-        period: { type: 'string', enum: ['hour', 'month', 'year', 'total'], default: 'year' },
+        currency: { type: 'string', translatable: false },
+        period: { type: 'string', enum: ['hour', 'month', 'year', 'total'] },
         benefits: { type: 'string', many: true },
       },
     },
@@ -133,12 +133,10 @@ export default {
     status: {
       type: 'string',
       enum: ['open', 'closed', 'filled', 'expired'],
-      default: 'open',
       description: 'Opportunity status',
     },
     featured: {
       type: 'boolean',
-      default: false,
       description: 'Feature prominently',
     },
 

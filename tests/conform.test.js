@@ -40,7 +40,7 @@ import {
   mapReferences,
 } from '../src/conform.js'
 import { validateAndNormalizeSchema } from '../src/format.js'
-import { validate, applyDefaults, getDefaults, nav } from '../src/index.js'
+import { validate, nav } from '../src/index.js'
 
 const norm = (s) => validateAndNormalizeSchema(s, '@/x')
 const LIST = { sections: { items: { many: true, fields: { label: { type: 'string', required: true } } } } }
@@ -176,20 +176,6 @@ describe('@std/nav — the shipped standard this was silently skipping', () => {
 
   it('accepts a well-formed nav', () => {
     expect(validate([{ label: 'Home', href: '/' }], 'nav')).toEqual({ valid: true, errors: [] })
-  })
-
-  it('applies its per-item defaults to each entry', () => {
-    // `target: '_self'`, `hidden: false`, `current: false` are declared per item;
-    // applying them means applying them to every element.
-    const out = applyDefaults([{ label: 'Home' }, { label: 'Docs' }], 'nav')
-    expect(out).toEqual([
-      { label: 'Home', target: '_self', hidden: false, current: false },
-      { label: 'Docs', target: '_self', hidden: false, current: false },
-    ])
-  })
-
-  it('reports its defaults as the record defaults they are', () => {
-    expect(getDefaults('nav')).toMatchObject({ target: '_self', hidden: false, current: false })
   })
 
   it('is authored as one multi section with no brief, and that is legal', () => {

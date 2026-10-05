@@ -81,12 +81,10 @@ export default {
         status: {
           type: 'string',
           enum: ['draft', 'published', 'archived'],
-          default: 'published',
           description: 'Publication status',
         },
         featured: {
           type: 'boolean',
-          default: false,
           description: 'Feature on homepage or listings',
         },
 
@@ -98,7 +96,7 @@ export default {
             title: { type: 'string', description: 'SEO title override' },
             description: { type: 'string', description: 'Meta description' },
             image: { type: 'image', description: 'Open Graph image' },
-            noindex: { type: 'boolean', default: false },
+            noindex: { type: 'boolean' },
           },
         },
 

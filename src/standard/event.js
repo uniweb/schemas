@@ -40,7 +40,6 @@ export default {
     },
     allDay: {
       type: 'boolean',
-      default: false,
       description: 'All-day event (no specific time)',
     },
 
@@ -53,7 +52,7 @@ export default {
         address: { type: 'string', description: 'Street address' },
         city: { type: 'string' },
         country: { type: 'string' },
-        virtual: { type: 'boolean', default: false, description: 'Online event' },
+        virtual: { type: 'boolean', description: 'Online event' },
         url: { type: 'url', description: 'Virtual meeting URL' },
       },
     },
@@ -69,7 +68,7 @@ export default {
       type: 'object',
       description: 'Registration details',
       fields: {
-        required: { type: 'boolean', default: false },
+        required: { type: 'boolean' },
         url: { type: 'url', description: 'Registration link' },
         deadline: { type: 'datetime', description: 'Registration deadline' },
         capacity: { type: 'number', description: 'Maximum attendees' },
@@ -98,12 +97,10 @@ export default {
     status: {
       type: 'string',
       enum: ['scheduled', 'cancelled', 'postponed', 'completed'],
-      default: 'scheduled',
       description: 'Event status',
     },
     featured: {
       type: 'boolean',
-      default: false,
       description: 'Feature prominently',
     },
 

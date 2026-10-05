@@ -1,10 +1,23 @@
 /**
  * Article schema - blog posts, news items, documentation
  *
- * Two sections. The `brief` is the lean card a reference and a list carry (title,
- * excerpt, date, image, tags). `body` holds the heavy ProseMirror content and the
- * secondary metadata, so the content is never dragged into a reference card.
- * `body.content` is the article as a ProseMirror document, per language.
+ * Two sections. The `brief` is the card: what a list of articles, a reference to one
+ * and the page about one are made from — its title, summary, author, dates, picture and
+ * tags. `body` holds what only the article's own page needs: the content, as a
+ * ProseMirror document per language, kept out of every list and reference.
+ *
+ * A site's own choices about an article are not fields of it. Whether the site features
+ * it, and how the site groups it, belong to where the site places it — a folder entry's
+ * tags and label, and the branch a query selects with `scope:`. Whether it is live is
+ * the record's draft state.
+ *
+ * ⛔ Until version 4.0.0 `body` also held `thumbnail`, `author`, `updated`, `category`,
+ * `status`, `featured`, `seo` and `readTime`. `author` and `updated` moved to the brief,
+ * where a list can show them. The rest are gone: a list never receives a body field,
+ * so a thumbnail there reached no card; a folder entry says what `featured` and
+ * `category` said, and the draft state what `status` said; a reading time is the
+ * component's to work out from the content; and the page about an article takes its
+ * title, description and shared image from the brief, so `seo` reached no page.
  *
  * ⛔ The sections were named `article` and `article_body` until version 3.0.0: every
  * standard schema names its brief section `brief`, and a section name needs no
@@ -12,12 +25,12 @@
  */
 export default {
   name: 'article',
-  version: '3.0.0',
+  version: '4.0.0',
   plural: 'Articles',
   description: 'A blog post, news item, or documentation page',
 
   sections: {
-    // The card — what hydrates into an entity_ref reference.
+    // The card — what a list and a reference (an entity_ref) carry.
     brief: {
       brief: true,
       fields: {
@@ -30,13 +43,22 @@ export default {
           type: 'string',
           description: 'Short summary or teaser',
         },
+        author: {
+          type: 'string',
+          translatable: false, // a name is the same in every language, and a list may filter by it
+          description: 'Author, as the byline shows it',
+        },
         date: {
           type: 'date',
           description: 'Publication date',
         },
+        updated: {
+          type: 'date',
+          description: 'Date of the last substantive revision',
+        },
         image: {
           type: 'image',
-          description: 'Featured/hero image',
+          description: 'Featured image — the article\'s picture in a list, on its page and on a shared link',
         },
         tags: {
           type: 'string',
@@ -47,63 +69,14 @@ export default {
       },
     },
 
-    // The full record — not pulled into reference cards.
+    // What only the article's own page needs — never carried by a list or a reference.
     body: {
       fields: {
-        // Content — a ProseMirror document on the wire (md authoring side).
+        // A ProseMirror document on the wire (md authoring side).
         content: {
           type: 'json',
           format: 'prosemirror',
           description: 'Full article content',
-        },
-
-        // Media
-        thumbnail: {
-          type: 'image',
-          description: 'Thumbnail for listings',
-        },
-
-        // Metadata
-        author: {
-          type: 'string',
-          description: 'Author name or reference',
-        },
-        updated: {
-          type: 'date',
-          description: 'Last updated date',
-        },
-        category: {
-          type: 'string',
-          description: 'Primary category',
-        },
-
-        // Status
-        status: {
-          type: 'string',
-          enum: ['draft', 'published', 'archived'],
-          description: 'Publication status',
-        },
-        featured: {
-          type: 'boolean',
-          description: 'Feature on homepage or listings',
-        },
-
-        // SEO
-        seo: {
-          type: 'object',
-          description: 'SEO metadata',
-          fields: {
-            title: { type: 'string', description: 'SEO title override' },
-            description: { type: 'string', description: 'Meta description' },
-            image: { type: 'image', description: 'Open Graph image' },
-            noindex: { type: 'boolean' },
-          },
-        },
-
-        // Reading
-        readTime: {
-          type: 'number',
-          description: 'Estimated read time in minutes',
         },
       },
     },

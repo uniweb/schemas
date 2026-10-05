@@ -413,18 +413,20 @@ A record file — a `.md` with frontmatter, a `.yml`, one `.json` object — is 
 # a record of @std/article, by section
 brief:
   title: Hello
-  date: 2026-05-01
-body:
   author: Ada
+  date: 2026-05-01
 ```
 
 A markdown body is the value of the schema's content field — a markup `text` field or a `richtext` one — in whichever single section declares it: `body.content` for `@std/article`.
 
-**What a component receives is a third shape:** the brief's fields at the top, every other section under its own name. `@std/article` keeps its card (`brief`) apart from its body (`body`) so a reference and a list carry the card without the body.
+**What a component receives is one of two shapes, and its `data:` declaration says which:** a **brief** — the brief's fields at the top, and no other section — or, for `'@std/article/*'`, the **whole record** as stored, each section under its own name. `@std/article` keeps its card (`brief`) apart from its body (`body`) so a list and a reference carry the card without the body.
 
 ```js
-// the same record, as a component receives it
-{ title: 'Hello', date: '2026-05-01', body: { author: 'Ada', content: { type: 'doc', … } } }
+// the same record, as a brief
+{ title: 'Hello', author: 'Ada', date: '2026-05-01' }
+
+// and whole
+{ brief: { title: 'Hello', author: 'Ada', date: '2026-05-01' }, body: { content: { type: 'doc', … } } }
 ```
 
 ---
@@ -487,7 +489,7 @@ const { valid, errors } = validate(data, 'person')
 
 ```
 
-`validate` accepts a schema **as authored** — the friendly vocabulary (`many:`, `number`, `richtext`, `{ ref: '@/x' }`) and both schema forms are normalized first. It takes a record in the shape a component receives it — the brief's fields at the top, each other section under its name ([How a source file maps onto sections](#how-a-source-file-maps-onto-sections)).
+`validate` accepts a schema **as authored** — the friendly vocabulary (`many:`, `number`, `richtext`, `{ ref: '@/x' }`) and both schema forms are normalized first. It takes a record with the brief's fields at the top and each other section under its name — `toDeliveredRecord` makes one from a record file.
 
 It **throws** when the *schema* is malformed — a bad schema is a programming error, and the message names the offending field. Invalid *data* comes back as findings.
 
@@ -503,13 +505,13 @@ import { validateItem, validateRecordFile, recordLayout, toDeliveredRecord } fro
 | `validateAndNormalizeSchema(schema, ref)` | Validates the authoring format and returns the normalized schema (friendly aliases folded to canonical kinds). Throws, naming the offending field |
 | `parseSchemaRef(ref)` | `'@std/person'` → `{ scope: 'std', name: 'person' }` |
 | `collectNestedRefs(schema)` | Every `ref`/`options` target a normalized schema depends on |
-| `validateItem(schema, item)` | Findings for one **record** as a component receives it, against a normalized schema |
+| `validateItem(schema, item)` | Findings for one **record** — the brief's fields at the top, each other section under its name — against a normalized schema |
 | `isStaticallyCheckable(schema)` | Whether a record of the schema can be checked at all — true for any schema that declares fields or sections |
 | `validateRecordFile(schema, record)` | Findings for one record as its **file** holds it — flat or by section — including a field written flat where the schema is written by section |
 | `recordLayout(schema)` | How a record of the schema is laid out: `{ flat, sections, brief }` |
-| `toDeliveredRecord(schema, record)` | A record as its file holds it → as a component receives it |
-| `deliveredFields(schema)` | The field map of a record as a component receives it |
-| `contentBodyField(schema)` | Where a markdown body goes — in the record a component receives, and in its file |
+| `toDeliveredRecord(schema, record)` | A record as its file holds it → the brief's fields at the top, each other section under its name |
+| `deliveredFields(schema)` | The field map of a record with the brief's fields at the top |
+| `contentBodyField(schema)` | Where a markdown body goes — in a record with the brief's fields at the top, and in its file |
 | `misplacedFields(schema, record)` | The keys of a record file written flat where the schema is written by section, with the section each belongs under |
 | `referencesOf(schema, record, { delivered })` | Every reference a record holds, with its path, the schema it points at and the value written there — in its file, or as delivered |
 | `mapReferences(schema, record, fn, { delivered })` | The record with each reference replaced by `fn(value, { path, ref })` |

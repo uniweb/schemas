@@ -89,7 +89,7 @@ describe('validate', () => {
   })
 
   it('reports enum and format violations', () => {
-    expect(paths(validate({ title: 'T', body: { status: 'nope' } }, 'article'))).toContain('body.status:enum')
+    expect(paths(validate({ title: 'T', status: 'nope' }, 'event'))).toContain('status:enum')
     expect(paths(validate({ name: 'A', email: 'not-an-email' }, 'person'))).toContain('email:format')
   })
 

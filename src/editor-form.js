@@ -8,9 +8,13 @@
  * `isRichSchema` and never did; it re-inlines the same three checks. The two
  * functions answer different questions for different audiences:
  *
- *   `isRichSchema`    "is this ALREADY the rich shape?" — a dispatch predicate,
- *                     read at RENDER by `runtime/src/prepare-props.js` and at
- *                     build by `build/src/runtime-schema.js`. Stays in core.
+ *   `isRichSchema`    "is this ALREADY the rich shape?" — a dispatch predicate.
+ *                     It was read at render (`applySchemas`) and at build (the
+ *                     runtime schema's field defaults) until 2026-10-05, when
+ *                     the runtime stopped filling field defaults; no framework
+ *                     code reads it now. A registered schema says the same
+ *                     thing outright: a form-shaped `data:` value is
+ *                     `{ kind: 'form' }` in format 3 (`./foundation.js`).
  *   `normalizeSchema` "can this be EDITED, and as what?" — read only by an
  *                     editor. Lives here.
  *

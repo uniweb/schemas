@@ -8,13 +8,13 @@
  * `isRichSchema` and never did; it re-inlines the same three checks. The two
  * functions answer different questions for different audiences:
  *
- *   `isRichSchema`    "is this ALREADY the rich shape?" — a dispatch predicate.
- *                     It was read at render (`applySchemas`) and at build (the
- *                     runtime schema's field defaults) until 2026-10-05, when
- *                     the runtime stopped filling field defaults; no framework
- *                     code reads it now. A registered schema says the same
- *                     thing outright: a form-shaped `data:` value is
- *                     `{ kind: 'form' }` in format 3 (`./foundation.js`).
+ *   `isRichSchema`    "is this ALREADY the rich shape?" — a dispatch predicate,
+ *                     read at render (`applySchemas`) and at build (the runtime
+ *                     schema's field defaults). ⛔ Removed from core on
+ *                     2026-10-05 with both readers, once the editor read the
+ *                     answer from format 3 instead: a form-shaped `data:` value
+ *                     is `{ kind: 'form' }` there (`./foundation.js`, the one
+ *                     test of what makes a value a form).
  *   `normalizeSchema` "can this be EDITED, and as what?" — read only by an
  *                     editor. Lives here.
  *
@@ -33,16 +33,16 @@
  *
  * ## What it accepts
  *
- * THREE authored shapes reach an editor, and `isRichSchema` accepts exactly one:
+ * THREE authored shapes reach an editor, and only one of them is a form:
  *
- *   { fields: [ {id, …} ] }        meta.js inline rich-form      isRich → true
- *   { fields: { name: spec } }     a RESOLVED NAMED REF          isRich → FALSE
- *   { name: spec }                 meta.js inline field map      isRich → false
+ *   { fields: [ {id, …} ] }        meta.js inline rich-form      a form → yes
+ *   { fields: { name: spec } }     a RESOLVED NAMED REF          a form → NO
+ *   { name: spec }                 meta.js inline field map      a form → no
  *
  * The middle row is the reason this function exists. A named ref (`'@/article'`,
  * `'@std/person'`) is the FIRST authoring form the docs show, and
  * `validateAndNormalizeSchema` resolves it to `{ fields: <MAP> }` — a map, not
- * an array. Filtering with `isRichSchema` therefore discards not merely
+ * an array. Taking only forms therefore discards not merely
  * "simple" schemas but the primary documented one, and any consumer that wants
  * to render it has to re-derive the conversion.
  *
@@ -62,7 +62,7 @@ export function normalizeSchema(schema) {
     return null
 
   // Already rich — hand back untouched. Composite/childSchema variants are
-  // rich by `isRichSchema`'s definition and are not ours to reshape.
+  // forms by the same markers (`./foundation.js`) and are not ours to reshape.
   if (Array.isArray(schema.fields)) return schema
   if (schema.isComposite === true || schema.childSchema) return schema
 

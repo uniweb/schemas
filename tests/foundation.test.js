@@ -173,6 +173,20 @@ describe('an inline data shape — one tagged form each', () => {
     })
   })
 
+  // ⭐ The ONE test of what makes a `data:` value a form. `@uniweb/core` carried the same three
+  // markers as `isRichSchema` until 2026-10-05, when its last readers went (the runtime stopped
+  // filling field defaults) and the editor, its last outside reader, read `kind` instead.
+  test('each of the three markers alone makes a form — a fields LIST, isComposite, childSchema', () => {
+    expect(norm({ fields: [{ id: 'a', type: 'text' }] }).kind).toBe('form')
+    expect(norm({ isComposite: true }).kind).toBe('form')
+    expect(norm({ childSchema: { fields: [{ id: 'n', type: 'text' }] } }).kind).toBe('form')
+  })
+
+  test('CONTROL — a field map is not a form, keyed or written as a whole schema', () => {
+    expect(norm({ label: { type: 'string' }, href: { type: 'string' } }).kind).toBe('fields')
+    expect(norm({ name: 'person', fields: { name: { type: 'string' } } }).kind).toBe('fields')
+  })
+
   test('null is untyped; a value that is no schema at all is refused', () => {
     expect(norm(null)).toEqual({ kind: 'untyped' })
     expect(() => normalizeData({ inherit: ['a'] })).toThrow(/data\.inherit is not a schema/)

@@ -255,7 +255,10 @@ function qualifyFieldRefs(schema, scope) {
   return isPlainObject(schema.fields) ? { ...schema, fields: mapValues(schema.fields, field) } : schema
 }
 
-/** An inline form — a `fields` LIST, or `isComposite` / `childSchema` — as `isRichSchema` reads one. */
+/**
+ * An inline form — a `fields` LIST, or `isComposite` / `childSchema`. The one test of what makes a
+ * `data:` value a form: `@uniweb/core` carried a copy, `isRichSchema`, until 2026-10-05.
+ */
 function isForm(value) {
   return Array.isArray(value.fields) || value.isComposite === true || isPlainObject(value.childSchema)
 }

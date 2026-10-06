@@ -27,6 +27,7 @@ export default {
   name: 'article',
   version: '4.0.0',
   plural: 'Articles',
+  icon: 'lu-newspaper',
   description: 'A blog post, news item, or documentation page',
 
   sections: {

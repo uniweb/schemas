@@ -5,6 +5,7 @@ export default {
   name: 'event',
   version: '1.0.0',
   plural: 'Events',
+  icon: 'lu-calendar-days',
   description: 'A calendar event, conference, or webinar',
 
   fields: {

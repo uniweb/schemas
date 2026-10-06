@@ -94,10 +94,19 @@ export const SECTION_KINDS = new Set(['single', 'multi', 'binder'])
  * refuse — see `warnUnknownModelKeys`.
  */
 const MODEL_KEYS = new Set([
-  'name', 'version', 'label', 'plural', 'description', 'source_locale', 'sourceLocale',
+  'name', 'version', 'label', 'plural', 'icon', 'description', 'source_locale', 'sourceLocale',
   'linkable', 'sort_date', 'sortDate',
   'fields', 'sections'
 ])
+
+/**
+ * A framework icon name — `family-name`: `lu-user` is the icon `user` of the family `lu`.
+ * The family is a short code with no hyphen (`lu`, `hi2`, `fa6`); the name is kebab-case
+ * and may hold hyphens of its own (`lu-calendar-days`), so the first hyphen is the split.
+ * The spelling `![](lu-house)` uses in content, and the one `@uniweb/core/icon-corpus`
+ * resolves (`{family}/{family}-{name}.svg`).
+ */
+const ICON_NAME = /^[a-z][a-z0-9]*-[a-z0-9]+(?:-[a-z0-9]+)*$/
 
 /**
  * Warn about a model-level key nothing will carry.
@@ -264,6 +273,20 @@ export function validateAndNormalizeSchema(schema, ref) {
   const out = {}
   for (const k of ['name', 'version', 'description', 'label', 'plural']) {
     if (schema[k] !== undefined) out[k] = schema[k]
+  }
+
+  // `icon` — the Model's icon, a framework icon name (`ICON_NAME`), never an uploaded
+  // image. One value for every language: the registry stores it as written, and a
+  // consumer resolves it under its icon base. Carried since 2026-10-05 [Diego]; until then
+  // it was warned about and dropped.
+  if (schema.icon !== undefined) {
+    if (typeof schema.icon !== 'string' || !ICON_NAME.test(schema.icon)) {
+      throw new Error(
+        `Data schema '${ref}': 'icon' must be a framework icon name written family-name, like 'lu-user' ` +
+          `(the icon 'user' of the family 'lu'), got ${JSON.stringify(schema.icon)}.`
+      )
+    }
+    out.icon = schema.icon
   }
 
   // ⛔ THE MODEL-LEVEL KEYS WERE A SILENT DROP, MEASURED 2026-09-01. This

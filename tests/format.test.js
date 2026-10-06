@@ -116,6 +116,13 @@ describe('every shipped standard is valid in this format', () => {
     expect(typeof out.plural).toBe('string')
     expect(out.plural.trim()).not.toBe('')
   })
+
+  // …and its icon (2026-10-05 [Diego]) — a framework icon name; the normalizer checks the
+  // spelling, and `_contracts/std-schema-icons.test.js` that the corpus has the icon.
+  it.each(names)("'%s' declares its icon", (name) => {
+    const out = validateAndNormalizeSchema(schemas[name], `@std/${name}`)
+    expect(out.icon).toMatch(/^[a-z][a-z0-9]*-[a-z0-9-]+$/)
+  })
 })
 
 /**
@@ -342,6 +349,32 @@ describe('model-level keys', () => {
     expect(() =>
       validateAndNormalizeSchema(withSections({ plural: { en: 'People' } }), '@demo/person')
     ).toThrow(/'plural' on 'the model' must be a plain string/)
+  })
+
+  // ⛔ Until 2026-10-05 `icon` was warned about and dropped, like `plural` before it.
+  it('carries icon, a framework icon name, as a model-level key', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const out = validateAndNormalizeSchema(withSections({ label: 'Person', icon: 'lu-user' }), '@demo/person')
+    expect(out.icon).toBe('lu-user')
+    // a name may hold hyphens of its own; the family is what comes before the first
+    expect(validateAndNormalizeSchema(withSections({ icon: 'lu-calendar-days' }), '@x').icon).toBe('lu-calendar-days')
+    expect(validateAndNormalizeSchema(withSections({ icon: 'hi2-academic-cap' }), '@x').icon).toBe('hi2-academic-cap')
+    expect(warn).not.toHaveBeenCalled()
+    warn.mockRestore()
+  })
+
+  it.each([
+    ['a bare name, no family', 'user'],
+    ['the colon spelling content also takes', 'lu:user'],
+    ['capitals', 'Lu-User'],
+    ['a path', './icons/user.svg'],
+    ['a URL', 'https://example.com/user.svg'],
+    ['a trailing hyphen', 'lu-user-'],
+    ['an object', { family: 'lu', name: 'user' }],
+  ])('refuses an icon that is not family-name: %s', (_, icon) => {
+    expect(() => validateAndNormalizeSchema(withSections({ icon }), '@demo/person')).toThrow(
+      /'icon' must be a framework icon name written family-name, like 'lu-user'/
+    )
   })
 
   it('warns about an unknown model-level key rather than dropping it in silence', () => {

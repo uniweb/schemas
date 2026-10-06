@@ -5,6 +5,7 @@ export default {
   name: 'publication',
   version: '1.0.0',
   plural: 'Publications',
+  icon: 'lu-book-open',
   description: 'An academic paper, research document, or publication',
 
   fields: {

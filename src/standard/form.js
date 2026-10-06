@@ -85,6 +85,7 @@ export default {
   name: 'form',
   version: '2.0.0',
   plural: 'Forms',
+  icon: 'lu-clipboard-list',
   description: 'A form designed by an author — the controls a visitor will be asked to fill',
   // Its entries are not referenced and not placed in a site's folder (2026-09-30 [Diego]).
   linkable: false,

@@ -104,6 +104,7 @@ fields:
 | `version` | Schema version |
 | `label` | A display name, for people |
 | `plural` | What many entries are called — `label: Person`, `plural: People` |
+| `icon` | The type's icon — a framework icon name written `family-name`: `lu-user` is the icon `user` of the family `lu`. One value for every language |
 | `description` | Human-readable description |
 | `fields` | A flat record's fields — **xor** `sections` |
 | `sections` | Named sections of a structured type — **xor** `fields` |

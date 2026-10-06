@@ -5,6 +5,7 @@ export default {
   name: 'person',
   version: '1.0.0',
   plural: 'People',
+  icon: 'lu-user',
   description: 'A person, team member, or contact',
 
   fields: {

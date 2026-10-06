@@ -5,6 +5,7 @@ export default {
   name: 'project',
   version: '1.0.0',
   plural: 'Projects',
+  icon: 'lu-folder-kanban',
   description: 'A portfolio item, case study, or project showcase',
 
   fields: {

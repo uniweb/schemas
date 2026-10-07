@@ -5,6 +5,7 @@ import {
   normalizeData,
   normalizeParams,
   qualifyRef,
+  schemaDeclarationOf,
 } from '../src/foundation.js'
 
 // A built schema as the build writes it — format 2: `content` and `children` lowered, a
@@ -12,7 +13,11 @@ import {
 const built = () => ({
   _self: { name: '@acme/marketing', version: '1.0.0', schemaFormat: 2, data: { profile: {} } },
   _layouts: { Default: { name: 'Default', data: { menu: '@std/nav' }, params: { sticky: { type: 'boolean' } } } },
-  Team: { name: 'Team', path: 'sections/Team', data: { team: '@/member', posts: '@std/article/*' } },
+  Team: {
+    name: 'Team',
+    path: 'sections/Team',
+    data: { team: '@/member', posts: { schema: '@std/article', whole: true }, lead: { schema: '@/member', single: true } },
+  },
   Faq: {
     name: 'Faq',
     path: 'sections/Faq',
@@ -36,12 +41,18 @@ describe('normalizeFoundationSchema — format 3', () => {
     expect(out._self.schemaFormat).toBe(3)
   })
 
-  test('a ref is { kind: schema } — @/x in the FOUNDATION\'s scope, a standard ref as written, /* as whole', () => {
+  test('a ref is { kind: schema } — @/x in the FOUNDATION\'s scope, a standard ref as written, both flags written', () => {
     expect(out.Team.data).toEqual({
-      team: { kind: 'schema', schema: '@acme/member', whole: false },
-      posts: { kind: 'schema', schema: '@std/article', whole: true },
+      team: { kind: 'schema', schema: '@acme/member', single: false, whole: false },
+      posts: { kind: 'schema', schema: '@std/article', single: false, whole: true },
+      lead: { kind: 'schema', schema: '@acme/member', single: true, whole: false },
     })
-    expect(out.Article.data.article).toEqual({ kind: 'schema', schema: '@acme/post', whole: false })
+    expect(out.Article.data.article).toEqual({ kind: 'schema', schema: '@acme/post', single: false, whole: false })
+  })
+
+  test('a value registered before `single` held a list: absent is false, written out', () => {
+    const older = { _self: { schemaFormat: 3 }, Team: { name: 'Team', data: { posts: { kind: 'schema', schema: '@std/article', whole: true } } } }
+    expect(normalizeFoundationSchema(older).Team.data.posts).toEqual({ kind: 'schema', schema: '@std/article', single: false, whole: true })
   })
 
   test('the scope is the foundation\'s, whatever it is — never @std by default', () => {
@@ -73,7 +84,7 @@ describe('normalizeFoundationSchema — format 3', () => {
   })
 
   test('layouts and the foundation\'s own data are normalized as an entry is', () => {
-    expect(out._layouts.Default.data).toEqual({ menu: { kind: 'schema', schema: '@std/nav', whole: false } })
+    expect(out._layouts.Default.data).toEqual({ menu: { kind: 'schema', schema: '@std/nav', single: false, whole: false } })
     expect(out._layouts.Default.params).toEqual({ sticky: { type: 'boolean' } })
   })
 
@@ -195,8 +206,52 @@ describe('an inline data shape — one tagged form each', () => {
   test('an unlowered concept key — a format-1 entry — is lowered, the bare declaration winning', () => {
     expect(normalizeData({ 'md:faq': 'Questions [2+]' })).toEqual({ faq: { kind: 'concept' } })
     expect(normalizeData({ 'md:faq': 'Questions', faq: '@/qa' }, { scope: 'acme' })).toEqual({
-      faq: { kind: 'schema', schema: '@acme/qa', whole: false },
+      faq: { kind: 'schema', schema: '@acme/qa', single: false, whole: false },
     })
+  })
+})
+
+// ⭐ The grammar of a key typed by a schema — two flags, independent (ruled 2026-10-07 [Diego]).
+describe('a key typed by a schema — schemaDeclarationOf', () => {
+  test('a ref string is the short form of { schema }: a list of briefs', () => {
+    expect(schemaDeclarationOf('@std/article')).toEqual({ schema: '@std/article', single: false, whole: false })
+    expect(schemaDeclarationOf({ schema: '@std/article' })).toEqual({ schema: '@std/article', single: false, whole: false })
+  })
+
+  test('single and whole are independent — all four combinations', () => {
+    const flags = (value) => {
+      const { single, whole } = schemaDeclarationOf({ schema: '@std/article', ...value })
+      return [single, whole]
+    }
+    expect(flags({})).toEqual([false, false])
+    expect(flags({ single: true })).toEqual([true, false])
+    expect(flags({ whole: true })).toEqual([false, true])
+    expect(flags({ single: true, whole: true })).toEqual([true, true])
+  })
+
+  test('an object whose schema is not a ref is an inline shape, not this — null', () => {
+    expect(schemaDeclarationOf({ schema: 'string', title: 'string' })).toBe(null)
+    expect(schemaDeclarationOf({ title: 'string' })).toBe(null)
+    expect(schemaDeclarationOf({})).toBe(null)
+    expect(schemaDeclarationOf(null)).toBe(null)
+  })
+
+  test('/* is retired, and the refusal names what to write', () => {
+    expect(() => schemaDeclarationOf('@std/article/*')).toThrow(/`\/\*` is retired: write \{ schema: '@std\/article', whole: true \}/)
+    expect(() => schemaDeclarationOf({ schema: '@/member/*' })).toThrow(/`\/\*` is retired/)
+  })
+
+  test('a property other than schema, single and whole is refused, and so is a flag that is no boolean', () => {
+    expect(() => schemaDeclarationOf({ schema: '@std/article', many: true })).toThrow(/takes `schema`, `single` and `whole` — not `many`/)
+    expect(() => schemaDeclarationOf({ schema: '@std/article', one: true, label: 'x' })).toThrow(/not `one`, `label`/)
+    expect(() => schemaDeclarationOf({ schema: '@std/article', single: 'yes' })).toThrow(/`single` is true or false/)
+  })
+
+  test('register refuses each, naming the key; a reader of an older version gets untyped and why', () => {
+    expect(() => normalizeData({ post: '@std/article/*' }, { owner: 'Post' })).toThrow(/Post: data\.post: `\/\*` is retired/)
+    expect(() => normalizeData({ post: { schema: '@std/article', many: true } })).toThrow(/data\.post: a key typed by a schema takes/)
+    const read = normalizeData({ post: '@std/article/*' }, { strict: false })
+    expect(read.post).toEqual({ kind: 'untyped', problems: [expect.stringMatching(/`\/\*` is retired/)] })
   })
 })
 

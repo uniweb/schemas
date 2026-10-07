@@ -420,7 +420,7 @@ brief:
 
 A markdown body is the value of the schema's content field — a markup `text` field or a `richtext` one — in whichever single section declares it: `body.content` for `@std/article`.
 
-**What a component receives is one of two shapes, and its `data:` declaration says which:** a **brief** — the brief's fields at the top, and no other section — or, for `'@std/article/*'`, the **whole record** as stored, each section under its own name. `@std/article` keeps its card (`brief`) apart from its body (`body`) so a list and a reference carry the card without the body.
+**What a component receives is one of two shapes, and its `data:` declaration says which:** a **brief** — the brief's fields at the top, and no other section — or, with `whole: true`, the **whole record** as stored, each section under its own name. `@std/article` keeps its card (`brief`) apart from its body (`body`) so a list and a reference carry the card without the body.
 
 ```js
 // the same record, as a brief
@@ -429,6 +429,17 @@ A markdown body is the value of the schema's content field — a markup `text` f
 // and whole
 { brief: { title: 'Hello', author: 'Ada', date: '2026-05-01' }, body: { content: { type: 'doc', … } } }
 ```
+
+How many records a key holds is the declaration's other flag: a list, or one with `single: true`. The two are independent:
+
+```js
+data: {
+  articles: '@std/article',                                         // a list of briefs
+  article:  { schema: '@std/article', single: true, whole: true },  // one record, whole
+}
+```
+
+A schema whose root is a list, such as `@std/nav`, describes the whole value of its key, so it takes neither flag.
 
 ---
 
@@ -516,7 +527,9 @@ import { validateItem, validateRecordFile, recordLayout, toDeliveredRecord } fro
 | `misplacedFields(schema, record)` | The keys of a record file written flat where the schema is written by section, with the section each belongs under |
 | `referencesOf(schema, record, { delivered })` | Every reference a record holds, with its path, the schema it points at and the value written there — in its file, or as delivered |
 | `mapReferences(schema, record, fn, { delivered })` | The record with each reference replaced by `fn(value, { path, ref })` |
-| `validateBound(schema, value)` | Findings for a whole bound **value** — a record or a list. Dispatches on the schema's root shape and descends into a `tree`'s children |
+| `validateBound(schema, value)` | Findings for a value against the schema's **root** — a list schema's list, or one record. Descends into a `tree`'s children |
+| `validateKeyValue(schema, value, { single, whole })` | Findings for the value a `data:` key holds, **as the key declares it**: a list of records unless `single`, each its brief unless `whole`; a list schema's list either way |
+| `validateStoredRecord(schema, record)` | Findings for one record **as stored** — each section under its own name, the brief's included — what a `whole: true` key receives |
 | `rootListSection(schema)` | The section whose records *are* the value, when the root is a list |
 | `AUTHORING_TYPES` | Every word valid as a `type:` — derived from the vocabulary, so it never drifts |
 | `SCALAR_KINDS`, `FORMAT_TYPES`, … | The type vocabulary |

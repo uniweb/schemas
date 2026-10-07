@@ -7,11 +7,12 @@
  * shorthands or sugar"*). Format 2 (the build, 2026-09-29) lowered `content`, `children` and the
  * `'md:<tag>'` keys of `data`; this finishes the job:
  *
- *   data      each key one tagged value — `{ kind: 'schema', schema, whole }` with the ref
- *             QUALIFIED with the foundation's scope, `{ kind: 'fields', fields }` (an inline field
- *             map, normalized as a data schema file is), `{ kind: 'form', … }` (an inline form,
- *             its shorthands expanded), `{ kind: 'concept' }` or `{ kind: 'untyped' }`. A component
- *             that declares no key has no `data`.
+ *   data      each key one tagged value — `{ kind: 'schema', schema, single, whole }` with the ref
+ *             QUALIFIED with the foundation's scope and BOTH flags written, whatever was authored
+ *             (`schemaDeclarationOf`), `{ kind: 'fields', fields }` (an inline field map, normalized
+ *             as a data schema file is), `{ kind: 'form', … }` (an inline form, its shorthands
+ *             expanded), `{ kind: 'concept' }` or `{ kind: 'untyped' }`.
+ *             A component that declares no key has no `data`.
  *   params    a select's `options` always `[{ value, label }]`.
  *   content   as format 2 — the lowered list, `[]` for a component that takes no content, absent
  *             for one that declares nothing.
@@ -48,8 +49,8 @@ export const FOUNDATION_SCHEMA_FORMAT = 3
 /** Every `kind` a format-3 `data:` value can have. */
 export const DATA_KINDS = Object.freeze(['schema', 'fields', 'form', 'concept', 'untyped'])
 
-/** The suffix that asks for whole records: `'@std/article/*'`. */
-const WHOLE_SUFFIX = '/*'
+/** The properties a `data:` key typed by a schema takes, written out: `{ schema, single, whole }`. */
+const DECLARATION_KEYS = Object.freeze(['schema', 'single', 'whole'])
 
 /**
  * A foundation schema — a built `meta/schema.json`, or a registered one of any format — in format
@@ -148,18 +149,28 @@ export function normalizeData(data, { scope, concepts, owner = 'a component', st
 }
 
 function normalizeDataValue(value, { scope, strict, concept, where }) {
-  if (typeof value === 'string') return schemaValue(value, false, scope)
   if (value === null) return { kind: 'untyped' }
-  if (!isPlainObject(value)) {
+  if (typeof value !== 'string' && !isPlainObject(value)) {
     const message = `${where} is not a schema — a ref ('@/x'), an inline field map, a form or {} — got ${JSON.stringify(value)}.`
     if (strict) throw new Error(message)
     return { kind: 'untyped', problems: [message] }
   }
 
   // Already format 3: normalized again, which changes nothing but an unqualified ref.
-  if (DATA_KINDS.includes(value.kind)) return renormalize(value, { scope, strict, where })
+  if (isPlainObject(value) && DATA_KINDS.includes(value.kind)) return renormalize(value, { scope, strict, where })
 
-  if (typeof value.schema === 'string') return schemaValue(value.schema, value.whole === true, scope)
+  // A ref, short or long. ⛔ Read mode reads none of a retired spelling either: a `/*` value says
+  // why in its `problems` rather than standing for what it once meant.
+  let declaration
+  try {
+    declaration = schemaDeclarationOf(value)
+  } catch (err) {
+    const message = `${where}: ${err.message}`
+    if (strict) throw new Error(message)
+    return { kind: 'untyped', problems: [message] }
+  }
+  if (declaration) return schemaValue(declaration, scope)
+
   if (isForm(value)) return { kind: 'form', ...normalizeForm(value) }
   if (Object.keys(value).length === 0) return concept ? { kind: 'concept' } : { kind: 'untyped' }
 
@@ -201,7 +212,8 @@ function schemaMessage(err) {
 function renormalize(value, { scope, strict, where }) {
   switch (value.kind) {
     case 'schema':
-      return schemaValue(String(value.schema ?? ''), value.whole === true, scope)
+      // A version registered before `single` existed held a list: absent is `false`.
+      return schemaValue({ schema: String(value.schema ?? ''), single: value.single === true, whole: value.whole === true }, scope)
     case 'fields':
       return { ...qualifyFieldRefs(value, scope), kind: 'fields' }
     case 'form': {
@@ -219,11 +231,64 @@ function renormalize(value, { scope, strict, where }) {
   }
 }
 
-/** A named ref as `{ kind: 'schema', schema, whole }` — `'@x/y/*'` asks for whole records. */
-function schemaValue(ref, whole, scope) {
-  const isWhole = whole || ref.endsWith(WHOLE_SUFFIX)
-  const bare = ref.endsWith(WHOLE_SUFFIX) ? ref.slice(0, -WHOLE_SUFFIX.length) : ref
-  return { kind: 'schema', schema: qualifyRef(bare, scope), whole: isWhole }
+/** A key typed by a schema in format 3: the ref qualified, both flags written. */
+function schemaValue({ schema, single, whole }, scope) {
+  return { kind: 'schema', schema: qualifyRef(schema, scope), single: single === true, whole: whole === true }
+}
+
+/**
+ * ⭐ A `data:` KEY TYPED BY A SCHEMA, as authored — the one reader of the grammar (ruled 2026-10-07
+ * [Diego]). Two flags, independent: how many records the key holds, and how much of each.
+ *
+ *   '@std/article'                                          a list of briefs — the short form
+ *   { schema: '@std/article' }                              the same, written out
+ *   { schema: '@std/article', single: true }                one record's brief, or null
+ *   { schema: '@std/article', whole: true }                 a list of whole records
+ *   { schema: '@std/article', single: true, whole: true }   one record, whole
+ *
+ * The long form is an object whose `schema` is a REF — a string starting with `@`. Any other object
+ * is an inline shape (a field map, a form, `{}`), and not this function's: it answers `null`. A field
+ * spec is never a bare ref, so a field map with a field named `schema` is not mistaken for one.
+ *
+ * ⛔ Refused, naming what to write: a `/*` suffix — retired 2026-10-07, `whole: true` says it — a
+ * property of the long form other than `schema`, `single` and `whole`, and a flag that is not a
+ * boolean. Whether a flag suits its schema — none does on a list schema — is the build's to check,
+ * which resolves the schema.
+ *
+ * @param {*} value - one `data:` entry's value, as authored
+ * @returns {{ schema: string, single: boolean, whole: boolean } | null} null when the value is not a ref
+ * @throws {Error} for a spelling that is retired or not one of the above
+ */
+export function schemaDeclarationOf(value) {
+  if (typeof value === 'string') {
+    refuseWholeSuffix(value)
+    return { schema: value, single: false, whole: false }
+  }
+  if (!isPlainObject(value) || typeof value.schema !== 'string' || !value.schema.startsWith('@')) return null
+  refuseWholeSuffix(value.schema)
+  const unknown = Object.keys(value).filter((key) => !DECLARATION_KEYS.includes(key))
+  if (unknown.length > 0) {
+    throw new Error(
+      `a key typed by a schema takes \`schema\`, \`single\` and \`whole\` — not ${unknown.map((k) => `\`${k}\``).join(', ')}. ` +
+        `\`single: true\` holds one record instead of a list; \`whole: true\` gives each record as stored instead of its brief.`
+    )
+  }
+  for (const flag of ['single', 'whole']) {
+    if (value[flag] !== undefined && typeof value[flag] !== 'boolean') {
+      throw new Error(`\`${flag}\` is true or false — got ${JSON.stringify(value[flag])}.`)
+    }
+  }
+  return { schema: value.schema, single: value.single === true, whole: value.whole === true }
+}
+
+/** `'@std/article/*'` — the whole-record suffix, retired 2026-10-07 [Diego]. */
+function refuseWholeSuffix(ref) {
+  if (!ref.endsWith('/*')) return
+  const schema = ref.slice(0, -2)
+  throw new Error(
+    `\`/*\` is retired: write { schema: '${schema}', whole: true } for whole records — ` +
+      `and single: true as well when the section shows one record.`
+  )
 }
 
 /**

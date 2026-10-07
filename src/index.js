@@ -84,6 +84,7 @@ export {
   normalizeData,
   normalizeParams,
   qualifyRef,
+  schemaDeclarationOf,
 } from './foundation.js'
 
 // The format itself — normalization and conformance. Also available as the
@@ -121,6 +122,8 @@ export {
   flatRecordFields,
   rootListSection,
   validateBound,
+  validateKeyValue,
+  validateStoredRecord,
 } from './conform.js'
 
 /**

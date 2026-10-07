@@ -38,6 +38,8 @@ import {
   misplacedFields,
   referencesOf,
   mapReferences,
+  validateKeyValue,
+  validateStoredRecord,
 } from '../src/conform.js'
 import { validateAndNormalizeSchema } from '../src/format.js'
 import { validate, nav } from '../src/index.js'
@@ -400,5 +402,54 @@ describe('a `file` value — a path, or an asset (2026-09-28)', () => {
   })
   it('CONTROL — an object with no url does not', () => {
     expect(validateItem(schema, { file: { name: 'brochure.pdf' } }).length).toBeGreaterThan(0)
+  })
+})
+
+// ⭐ The value a key holds, checked as the key declares it: how many records, and how much of each
+// (ruled 2026-10-07 [Diego]).
+describe('validateKeyValue — a list, or one record; briefs, or whole', () => {
+  const article = norm({
+    name: 'article',
+    sections: {
+      brief: { brief: true, fields: { title: { type: 'string', required: true } } },
+      body: { fields: { content: { type: 'string', required: true } } },
+    },
+  })
+  const check = (value, declaration) => validateKeyValue(article, value, declaration).map((f) => `${f.field}:${f.rule}`)
+
+  it('a key holds a LIST by default — each record its brief', () => {
+    expect(check([{ title: 'A' }, { title: 'B' }])).toEqual([])
+    expect(check([{ title: 'A' }, {}])).toEqual(['[1].title:required'])
+  })
+
+  it('one record under a list key is refused, naming single', () => {
+    const [finding] = validateKeyValue(article, { title: 'A' })
+    expect(finding).toMatchObject({ field: '', rule: 'type' })
+    expect(finding.message).toMatch(/expected a list of records, got object — a key that holds one record is declared `single: true`/)
+  })
+
+  it('single: true holds ONE record; a list there is refused', () => {
+    expect(check({ title: 'A' }, { single: true })).toEqual([])
+    expect(check({}, { single: true })).toEqual(['title:required'])
+    expect(check([{ title: 'A' }], { single: true })).toEqual([':type'])
+  })
+
+  it('whole: true checks each record as stored — the brief under its name', () => {
+    const whole = { brief: { title: 'A' }, body: { content: 'Text' } }
+    expect(check(whole, { single: true, whole: true })).toEqual([])
+    expect(check([whole, { brief: {} }], { whole: true })).toEqual(['[1].brief.title:required'])
+    // CONTROL — a brief is not a whole record: its title is not under `brief`
+    expect(check({ title: 'A' }, { single: true, whole: true })).toEqual(['brief.title:required'])
+  })
+
+  it('a list schema holds its list whatever the flags — validateBound', () => {
+    expect(validateKeyValue(norm(LIST), [{ label: 'Home' }, {}]).map((f) => `${f.field}:${f.rule}`)).toEqual(['[1].label:required'])
+    expect(validateKeyValue(norm(LIST), { label: 'Home' }).map((f) => f.rule)).toEqual(['type'])
+  })
+
+  it('validateStoredRecord — the `fields:` shorthand stores its one section as `brief`', () => {
+    const flat = norm({ name: 'note', fields: { title: { type: 'string', required: true } } })
+    expect(validateStoredRecord(flat, { brief: { title: 'A' } })).toEqual([])
+    expect(validateStoredRecord(flat, { title: 'A' }).map((f) => f.field)).toEqual(['brief.title'])
   })
 })

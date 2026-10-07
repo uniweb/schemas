@@ -115,9 +115,11 @@ export function recordLayout(schema) {
  * A schema whose root is a LIST describes an entity whose content is that list —
  * `{ items: [...] }`, one entity. ⚠️ A VALUE delivered under a key — a data block's
  * array, a query's records — is the bare list: check it whole with `validateBound`,
- * never element by element here.
+ * never element by element here. A key's whole value, as its declaration says it is —
+ * a list or one record, briefs or whole — is `validateKeyValue`'s.
  *
- * To check a record as a FILE holds it, use `validateRecordFile`. ⛔ Until 2026-09-24 a
+ * To check a record AS STORED (a key declared `whole: true`), use `validateStoredRecord`; as a
+ * FILE holds it, `validateRecordFile`. ⛔ Until 2026-09-24 a
  * `sections`-form schema was not checked at all — "deferred", even one with nothing but
  * a brief.
  *
@@ -298,7 +300,8 @@ export function briefFieldMap(schema) {
  * The field map of a WHOLE record — the record as stored (ruled 2026-09-27 [Diego]): one field per
  * top-level section, under its name, the brief included — an object for a single section, a list
  * for a `many` one. The `fields:` shorthand's one section is `brief`. ⛔ Until 2026-10-05 the runtime
- * filled a key's field defaults from it when its component declares `'@x/y/*'`.
+ * filled a key's field defaults from it when its component declared whole records (then `'@x/y/*'`;
+ * `whole: true` since 2026-10-07).
  *
  * @param {Object} schema - a normalized data schema
  * @returns {Object|null}
@@ -609,14 +612,18 @@ export function rootListSection(schema) {
 }
 
 /**
- * Validate the whole value bound to a `content.data` key — a record OR a list.
+ * Validate a value against a schema's root — a list schema's list, or ONE record.
  *
- * This is the entry point a caller holding an entire authored value wants: a
- * tagged data block (```` ```yaml:nav ````), or anything else delivered under one
- * key. It dispatches on the schema's root shape:
+ * It dispatches on the schema's root shape:
  *
  *   root is a LIST    → the value is an array of that section's records
  *   root is a RECORD  → the value is one record (`validateItem`)
+ *
+ * ⚠️ For the value a `data:` key HOLDS, call `validateKeyValue`, which reads the key's declaration
+ * too: a key typed by a record schema holds a LIST of its records unless it is declared
+ * `single: true` (ruled 2026-10-07 [Diego]), so the root alone does not say how many there are.
+ * ⛔ Until 2026-10-07 this was called for every tagged data block, and a block under a list key had
+ * to hold one record.
  *
  * WHY THIS IS NOT `validateItem`. That one takes ONE delivered RECORD — for a
  * list-rooted schema, one entity, the list under its section's key. This takes the VALUE
@@ -638,6 +645,68 @@ export function validateBound(schema, value) {
     return validateRecords(list, value, '')
   }
   return validateItem(schema, value)
+}
+
+/**
+ * ⭐ THE VALUE A `data:` KEY HOLDS, checked as the key declares it — how many records, and how much
+ * of each (ruled 2026-10-07 [Diego]):
+ *
+ *   a list schema (`@std/nav`)      its list — the key takes no flag (`validateBound`)
+ *   a record schema                 a LIST of its records, or ONE with `single: true`
+ *   …each record                    its brief (`validateItem`), or as stored with `whole: true`
+ *                                   (`validateStoredRecord`)
+ *
+ * What a tagged data block is checked by — the build's `validate`, a push, and an editor holding a
+ * block — so one rule says what a block under a key must hold.
+ *
+ * @param {Object} schema - a normalized data schema
+ * @param {*} value - the key's whole value
+ * @param {{ single?: boolean, whole?: boolean }} [declaration] - the key's flags
+ * @returns {Array<{ field: string, rule: string, message: string }>}
+ */
+export function validateKeyValue(schema, value, { single = false, whole = false } = {}) {
+  if (rootListSection(schema)) return validateBound(schema, value)
+  const record = whole ? validateStoredRecord : validateItem
+  if (single) {
+    if (Array.isArray(value)) {
+      return [violation('', 'type', 'expected one record — the key is declared `single: true` — got a list')]
+    }
+    return record(schema, value)
+  }
+  if (!Array.isArray(value)) {
+    return [violation('', 'type', `expected a list of records, got ${typeName(value)} — a key that holds one record is declared \`single: true\``)]
+  }
+  const out = []
+  value.forEach((item, i) => {
+    for (const finding of record(schema, item)) {
+      out.push({ ...finding, field: finding.field ? `[${i}].${finding.field}` : `[${i}]` })
+    }
+  })
+  return out
+}
+
+/**
+ * Validate one record AS STORED — what a key declared `whole: true` receives: each top-level section
+ * under its own name, the brief's included (`toStoredRecord`; ruled 2026-09-27 [Diego]). The brief
+ * is checked always, since its `required` fields are owed; any other section only when the record
+ * holds it, as `validateItem` checks a brief's.
+ *
+ * @param {Object} schema - a normalized data schema
+ * @param {*} item - the record as stored
+ * @returns {Array<{ field: string, rule: string, message: string }>}
+ */
+export function validateStoredRecord(schema, item) {
+  const layout = recordLayout(schema)
+  if (!layout) return []
+  const record = isPlainObject(item) ? item : {}
+  if (schema.fields) return validateFields(schema.fields, record[SHORTHAND_SECTION], SHORTHAND_SECTION)
+  const brief = briefNameOf(schema, layout)
+  const out = []
+  for (const [name, section] of layout.sections) {
+    if (name !== brief && record[name] == null) continue
+    out.push(...validateSection(section, record[name], name))
+  }
+  return out
 }
 
 /**

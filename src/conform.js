@@ -458,7 +458,7 @@ export function contentBodyField(schema) {
 
 const isContentBody = (f) =>
   !!f && typeof f === 'object' &&
-  ((f.type === 'text' && (f.format === 'markdown' || f.format === 'html')) ||
+  ((f.type === 'text' && f.format === 'markdown') ||
     (f.type === 'json' && f.format === 'prosemirror'))
 
 /**

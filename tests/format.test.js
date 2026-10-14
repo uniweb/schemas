@@ -411,3 +411,21 @@ describe('a `$` name is the system\'s', () => {
     expect(() => validateAndNormalizeSchema({ fields: { price$: 'string', 'a$b': 'string' } }, '@demo/x')).not.toThrow()
   })
 })
+
+describe('there is no html', () => {
+  // Content is never markup: a component decides how content renders, and an
+  // HTML body is the one thing it cannot render without running what it holds.
+  // `html` and `format: html` were offered until 2026-10-14.
+  const schemaWith = (field) => ({ name: 'note', fields: { body: field } })
+
+  it.each([[{ type: 'html' }], [{ type: 'text', format: 'html' }]])('%j is refused by name', (field) => {
+    expect(() => validateAndNormalizeSchema(schemaWith(field), '@/note')).toThrow(/is HTML[\s\S]*richtext[\s\S]*markdown/)
+  })
+
+  it('CONTROL — markdown and richtext are what to use', () => {
+    expect(() => validateAndNormalizeSchema(schemaWith({ type: 'markdown' }), '@/note')).not.toThrow()
+    expect(() => validateAndNormalizeSchema(schemaWith({ type: 'richtext' }), '@/note')).not.toThrow()
+    expect(FORMAT_TYPES.has('html')).toBe(false)
+    expect(AUTHORING_TYPES.has('html')).toBe(false)
+  })
+})

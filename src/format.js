@@ -71,22 +71,38 @@ const TYPE_ALIASES = {
   group: 'object',
 }
 // Friendly type aliases that lower to a base kind + a carried `format` marker.
-// `url`/`email` → `string` (server-validated value subtypes). `markdown`/`html` →
-// `text` (a file-based rich-content body — round-trips as the raw source string).
+// `url`/`email` → `string` (server-validated value subtypes). `markdown` → `text`
+// (a file-based rich-content body — round-trips as the raw source string).
+//
+// ⛔ There is no `html`. Content is never markup: components decide how content
+// renders, and a body of HTML is the one thing a component cannot render without
+// running whatever it holds. Rich text is `richtext`; a source body is `markdown`.
+// `html` and `format: html` were offered until 2026-10-14, when nothing declared
+// them, and are refused by name since (`refuseHtml`).
 const FORMAT_TYPE_ALIASES = {
   url: { type: 'string', format: 'url' },
   email: { type: 'string', format: 'email' },
   markdown: { type: 'text', format: 'markdown' },
-  html: { type: 'text', format: 'html' },
   // `richtext` → a ProseMirror rich document (`json` + `format: prosemirror`): the
   // framework's standard way to represent rich text — the structured, lossless form
   // the visual app edits (text, media, tables, code, data blocks, icons, and inline
   // components). Synced to file mode as enhanced markdown via content-writer. Contrast
-  // `markdown`/`html`, which are source-string bodies (raw text, no structured editor).
+  // `markdown`, a source-string body (raw text, no structured editor).
   richtext: { type: 'json', format: 'prosemirror' },
 }
 // The advertised format-aliasing type words (drives the "Known types" hint).
-export const FORMAT_TYPES = new Set(['url', 'email', 'markdown', 'html', 'richtext'])
+export const FORMAT_TYPES = new Set(['url', 'email', 'markdown', 'richtext'])
+
+/** `html` and `format: html` are refused by name — see FORMAT_TYPE_ALIASES. */
+function refuseHtml(field, ref, path) {
+  if (field.type === 'html' || field.format === 'html') {
+    throw new Error(
+      `Data schema '${ref}': field '${path}' is HTML, which a data schema cannot declare — ` +
+        `content is never markup, and a component decides how it renders. ` +
+        `Use \`richtext\` for rich text, or \`markdown\` for a source body.`
+    )
+  }
+}
 export const SECTION_KINDS = new Set(['single', 'multi', 'binder'])
 
 /**
@@ -547,6 +563,7 @@ function normalizeField(field, ref, path) {
   if (typeof rawType !== 'string') {
     throw new Error(`Data schema '${ref}': field '${path}' has no 'type'.`)
   }
+  refuseHtml(field, ref, path)
 
   const out = {}
   // Carry-through metadata (render hints / flags / value).
@@ -590,12 +607,12 @@ function normalizeField(field, ref, path) {
   }
 
   // Content `format` markers are registered per-shape (uwx-format.md §3): the
-  // rich-content markers `markdown`/`html` belong on a `text` field; `prosemirror`
+  // rich-content marker `markdown` belongs on a `text` field; `prosemirror`
   // (a ProseMirror doc) and `scene` (a Scene Composition Format payload — an opaque
   // structured blob the app edits via the Designer / visual canvas) both belong on
   // a `json` field. Catch a mismatch at build time, not at publish (the backend
   // rejects it). Value-validator formats (email/url) are unrestricted here.
-  if ((out.format === 'markdown' || out.format === 'html') && out.type !== 'text') {
+  if (out.format === 'markdown' && out.type !== 'text') {
     throw new Error(
       `Data schema '${ref}': field '${path}' has format '${out.format}', valid only on a 'text' field (got '${out.type}').`
     )

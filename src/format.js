@@ -93,6 +93,31 @@ const FORMAT_TYPE_ALIASES = {
 // The advertised format-aliasing type words (drives the "Known types" hint).
 export const FORMAT_TYPES = new Set(['url', 'email', 'markdown', 'richtext'])
 
+/**
+ * `readable_with` — a reference that opens its entry, for `read`, to whoever holds that
+ * level (`read`, `edit` or `admin`) on the entry it points to: a submission's `course`
+ * declaring `edit` is read by the course's staff, and by none of its students. Only a
+ * reference can declare it — a `ref` field, or a list of them (2026-10-14 [Diego]: "I
+ * think data schemas should be able to set it").
+ */
+const READABLE_WITH = new Set(['read', 'edit', 'admin'])
+
+function readableWith(value, isReference, ref, path) {
+  if (value === undefined) return undefined
+  if (!isReference) {
+    throw new Error(
+      `Data schema '${ref}': field '${path}' declares 'readable_with', which only a reference can — ` +
+        `a 'ref' field, or a list of them. It opens the entry to whoever holds that level on the entry it points to.`
+    )
+  }
+  if (!READABLE_WITH.has(value)) {
+    throw new Error(
+      `Data schema '${ref}': field '${path}' 'readable_with' must be read, edit or admin, got ${JSON.stringify(value)}.`
+    )
+  }
+  return value
+}
+
 /** `html` and `format: html` are refused by name — see FORMAT_TYPE_ALIASES. */
 function refuseHtml(field, ref, path) {
   if (field.type === 'html' || field.format === 'html') {
@@ -111,7 +136,7 @@ export const SECTION_KINDS = new Set(['single', 'multi', 'binder'])
  */
 const MODEL_KEYS = new Set([
   'name', 'version', 'label', 'plural', 'icon', 'description', 'source_locale', 'sourceLocale',
-  'linkable', 'sort_date', 'sortDate',
+  'linkable', 'grantable', 'sort_date', 'sortDate',
   'fields', 'sections'
 ])
 
@@ -333,6 +358,19 @@ export function validateAndNormalizeSchema(schema, ref) {
     out.linkable = schema.linkable
   }
 
+  // `grantable` — `false` keeps this Model's entries from being shared one at a time: a
+  // grant of read, edit or admin on one entry, to an account or a team. Omitted, it is
+  // true; the producer sends only an authored `false` (2026-10-14 [Diego]: "They default
+  // to true but if they don't want it to be grantable, why not let them").
+  if (schema.grantable !== undefined) {
+    if (typeof schema.grantable !== 'boolean') {
+      throw new Error(
+        `Data schema '${ref}': 'grantable' must be a boolean, got ${typeof schema.grantable}.`
+      )
+    }
+    out.grantable = schema.grantable
+  }
+
   // ⛔ `creatable_by` is RETIRED (2026-09-23): Models are open. Anyone signed in may
   // create entries of any Model; who may see or edit an entry is decided by the
   // entry, never by who may create one. Refused by name rather than dropped, so a
@@ -541,6 +579,9 @@ function normalizeField(field, ref, path) {
         else out[k] = v
       }
       out.items = normalizeField(item, ref, `${path}[]`)
+      if (out.readable_with !== undefined) {
+        out.readable_with = readableWith(out.readable_with, out.items.type === 'ref', ref, path)
+      }
       // A list of records becomes a section, so it accepts the section flags.
       normalizeSectionFlags(out, ref, path, out.items.type === 'object')
       return out
@@ -617,6 +658,9 @@ function normalizeField(field, ref, path) {
       `Data schema '${ref}': field '${path}' has format '${out.format}', valid only on a 'text' field (got '${out.type}').`
     )
   }
+  const opensWith = readableWith(field.readable_with, out.type === 'ref', ref, path)
+  if (opensWith) out.readable_with = opensWith
+
   if ((out.format === 'prosemirror' || out.format === 'scene') && out.type !== 'json') {
     throw new Error(
       `Data schema '${ref}': field '${path}' has format '${out.format}', valid only on a 'json' field (got '${out.type}').`

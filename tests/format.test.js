@@ -429,3 +429,21 @@ describe('there is no html', () => {
     expect(AUTHORING_TYPES.has('html')).toBe(false)
   })
 })
+
+describe('access a schema may declare (2026-10-14)', () => {
+  it('`grantable` is a boolean on the schema', () => {
+    expect(validateAndNormalizeSchema({ name: 'x', grantable: false, fields: { a: 'string' } }, '@/x').grantable).toBe(false)
+    expect(() => validateAndNormalizeSchema({ name: 'x', grantable: 'no', fields: { a: 'string' } }, '@/x')).toThrow(/must be a boolean/)
+  })
+
+  it('`readable_with` is a level, on a reference or a list of them', () => {
+    const out = validateAndNormalizeSchema(
+      { name: 'submission', fields: { course: { ref: '@/course', readable_with: 'edit' }, peers: { ref: '@/person', many: true, readable_with: 'read' } } },
+      '@/submission'
+    )
+    expect(out.fields.course.readable_with).toBe('edit')
+    expect(out.fields.peers.readable_with).toBe('read')
+    expect(() => validateAndNormalizeSchema({ name: 'x', fields: { a: { type: 'string', readable_with: 'read' } } }, '@/x')).toThrow(/only a reference can/)
+    expect(() => validateAndNormalizeSchema({ name: 'x', fields: { c: { ref: '@/c', readable_with: 'owner' } } }, '@/x')).toThrow(/read, edit or admin/)
+  })
+})

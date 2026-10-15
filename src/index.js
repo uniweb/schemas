@@ -104,6 +104,9 @@ export {
   validateAndNormalizeSchema,
   collectNestedRefs,
 } from './format.js'
+// A `string` field's `pattern`: whether a registry reads it, and whether a value matches it.
+// Also the `@uniweb/schemas/pattern` subpath, a leaf an editor can import alone.
+export { patternRefusal, matchesPattern } from './pattern.js'
 export {
   validateItem,
   validateRecordFile,

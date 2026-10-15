@@ -82,7 +82,7 @@ describe('validate', () => {
         body: { type: 'markdown' },
       },
     }
-    expect(validate({ count: 2, live: true, cover: '/a.png', site: '/x', body: '# hi' }, schema).valid).toBe(true)
+    expect(validate({ count: 2, live: true, cover: '/a.png', site: 'example.com', body: '# hi' }, schema).valid).toBe(true)
     // `number` folds to `decimal`, so the finding speaks the canonical kind.
     expect(paths(validate({ count: 'two' }, schema))).toEqual(['count:type'])
     expect(validate({ count: 'two' }, schema).errors[0].message).toMatch(/expected decimal/)

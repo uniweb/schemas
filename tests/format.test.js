@@ -510,7 +510,6 @@ describe('a field declares only the keys the format reads', () => {
   it.each([
     ['localized', true, /write `translatable`/],
     ['multiple', true, /write `many: true`/],
-    ['pattern', '^a', /does not check a pattern yet/],
     ['min_length', 1, /does not check a minimum length yet/],
     ['languages', ['en'], /cannot require languages/],
   ])('refuses %s, saying why', (key, value, message) => {
@@ -552,6 +551,34 @@ describe("a field's rules", () => {
     expect(norm({ type: 'decimal', max: '9' })).toThrow(/'max' must be a number/)
     expect(norm({ type: 'file', mime_types: ['image'] })).toThrow(/'mime_types' must be a list of media types/)
     expect(norm({ type: 'int', min: 5, max: 1 })).toThrow(/'min' 5 above 'max' 1/)
+  })
+})
+
+// ⭐ `pattern` on a string (2026-10-15): a registry checks it on every write, and refuses at register
+// what its engine and JavaScript would read differently — so a build refuses it first, saying which
+// construct. ⛔ Until then `pattern` was refused by name: no registry checked one.
+describe("a string's pattern", () => {
+  const field = (f) => validateAndNormalizeSchema({ fields: { f } }, '@/x').fields.f
+  const norm = (f) => () => field(f)
+
+  it('is carried on a string, a url and each value of a list', () => {
+    expect(field({ type: 'string', pattern: '[A-Z]{2}\\d{4}' })).toEqual({ type: 'string', pattern: '[A-Z]{2}\\d{4}' })
+    expect(field({ type: 'url', pattern: 'https://orcid\\.org/.+' })).toEqual({ type: 'string', format: 'url', pattern: 'https://orcid\\.org/.+' })
+    expect(field({ type: 'string', many: true, pattern: '[a-z]+' })).toEqual({ type: 'array', items: { type: 'string', pattern: '[a-z]+' } })
+  })
+
+  it('applies to a string only', () => {
+    expect(norm({ type: 'text', pattern: 'a' })).toThrow(/'pattern', which applies to string values, not text/)
+    expect(norm({ type: 'int', pattern: '\\d+' })).toThrow(/'pattern', which applies to string values, not int/)
+    expect(norm({ options: '@/lists/countries', pattern: 'a' })).toThrow(/a field that picks from a list holds a choice from it/)
+  })
+
+  it('refuses one a registry does not read, naming the construct', () => {
+    expect(norm({ type: 'string', pattern: '(?<=a)b' })).toThrow(/field 'f' 'pattern' "\(\?<=a\)b" uses look-around/)
+    expect(norm({ type: 'string', pattern: '(a)\\1' })).toThrow(/refers back to a group/)
+    expect(norm({ type: 'string', pattern: '[a-z_-]' })).toThrow(/a `-` that ends no range/)
+    expect(norm({ type: 'string', pattern: '' })).toThrow(/is not a regular expression/)
+    expect(norm({ type: 'string', pattern: 5 })).toThrow(/'pattern' must be a regular expression, written as text/)
   })
 })
 

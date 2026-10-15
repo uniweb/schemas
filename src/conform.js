@@ -24,6 +24,7 @@
  */
 
 import { SCALAR_KINDS, enumValues } from './format.js'
+import { matchesPattern } from './pattern.js'
 
 // ── The layout of one record ──────────────────────────────────────────────────
 //
@@ -959,8 +960,9 @@ function validateValue(def, value, path) {
 
   // date / datetime — the value is the string as written (the build's YAML resolves
   // no timestamps), and it must be one a backend stores: a date at the precision its
-  // field declares — a real `YYYY-MM-DD` day, or with `format: year-month` a month
-  // `YYYY-MM`, with `format: year` a year `YYYY` (since 2026-10-15) — and a day and a time
+  // field declares — a real `YYYY-MM-DD` day (`2024-5-3` too, which a registry stores in
+  // full), or with `format: year-month` a month `YYYY-MM`, with `format: year` a year `YYYY`
+  // (since 2026-10-15) — and a day and a time
   // for a datetime. ⛔ Until 2026-09-24 any string passed — `joined: March 2021` included,
   // which a backend refuses ("is not a valid date"). A datetime's offset is not required
   // here: which a backend demands is its to say.
@@ -984,10 +986,20 @@ function validateValue(def, value, path) {
   if (typeof value === 'string') {
     if (def.format === 'email' && !isEmailish(value)) {
       out.push(violation(path, 'format', `${fmt(value)} is not a valid email`))
-    } else if (def.format === 'url' && !isUrlish(value)) {
-      out.push(violation(path, 'format', `${fmt(value)} is not a valid url`))
+    } else if (def.format === 'url' && storedUrl(value) === null) {
+      out.push(violation(path, 'format', `${fmt(value)} is not a web address — write http:// or https:// and a host, as in 'https://example.com/about'`))
     } else if (def.format === 'currency' && !/^[A-Z]{3}$/.test(value)) {
       out.push(violation(path, 'format', `${fmt(value)} is not a currency code (ISO 4217, like 'CAD')`))
+    }
+  }
+
+  // A field's `pattern` (./pattern.js), matched against the whole value as a registry stores it —
+  // a url with `https://` in front of an address written without a scheme. An empty value is not
+  // checked: presence is `required`'s.
+  if (typeof value === 'string' && value !== '' && typeof def.pattern === 'string') {
+    const stored = def.format === 'url' ? storedUrl(value) : value
+    if (stored !== null && !matchesPattern(def.pattern, stored)) {
+      out.push(violation(path, 'pattern', `${fmt(value)} does not match the pattern ${fmt(def.pattern)}`))
     }
   }
 
@@ -1066,9 +1078,11 @@ function isKind(kind, value) {
   }
 }
 
-// A calendar day, `YYYY-MM-DD` — and a real one: `2026-02-30` is not.
+// A calendar day, `YYYY-MM-DD` — and a real one: `2026-02-30` is not. A month or a day written
+// short is a day too: a registry stores `2024-5-3` as `2024-05-03` (since 2026-10-15), and this
+// refused it until then.
 function isIsoDate(v) {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(v)
+  const m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(v)
   if (!m) return false
   const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])]
   const day = new Date(Date.UTC(y, mo - 1, d))
@@ -1083,19 +1097,30 @@ function isIsoDateTime(v) {
   return Number(m[2]) < 24 && Number(m[3]) < 60 && (m[4] === undefined || Number(m[4]) < 61)
 }
 
-// Lenient format checks — strict enough to catch garbage, loose enough not to
-// flag the shapes authors legitimately write (bare domains, root-relative
-// paths). The north star is no false positives.
+// A lenient email check — strict enough to catch garbage, loose enough not to flag
+// the shapes authors legitimately write. The north star is no false positives.
 function isEmailish(v) {
   return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.trim())
 }
-function isUrlish(v) {
-  const s = v.trim()
-  if (!s || /\s/.test(s)) return false
-  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(s)) return true // scheme://
-  if (s.startsWith('//') || s.startsWith('/') || s.startsWith('./') || s.startsWith('../')) return true
-  if (/^[\w-]+(\.[\w-]+)+/.test(s)) return true // bare domain (example.com, sub.site.io/x)
-  return false
+
+// ⭐ A WEB ADDRESS, as a registry stores one [ruled 2026-10-15: "Build it with `https://`, and
+// limit the schemes"]: `http://` or `https://`, the scheme in any case and stored in small
+// letters, then anything without a space; or an address written without a scheme that starts
+// with a host name — `example.com`, `www.example.com/cv`, `example.com:8080/a`,
+// `//example.com/x` — stored with `https://` in front. Anything else is null: another scheme
+// (`ftp:`, `mailto:`, `javascript:`), a path (`/about`), and what starts with no host name
+// (`localhost:3000`, `a@example.com`). A host name here is dotted, ASCII, and ends in a label that
+// starts with a letter, so this refuses an address a registry may store (an IP, a name in
+// another script) rather than pass one it refuses.
+// ⛔ Until 2026-10-15 a `format: url` value passed as any `scheme://…`, a path or a bare domain —
+// lenient for static sites — so a value `uniweb validate` passed could be refused on a push.
+const HOST_START = /^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)*\.[A-Za-z](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?::\d+)?(?:[/?#]|$)/
+function storedUrl(v) {
+  if (typeof v !== 'string' || v === '' || /\s/.test(v)) return null
+  const scheme = /^(https?):\/\/./i.exec(v)
+  if (scheme) return scheme[1].toLowerCase() + v.slice(scheme[1].length)
+  const bare = v.startsWith('//') ? v.slice(2) : v
+  return HOST_START.test(bare) ? `https://${bare}` : null
 }
 
 /** An asset value: an object whose `url` is a string — `{ url, name?, mime?, size?, preview?, assetId?, … }`. */

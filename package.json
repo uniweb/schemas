@@ -14,6 +14,7 @@
     "./locales/*": "./src/locales/*.json",
     "./format": "./src/format.js",
     "./conform": "./src/conform.js",
+    "./pattern": "./src/pattern.js",
     "./content": "./src/content.js",
     "./component": "./src/component.js",
     "./foundation": "./src/foundation.js",

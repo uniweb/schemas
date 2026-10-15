@@ -38,6 +38,8 @@
  * despite the name.)
  */
 
+import { patternRefusal } from './pattern.js'
+
 // Extensions a schema file may use, in resolution order. Declared here (rather
 // than in the resolver) because it is a property of the format, and both the
 // build's ref resolution and any tooling that discovers schema files need it.
@@ -99,7 +101,8 @@ export const FORMAT_TYPES = new Set(['url', 'email', 'markdown', 'richtext'])
  * they are written (`@uniweb/build`, `uwx/data-schema.js`), and `./conform.js` checks a value
  * against them before it is sent. `max_length` counts characters, and for a translatable value
  * each language's on its own; `max_size` is in bytes; `mime_types` lists what a file may be
- * (`image/*`, `application/pdf`).
+ * (`image/*`, `application/pdf`); `pattern` is a regular expression the whole value matches, in
+ * the syntax a registry reads (`./pattern.js`).
  */
 export const FIELD_RULES = Object.freeze({
   max_length: ['string', 'text'],
@@ -107,6 +110,7 @@ export const FIELD_RULES = Object.freeze({
   max: ['int', 'decimal'],
   mime_types: ['file'],
   max_size: ['file'],
+  pattern: ['string'],
 })
 
 /**
@@ -145,7 +149,6 @@ const REFUSED_FIELD_KEYS = {
   localized: "write `translatable` — text is translatable by default, and `translatable: false` keeps one value for every language",
   multiple: 'write `many: true`',
   model: "write `ref:` naming the Model ('@/person')",
-  pattern: 'a registry does not check a pattern yet',
   min_length: 'a registry does not check a minimum length yet',
   languages: 'a data schema cannot require languages of a value',
   precision: 'a data schema cannot declare a decimal\'s precision',
@@ -184,6 +187,10 @@ function ruleValue(key, value, kind, ref, path) {
     if (!Array.isArray(value) || !value.length || !value.every((t) => typeof t === 'string' && /^[\w.+-]+\/(\*|[\w.+-]+)$/.test(t))) {
       fail("a list of media types, like ['image/*', 'application/pdf']")
     }
+  } else if (key === 'pattern') {
+    if (typeof value !== 'string') fail('a regular expression, written as text')
+    const why = patternRefusal(value)
+    if (why) throw new Error(`Data schema '${ref}': field '${path}' 'pattern' ${JSON.stringify(value)} ${why}.`)
   }
   return value
 }

@@ -504,3 +504,90 @@ describe('validateItem — a date at its precision, and a field\'s rules', () =>
     expect(check({ type: 'markdown' }, '<not> *checked*')).toEqual([])
   })
 })
+
+// ⭐ A url is what a registry stores as one (ruled 2026-10-15): `http://` or `https://`, or an address
+// written without a scheme that starts with a host name, which it stores with `https://`. ⛔ Until
+// then any `scheme://…`, a path and a bare domain passed here — and a registry refused the first two.
+describe('validateItem — a url is a web address', () => {
+  const rules = (value) =>
+    validateItem(validateAndNormalizeSchema({ fields: { site: 'url' } }, '@/x'), { site: value }).map((v) => v.rule)
+
+  it.each([
+    'https://example.com',
+    'http://example.com/a?b=c#d',
+    'HTTPS://Example.com',
+    'https://localhost:3000',
+    'example.com',
+    'www.example.com/cv',
+    'example.com:8080/a',
+    '//example.com/x',
+    'sub.example.co.uk?q=1',
+  ])('passes %s', (value) => {
+    expect(rules(value)).toEqual([])
+  })
+
+  it.each([
+    'ftp://example.com/file',
+    'javascript:alert(1)',
+    'javascript://example.com/%0Aalert(1)',
+    'mailto:a@example.com',
+    'tel:+15551234567',
+    '/about',
+    './cv.pdf',
+    'localhost:3000',
+    'a@example.com',
+    'https://',
+    'https://example.com/a b',
+    'example',
+  ])('refuses %s', (value) => {
+    expect(rules(value)).toEqual(['format'])
+  })
+
+  it('says what to write', () => {
+    const [finding] = validateItem(validateAndNormalizeSchema({ fields: { site: 'url' } }, '@/x'), { site: '/about' })
+    expect(finding.message).toBe(`"/about" is not a web address — write http:// or https:// and a host, as in 'https://example.com/about'`)
+  })
+})
+
+// A registry stores a day written short in full (2026-10-15), so it is a day here too.
+describe('validateItem — a day written short', () => {
+  const rules = (f, value) => validateItem(validateAndNormalizeSchema({ fields: { f } }, '@/x'), { f: value }).map((v) => v.rule)
+
+  it('is a day', () => {
+    expect(rules({ type: 'date' }, '2024-5-3')).toEqual([])
+    expect(rules({ type: 'date' }, '2024-05-3')).toEqual([])
+  })
+
+  it('CONTROL — a short day the calendar lacks, and a short month, are not', () => {
+    expect(rules({ type: 'date' }, '2024-2-30')).toEqual(['format'])
+    expect(rules({ type: 'date', format: 'year-month' }, '2024-5')).toEqual(['format'])
+  })
+})
+
+// ⭐ A string's pattern, matched whole as a registry matches it (2026-10-15).
+describe('validateItem — a pattern', () => {
+  const check = (f, value) =>
+    validateItem(validateAndNormalizeSchema({ fields: { f } }, '@/x'), { f: value }).map((v) => `${v.rule}: ${v.message}`)
+
+  it('matches the whole value', () => {
+    const f = { type: 'string', pattern: '[A-Z]{2}\\d{4}' }
+    expect(check(f, 'AB1234')).toEqual([])
+    expect(check(f, 'xAB1234')).toEqual(['pattern: "xAB1234" does not match the pattern "[A-Z]{2}\\d{4}"'])
+    expect(check(f, 'AB12345')).toHaveLength(1)
+  })
+
+  it('checks no empty value — presence is required\'s', () => {
+    expect(check({ type: 'string', pattern: '\\d+' }, '')).toEqual([])
+  })
+
+  it('checks each value of a list', () => {
+    expect(check({ type: 'string', many: true, pattern: '[a-z]+' }, ['ok', 'No'])).toEqual(['pattern: "No" does not match the pattern "[a-z]+"'])
+  })
+
+  it('matches a url as stored — with https:// in front of an address written without one', () => {
+    const orcid = { type: 'url', pattern: 'https://orcid\\.org/\\d{4}-\\d{4}-\\d{4}-\\d{3}[\\dX]' }
+    expect(check(orcid, 'orcid.org/0000-0002-1825-0097')).toEqual([])
+    expect(check(orcid, 'HTTPS://orcid.org/0000-0002-1825-0097')).toEqual([])
+    expect(check(orcid, 'example.com/0000')).toHaveLength(1)
+  })
+})

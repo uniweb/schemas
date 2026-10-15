@@ -986,7 +986,7 @@ function validateValue(def, value, path) {
   if (typeof value === 'string') {
     if (def.format === 'email' && !isEmailish(value)) {
       out.push(violation(path, 'format', `${fmt(value)} is not a valid email`))
-    } else if (def.format === 'url' && storedUrl(value) === null) {
+    } else if (def.format === 'url' && value !== '' && storedUrl(value) === null) {
       out.push(violation(path, 'format', `${fmt(value)} is not a web address — write http:// or https:// and a host, as in 'https://example.com/about'`))
     } else if (def.format === 'currency' && !/^[A-Z]{3}$/.test(value)) {
       out.push(violation(path, 'format', `${fmt(value)} is not a currency code (ISO 4217, like 'CAD')`))
@@ -1024,6 +1024,28 @@ function validateValue(def, value, path) {
   }
 
   return out
+}
+
+/**
+ * A value as a registry stores it, which is not always as a file writes it (2026-10-15): a day
+ * written short in full (`2024-5-3` → `2024-05-03`), and a url with its scheme in small letters,
+ * or with `https://` in front of an address written without one (`example.com/cv` →
+ * `https://example.com/cv`). Any other value as it is — one a registry refuses included, which
+ * `validateItem` reports.
+ *
+ * @param {Object|string} def - a normalized field definition, or its type
+ * @param {*} value - the value as written
+ * @returns {*} the value as a registry keeps it
+ */
+export function storedValue(def, value) {
+  const field = asFieldDef(def)
+  if (typeof value !== 'string' || value === '') return value
+  if (field.type === 'date' && field.format === undefined) {
+    const m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(value)
+    return m && isIsoDate(value) ? `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}` : value
+  }
+  if (field.format === 'url') return storedUrl(value) ?? value
+  return value
 }
 
 // A date's precision: the day by default, or what its field's `format` declares.
@@ -1106,15 +1128,18 @@ function isEmailish(v) {
 // ⭐ A WEB ADDRESS, as a registry stores one [ruled 2026-10-15: "Build it with `https://`, and
 // limit the schemes"]: `http://` or `https://`, the scheme in any case and stored in small
 // letters, then anything without a space; or an address written without a scheme that starts
-// with a host name — `example.com`, `www.example.com/cv`, `example.com:8080/a`,
-// `//example.com/x` — stored with `https://` in front. Anything else is null: another scheme
-// (`ftp:`, `mailto:`, `javascript:`), a path (`/about`), and what starts with no host name
-// (`localhost:3000`, `a@example.com`). A host name here is dotted, ASCII, and ends in a label that
-// starts with a letter, so this refuses an address a registry may store (an IP, a name in
-// another script) rather than pass one it refuses.
+// with a host name, stored with `https://` in front and the host as written — `example.com`,
+// `www.example.com/cv`, `bücher.de`, `example.com:8080/a`, `//example.com/x`. A host name is two
+// or more labels between dots, each of letters, digits and `-` in any script but starting and
+// ending with no `-`, the last holding a letter; then optionally `:` and a port; then the end,
+// `/`, `?` or `#`. Anything else is null: another scheme (`ftp:`, `mailto:`, `javascript:`), a
+// path (`/about`), and what starts with no host name (`localhost:3000`, `192.168.0.1/x`,
+// `a@example.com`). Agrees with a registry's own answers over a corpus of addresses; past it,
+// "letters and digits" is read as Unicode's Alphabetic and Numeric.
 // ⛔ Until 2026-10-15 a `format: url` value passed as any `scheme://…`, a path or a bare domain —
 // lenient for static sites — so a value `uniweb validate` passed could be refused on a push.
-const HOST_START = /^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)*\.[A-Za-z](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?::\d+)?(?:[/?#]|$)/
+const LABEL = String.raw`[\p{Alphabetic}\p{N}](?:[\p{Alphabetic}\p{N}-]*[\p{Alphabetic}\p{N}])?`
+const HOST_START = new RegExp(String.raw`^(?:${LABEL}\.)+(?=[\p{Alphabetic}\p{N}-]*\p{Alphabetic})${LABEL}(?::\d+)?(?:[/?#]|$)`, 'u')
 function storedUrl(v) {
   if (typeof v !== 'string' || v === '' || /\s/.test(v)) return null
   const scheme = /^(https?):\/\/./i.exec(v)

@@ -130,6 +130,7 @@ export {
   validateBound,
   validateKeyValue,
   validateStoredRecord,
+  storedValue,
 } from './conform.js'
 
 /**

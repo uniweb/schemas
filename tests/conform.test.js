@@ -40,6 +40,7 @@ import {
   mapReferences,
   validateKeyValue,
   validateStoredRecord,
+  storedValue,
 } from '../src/conform.js'
 import { validateAndNormalizeSchema } from '../src/format.js'
 import { validate, nav } from '../src/index.js'
@@ -522,6 +523,9 @@ describe('validateItem — a url is a web address', () => {
     'example.com:8080/a',
     '//example.com/x',
     'sub.example.co.uk?q=1',
+    'bücher.de',
+    '例え.jp/a',
+    'example.1a',
   ])('passes %s', (value) => {
     expect(rules(value)).toEqual([])
   })
@@ -539,13 +543,43 @@ describe('validateItem — a url is a web address', () => {
     'https://',
     'https://example.com/a b',
     'example',
+    '192.168.0.1/x',
+    '-example.com',
+    'example.com:80a',
+    'my_site.example.com',
   ])('refuses %s', (value) => {
     expect(rules(value)).toEqual(['format'])
+  })
+
+  it('checks no empty value — presence is required\'s', () => {
+    expect(rules('')).toEqual([])
   })
 
   it('says what to write', () => {
     const [finding] = validateItem(validateAndNormalizeSchema({ fields: { site: 'url' } }, '@/x'), { site: '/about' })
     expect(finding.message).toBe(`"/about" is not a web address — write http:// or https:// and a host, as in 'https://example.com/about'`)
+  })
+})
+
+// What a registry keeps, which a file need not write (2026-10-15).
+describe('storedValue', () => {
+  const field = (f) => validateAndNormalizeSchema({ fields: { f } }, '@/x').fields.f
+
+  it('a url with its scheme in small letters, or https:// in front, the host as written', () => {
+    expect(storedValue(field('url'), 'HTTPS://Example.com/A')).toBe('https://Example.com/A')
+    expect(storedValue(field('url'), 'bücher.de/cv')).toBe('https://bücher.de/cv')
+    expect(storedValue(field('url'), '//example.com/x')).toBe('https://example.com/x')
+  })
+
+  it('a day in full', () => {
+    expect(storedValue(field('date'), '2024-5-3')).toBe('2024-05-03')
+  })
+
+  it('CONTROL — anything else as it is', () => {
+    expect(storedValue(field('url'), '/about')).toBe('/about')
+    expect(storedValue(field({ type: 'date', format: 'year-month' }), '2024-5')).toBe('2024-5')
+    expect(storedValue(field('date'), '2024-2-30')).toBe('2024-2-30')
+    expect(storedValue(field('string'), 'example.com')).toBe('example.com')
   })
 })
 

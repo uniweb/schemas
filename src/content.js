@@ -69,6 +69,21 @@ export const SEQUENCE_KINDS = [
   'heading', 'prose', 'list', 'link', 'image', 'video', 'inset', 'icon', 'document', 'code', 'table', 'math', 'quote',
 ]
 
+/**
+ * Where a block may sit in a flow — the values of an image's, a video's or a
+ * table's `placement`. Absent is the text column. `left` and `right` sit beside
+ * the text, which wraps; `wide` is wider than the text column; `full` spans the
+ * section.
+ *
+ * ⭐ The reader's words — `@uniweb/content-reader`'s `PLACEMENTS`, what markdown
+ * can say — kept here because this package has no dependencies; its tests
+ * compare the two.
+ */
+export const PLACEMENTS = ['left', 'right', 'wide', 'full']
+
+/** The kinds of content that take a placement — what a sequence's `placement` maps. */
+export const PLACEMENT_KINDS = ['image', 'video', 'table']
+
 /** The closed set of kind names a consumer may switch on. */
 export const CONTENT_KINDS = [
   'heading', 'prose', 'list', 'link', 'entries', 'media', 'image', 'video', 'inset', 'icon', 'document', 'code',
@@ -339,7 +354,7 @@ export function elementSpec(name) {
 }
 
 /** The object-form keys each element takes, beyond `label` and `hint`. */
-const EXTRA_KEYS = { media: ['types'], sequence: ['except'], items: ['content'] }
+const EXTRA_KEYS = { media: ['types'], sequence: ['except', 'placement'], items: ['content'] }
 
 /** Framework's standard label for a lowered entry nobody labelled. */
 function standardLabel(entry) {
@@ -473,6 +488,8 @@ function lowerList(map, path, problems, inEntry) {
       if (min !== null) problems.push(`${at} has a count, which means nothing on the whole section — remove it.`)
       const except = isPlainObject(value) ? readExcept(value.except, at, problems) : null
       if (except) out.except = except
+      const placement = isPlainObject(value) ? readPlacement(value.placement, except || [], at, problems) : null
+      if (placement) out.placement = placement
     } else {
       if (min !== null) out.min = min
       if (max !== null) out.max = max
@@ -535,6 +552,136 @@ function readExcept(except, at, problems) {
     else problems.push(`${at}.except names ${JSON.stringify(kind)}, which is not a kind of content — they are ${SEQUENCE_KINDS.join(', ')}.`)
   }
   return known.size > 0 ? SEQUENCE_KINDS.filter((kind) => known.has(kind)) : null
+}
+
+/**
+ * A sequence's `placement`: the values its flow honours, per kind — `{ image,
+ * video, table }`, each a list in `PLACEMENTS` order, with only the kinds that
+ * take any — or null for none. `true` is every value on every kind; a value or a
+ * list of them, those on every kind; a map, those per kind. A kind `except`
+ * leaves out takes none, since nothing of it reaches the page.
+ */
+function readPlacement(placement, except, at, problems) {
+  if (placement === undefined || placement === null || placement === false) return null
+  const where = `${at}.placement`
+  const kinds = PLACEMENT_KINDS.filter((kind) => !except.includes(kind))
+
+  /** A value or a list of them, as a list in `PLACEMENTS` order — or null. */
+  const valuesOf = (written, at) => {
+    const list = typeof written === 'string' ? [written] : written
+    if (!Array.isArray(list) || list.length === 0) {
+      problems.push(`${at} should be one of ${PLACEMENTS.join(', ')}, or a list of them.`)
+      return null
+    }
+    const known = new Set()
+    for (const value of list) {
+      if (PLACEMENTS.includes(value)) known.add(value)
+      else problems.push(`${at} names ${JSON.stringify(value)}, which is not a placement — they are ${PLACEMENTS.join(', ')}.`)
+    }
+    return known.size > 0 ? PLACEMENTS.filter((value) => known.has(value)) : null
+  }
+
+  const byKind = {}
+  if (placement === true) {
+    for (const kind of kinds) byKind[kind] = [...PLACEMENTS]
+  } else if (typeof placement === 'string' || Array.isArray(placement)) {
+    const list = valuesOf(placement, where)
+    if (list) for (const kind of kinds) byKind[kind] = list
+  } else if (isPlainObject(placement)) {
+    for (const [kind, written] of Object.entries(placement)) {
+      const at = `${where}.${kind}`
+      if (!PLACEMENT_KINDS.includes(kind)) {
+        problems.push(`${at}: ${JSON.stringify(kind)} takes no placement — the kinds that do are ${PLACEMENT_KINDS.join(', ')}.`)
+        continue
+      }
+      if (except.includes(kind)) {
+        problems.push(`${at}: the sequence's except leaves ${kind} out, so none is placed.`)
+        continue
+      }
+      if (written === false || written === null || written === undefined) continue
+      const list = written === true ? [...PLACEMENTS] : valuesOf(written, at)
+      if (list) byKind[kind] = list
+    }
+  } else {
+    problems.push(
+      `${where} should be true, a placement or a list of them (${PLACEMENTS.join(', ')}), or a map from a kind (${PLACEMENT_KINDS.join(', ')}) to those.`,
+    )
+    return null
+  }
+
+  const lowered = {}
+  for (const kind of PLACEMENT_KINDS) if (byKind[kind]?.length) lowered[kind] = byKind[kind]
+  return Object.keys(lowered).length > 0 ? lowered : null
+}
+
+/**
+ * The placements a section type's flow honours for one kind of content — what
+ * its `sequence` lists for `kind`, in `PLACEMENTS` order — or `[]` for none.
+ * ⭐ What an editor offers an author for a block of that kind, and nothing else:
+ * a renderer honours a placement only if it was built to.
+ *
+ * @param {object} component - a `meta.js` default export or a schema entry,
+ *   lowered or not — what `describeContent` takes
+ * @param {string} kind - one of `PLACEMENT_KINDS`
+ * @returns {string[]}
+ */
+export function placementsOf(component, kind) {
+  const sequence = describeContent(component).elements.find((e) => e.element === 'sequence')
+  const list = sequence?.placement?.[kind]
+  return Array.isArray(list) ? PLACEMENTS.filter((value) => list.includes(value)) : []
+}
+
+/**
+ * Each block in a section's content that asks for a placement its section type
+ * does not offer — what `uniweb validate`, the dev server and a build say, and
+ * what an editor can ask of a pulled or pasted document. Such a block renders
+ * as if it had none, in the text column.
+ *
+ * ⚖️ A section type that says nothing about its content (`describeContent`'s
+ * `declared` is false) is UNKNOWN, never "offers none": nothing is found, since
+ * how it renders is not known.
+ *
+ * @param {object} doc - the section's content, a ProseMirror document
+ * @param {object} component - its section type's `meta.js` or schema entry
+ * @returns {Array<{ path: string, kind: string, placement: *, offered: string[] }>}
+ *   `path` is a JSON Pointer into the document; `kind` the block's — `image`,
+ *   `video` or `table`, or `icon` or `document`, which take none; `placement` as
+ *   the block holds it; `offered` what the section type honours for that kind.
+ */
+export function placementsNotOffered(doc, component) {
+  const described = describeContent(component)
+  if (!described.declared) return []
+  const sequence = described.elements.find((e) => e.element === 'sequence')
+  const findings = []
+
+  const visit = (node, path) => {
+    if (!isPlainObject(node)) return
+    const placement = node.attrs?.placement
+    const kind = placedKind(node)
+    if (kind && placement !== undefined && placement !== null && placement !== '') {
+      const offered = Array.isArray(sequence?.placement?.[kind]) ? sequence.placement[kind] : []
+      if (!offered.includes(placement)) findings.push({ path: pointer(path), kind, placement, offered: [...offered] })
+    }
+    if (Array.isArray(node.content)) node.content.forEach((child, i) => visit(child, [...path, 'content', i]))
+  }
+  visit(doc, [])
+  return findings
+}
+
+/** The kind of a block a placement could be asked of — null for any other node. */
+function placedKind(node) {
+  if (node.type === 'table') return 'table'
+  if (node.type !== 'image') return null
+  const role = node.attrs?.role
+  if (role === 'video') return 'video'
+  if (role === 'icon') return 'icon'
+  if (role === 'pdf') return 'document'
+  return 'image'
+}
+
+/** JSON Pointer (RFC 6901) for a path of keys and indexes. */
+function pointer(path) {
+  return path.map((key) => '/' + String(key).replace(/~/g, '~0').replace(/\//g, '~1')).join('')
 }
 
 /**

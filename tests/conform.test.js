@@ -453,3 +453,54 @@ describe('validateKeyValue — a list, or one record; briefs, or whole', () => {
     expect(validateStoredRecord(flat, { title: 'A' }).map((f) => f.field)).toEqual(['brief.title'])
   })
 })
+
+// ⭐ The rules a registry checks on write, checked before a value is sent (2026-10-15) — and only
+// those: `markdown`, `prosemirror` and `scene` say what a value is, and nothing checks them.
+describe('validateItem — a date at its precision, and a field\'s rules', () => {
+  const check = (f, value) =>
+    validateItem(validateAndNormalizeSchema({ fields: { f } }, '@/x'), { f: value }).map((v) => `${v.rule}: ${v.message}`)
+
+  it('a date holds a day; with format year-month a month; with format year a year', () => {
+    expect(check({ type: 'date' }, '2024-05-14')).toEqual([])
+    expect(check({ type: 'date' }, '2024-05')).toEqual(['format: "2024-05" is not a date (YYYY-MM-DD)'])
+    expect(check({ type: 'date', format: 'year-month' }, '2024-05')).toEqual([])
+    expect(check({ type: 'date', format: 'year-month' }, '2024-13')).toEqual(['format: "2024-13" is not a month (YYYY-MM)'])
+    expect(check({ type: 'date', format: 'year-month' }, '2024-05-14')).toEqual(['format: "2024-05-14" is not a month (YYYY-MM)'])
+    expect(check({ type: 'date', format: 'year' }, '2024')).toEqual([])
+    expect(check({ type: 'date', format: 'year' }, '24')).toEqual(['format: "24" is not a year (YYYY)'])
+  })
+
+  it('a year written as a number is refused, saying how to write it', () => {
+    expect(check({ type: 'date', format: 'year' }, 2024)).toEqual(["type: 2024 is a number — a date is written as text: '2024'"])
+  })
+
+  it('max_length counts characters, not UTF-16 units', () => {
+    expect(check({ type: 'string', max_length: 3 }, 'abcd')).toEqual(['max_length: "abcd" is 4 characters — at most 3'])
+    expect(check({ type: 'string', max_length: 3 }, '😀😀😀')).toEqual([])
+  })
+
+  it('min and max', () => {
+    expect(check({ type: 'int', min: 1, max: 5 }, 0)).toEqual(['min: 0 is below 1'])
+    expect(check({ type: 'int', min: 1, max: 5 }, 6)).toEqual(['max: 6 is above 5'])
+    expect(check({ type: 'int', min: 1, max: 5 }, 3)).toEqual([])
+  })
+
+  it('a currency code', () => {
+    expect(check({ type: 'string', format: 'currency' }, 'CAD')).toEqual([])
+    expect(check({ type: 'string', format: 'currency' }, 'cad')).toEqual(["format: \"cad\" is not a currency code (ISO 4217, like 'CAD')"])
+  })
+
+  it("a file's type and size, where the value says them", () => {
+    const f = { type: 'file', mime_types: ['image/*'], max_size: 100 }
+    expect(check(f, { url: '/a.png', mime: 'image/png', size: 50 })).toEqual([])
+    expect(check(f, { url: '/a.pdf', mime: 'application/pdf', size: 500 })).toEqual([
+      'mime_types: "application/pdf" is not one of ["image/*"]',
+      'max_size: 500 bytes is above 100',
+    ])
+    expect(check(f, '/a.pdf')).toEqual([])
+  })
+
+  it('CONTROL — a marker format is not checked', () => {
+    expect(check({ type: 'markdown' }, '<not> *checked*')).toEqual([])
+  })
+})

@@ -93,6 +93,101 @@ const FORMAT_TYPE_ALIASES = {
 // The advertised format-aliasing type words (drives the "Known types" hint).
 export const FORMAT_TYPES = new Set(['url', 'email', 'markdown', 'richtext'])
 
+/**
+ * ⭐ A FIELD'S RULES — what a registry storing the Model checks on every write, written as the
+ * field's own keys, each on the kinds it applies to (2026-10-15). The lowering carries them as
+ * they are written (`@uniweb/build`, `uwx/data-schema.js`), and `./conform.js` checks a value
+ * against them before it is sent. `max_length` counts characters, and for a translatable value
+ * each language's on its own; `max_size` is in bytes; `mime_types` lists what a file may be
+ * (`image/*`, `application/pdf`).
+ */
+export const FIELD_RULES = Object.freeze({
+  max_length: ['string', 'text'],
+  min: ['int', 'decimal'],
+  max: ['int', 'decimal'],
+  mime_types: ['file'],
+  max_size: ['file'],
+})
+
+/**
+ * The `format`s each kind takes — closed, because a registry refuses a whole schema for a format
+ * its kind does not take (2026-10-15). A kind not listed takes none. On a `date`, the format is
+ * its precision: `year-month` holds `2024-05`, `year` holds `2024`, and none holds a day.
+ * `markdown`, `prosemirror` and `scene` say what the value is; `email`, `url` and `currency` (an
+ * ISO 4217 code) are checked against it.
+ */
+export const FIELD_FORMATS = Object.freeze({
+  string: ['email', 'url', 'currency'],
+  text: ['email', 'url', 'markdown'],
+  date: ['year-month', 'year'],
+  json: ['prosemirror', 'scene'],
+})
+
+/**
+ * ⭐ EVERY KEY A FIELD MAY DECLARE — what `normalizeField` reads. Any other key is refused by name
+ * (2026-10-15). ⛔ Until then one was dropped here without a word, before any reader could see it,
+ * so a rule an author wrote — `maxLength`, `pattern` — reached neither a registry nor an editor,
+ * and nothing said so.
+ *
+ * ⚖️ Model-level keys WARN instead (`warnUnknownModelKeys`), so a schema written against a newer
+ * registry still builds. A field rule is the opposite case: a registry would accept every write
+ * the dropped rule should refuse, so building on is the failure, not the courtesy.
+ */
+const FIELD_KEYS = new Set([
+  'type', 'label', 'description', 'help', 'required', 'translatable', 'default', 'many',
+  'enum', 'format', 'constraints', 'ref', 'options', 'readable_with',
+  'fields', 'items', 'values', 'tree', 'nestable', 'append_only',
+  ...Object.keys(FIELD_RULES),
+])
+
+/** Keys a data schema spells another way, or does not take — each with what to write instead. */
+const REFUSED_FIELD_KEYS = {
+  localized: "write `translatable` — text is translatable by default, and `translatable: false` keeps one value for every language",
+  multiple: 'write `many: true`',
+  model: "write `ref:` naming the Model ('@/person')",
+  pattern: 'a registry does not check a pattern yet',
+  min_length: 'a registry does not check a minimum length yet',
+  languages: 'a data schema cannot require languages of a value',
+  precision: 'a data schema cannot declare a decimal\'s precision',
+  scale: 'a data schema cannot declare a decimal\'s scale',
+  compact: 'a data schema cannot declare it',
+}
+
+function refuseUnknownFieldKeys(field, ref, path) {
+  for (const key of Object.keys(field)) {
+    if (FIELD_KEYS.has(key)) continue
+    const known = REFUSED_FIELD_KEYS[key]
+    if (known) {
+      throw new Error(`Data schema '${ref}': field '${path}' declares '${key}', which a data schema does not take — ${known}.`)
+    }
+    const snake = key.replace(/([a-z0-9])([A-Z])/g, '$1_$2').toLowerCase()
+    const hint = snake !== key && (FIELD_KEYS.has(snake) || REFUSED_FIELD_KEYS[snake]) ? ` Did you mean '${snake}'?` : ''
+    throw new Error(
+      `Data schema '${ref}': field '${path}' declares '${key}', which is not a field key.${hint} ` +
+        `A field takes: ${[...FIELD_KEYS].join(', ')}. How a field is edited — a widget, a placeholder — is the component's.`
+    )
+  }
+}
+
+// A rule's value, checked: a whole number above zero for a length or a size, a number for a
+// bound (a whole one on an `int`), a list of media types for `mime_types`.
+function ruleValue(key, value, kind, ref, path) {
+  const fail = (what) => {
+    throw new Error(`Data schema '${ref}': field '${path}' '${key}' must be ${what}, got ${JSON.stringify(value)}.`)
+  }
+  if (key === 'max_length' || key === 'max_size') {
+    if (!Number.isInteger(value) || value < 1) fail('a whole number above zero')
+  } else if (key === 'min' || key === 'max') {
+    if (typeof value !== 'number' || !Number.isFinite(value)) fail('a number')
+    if (kind === 'int' && !Number.isInteger(value)) fail('a whole number on an int')
+  } else if (key === 'mime_types') {
+    if (!Array.isArray(value) || !value.length || !value.every((t) => typeof t === 'string' && /^[\w.+-]+\/(\*|[\w.+-]+)$/.test(t))) {
+      fail("a list of media types, like ['image/*', 'application/pdf']")
+    }
+  }
+  return value
+}
+
 // The registry's kinds that are NOT authoring types, each with what a data schema writes instead.
 // A registered definition spells a picklist `type: item_ref` and a reference `type: entity_ref`;
 // an author copying one is refused by name and told the spelling, rather than told the type is
@@ -147,7 +242,7 @@ export const SECTION_KINDS = new Set(['single', 'multi', 'binder'])
 const MODEL_KEYS = new Set([
   'name', 'version', 'label', 'plural', 'icon', 'description', 'source_locale', 'sourceLocale',
   'linkable', 'grantable', 'sort_date', 'sortDate',
-  'fields', 'sections'
+  'fields', 'sections', 'constraints'
 ])
 
 /**
@@ -453,6 +548,22 @@ export function validateAndNormalizeSchema(schema, ref) {
     throw new Error(`Data schema '${ref}': must declare 'fields' or 'sections'.`)
   }
 
+  // A `fields:` schema's section rules — `exclusive`, `required_one_of`, `required_when`, … — sit
+  // beside its fields, for its one section (2026-10-15). Until then it had nowhere to write them:
+  // the key was warned about and dropped, and a field's own `constraints:` were dropped silently.
+  // A `sections:` schema declares them on the section they rule.
+  if (schema.constraints !== undefined) {
+    if (hasSections) {
+      throw new Error(
+        `Data schema '${ref}': 'constraints' beside 'sections' rules no section — declare them on the section they rule.`
+      )
+    }
+    if (!Array.isArray(schema.constraints)) {
+      throw new Error(`Data schema '${ref}': 'constraints' must be a list of rules.`)
+    }
+    out.constraints = schema.constraints
+  }
+
   warnUnknownModelKeys(schema, ref)
 
   if (hasSections) {
@@ -605,6 +716,7 @@ function normalizeField(field, ref, path) {
   if (!field || typeof field !== 'object' || Array.isArray(field)) {
     throw new Error(`Data schema '${ref}': field '${path}' must be an object or a type string.`)
   }
+  refuseUnknownFieldKeys(field, ref, path)
 
   // Sugar: `many: true` → a list. Wrap the field-minus-`many` as the array's item
   // type (lowers to the canonical `multiple`). The common cases —
@@ -616,8 +728,9 @@ function normalizeField(field, ref, path) {
     }
     if (field.many) {
       // Collection-level metadata (required, default, label, help, description)
-      // rides on the array; the type-bearing attributes describe each item.
-      const ITEM_KEYS = new Set(['type', 'ref', 'options', 'enum', 'fields', 'items', 'format'])
+      // rides on the array; the type-bearing attributes describe each item — a value's
+      // rules among them, since each value is checked against them.
+      const ITEM_KEYS = new Set(['type', 'ref', 'options', 'enum', 'fields', 'items', 'format', ...Object.keys(FIELD_RULES)])
       const out = { type: 'array' }
       const item = {}
       for (const [k, v] of Object.entries(field)) {
@@ -670,11 +783,11 @@ function normalizeField(field, ref, path) {
   // every non-item key onto the array; this makes the non-`many` object case work
   // too, deliberately rather than as a side effect.
   //
-  // On a LEAF they are carried and then dropped by the lowering: the wire has no
-  // slot for them (`constraints` is a section key), and a leaf narrows with
-  // `enum` / `format` instead. Not an error — it is well-formed authoring that
-  // only the registry has no home for, and failing a build over it would break a
-  // project that never registers at all.
+  // On a LEAF a registry has no slot for them (`constraints` is a section key), and
+  // nothing else reads them: a NAMED schema refuses them, pointing at its section's
+  // `constraints:` (`@uniweb/build`, `resolve-data-schema.js`, since 2026-10-15 — they
+  // were dropped by the lowering without a word until then). A component's inline field
+  // map keeps them, as it keeps `default` and `help`, for an editor to read.
   for (const k of ['required', 'default', 'label', 'help', 'description', 'translatable', 'format', 'constraints']) {
     if (field[k] !== undefined) out[k] = field[k]
   }
@@ -705,7 +818,7 @@ function normalizeField(field, ref, path) {
   // (a ProseMirror doc) and `scene` (a Scene Composition Format payload — an opaque
   // structured blob the app edits via the Designer / visual canvas) both belong on
   // a `json` field. Catch a mismatch at build time, not at publish (the backend
-  // rejects it). Value-validator formats (email/url) are unrestricted here.
+  // rejects it).
   if (out.format === 'markdown' && out.type !== 'text') {
     throw new Error(
       `Data schema '${ref}': field '${path}' has format '${out.format}', valid only on a 'text' field (got '${out.type}').`
@@ -719,6 +832,33 @@ function normalizeField(field, ref, path) {
       `Data schema '${ref}': field '${path}' has format '${out.format}', valid only on a 'json' field (got '${out.type}').`
     )
   }
+  // Every other format, per kind (`FIELD_FORMATS`) — a registry refuses the whole schema for one
+  // its kind does not take. ⛔ Until 2026-10-15 a value-validator format passed on any kind, and a
+  // date's precision (`year-month`, `year`) was not known here.
+  if (out.format !== undefined) {
+    const takes = FIELD_FORMATS[out.type] || []
+    if (!takes.includes(out.format)) {
+      throw new Error(
+        `Data schema '${ref}': field '${path}' has format ${JSON.stringify(out.format)}, which a '${out.type}' ` +
+          `field does not take — ${takes.length ? `it takes ${takes.join(', ')}` : 'it takes none'}.`
+      )
+    }
+  }
+
+  // A field's rules (`FIELD_RULES`), each on the kinds it applies to.
+  for (const [key, kinds] of Object.entries(FIELD_RULES)) {
+    if (field[key] === undefined) continue
+    if (!kinds.includes(out.type) || field.options !== undefined) {
+      throw new Error(
+        `Data schema '${ref}': field '${path}' declares '${key}', which applies to ${kinds.join(' and ')} values` +
+          `${field.options !== undefined ? ' — a field that picks from a list holds a choice from it' : `, not ${out.type}`}.`
+      )
+    }
+    out[key] = ruleValue(key, field[key], out.type, ref, path)
+  }
+  if (out.min !== undefined && out.max !== undefined && out.min > out.max) {
+    throw new Error(`Data schema '${ref}': field '${path}' has 'min' ${out.min} above 'max' ${out.max}.`)
+  }
 
   // Picklists: enum = inline list; options = a curated '@/x' ref (item_ref). An entry is a value, or
   // `{ value, label }` where the label is what an editor shows — `enumValues` reads either.
@@ -726,9 +866,23 @@ function normalizeField(field, ref, path) {
     if (!Array.isArray(field.enum)) {
       throw new Error(`Data schema '${ref}': field '${path}' 'enum' must be a list of values.`)
     }
+    if (out.type === 'ref' || out.type === 'object') {
+      throw new Error(
+        `Data schema '${ref}': field '${path}' declares 'enum' on ${out.type === 'ref' ? 'a reference' : 'an object'}, ` +
+          `which holds no value of its own to check — an enum belongs on a value.`
+      )
+    }
     out.enum = field.enum
   }
   if (field.options !== undefined) {
+    for (const k of ['enum', 'format']) {
+      if (field[k] !== undefined) {
+        throw new Error(
+          `Data schema '${ref}': field '${path}' picks from a list ('options:'), so '${k}' does not apply — ` +
+            `its value is a choice from that list.`
+        )
+      }
+    }
     if (typeof field.options !== 'string' || field.options[0] !== '@') {
       throw new Error(
         `Data schema '${ref}': field '${path}' 'options' must name the section whose items are the ` +

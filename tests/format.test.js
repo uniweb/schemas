@@ -492,3 +492,107 @@ describe('a picklist names a section of a Model', () => {
     expect(() => validateAndNormalizeSchema({ fields: { country: { type, options: '@/lists/countries' } } }, '@/cv')).toThrow(message)
   })
 })
+
+// ⭐ A field's keys are a closed vocabulary (2026-10-15): one the format does not read is refused by
+// name. ⛔ Until then it was dropped here without a word, and a rule an author wrote reached nothing.
+describe('a field declares only the keys the format reads', () => {
+  const norm = (f) => () => validateAndNormalizeSchema({ fields: { f } }, '@/x')
+
+  it('refuses an unknown key by name, saying what a field takes', () => {
+    expect(norm({ type: 'string', widget: 'textarea' })).toThrow(/field 'f' declares 'widget', which is not a field key\. A field takes: type, label/)
+  })
+
+  it('points a camelCase spelling at the key', () => {
+    expect(norm({ type: 'string', maxLength: 10 })).toThrow(/Did you mean 'max_length'\?/)
+    expect(norm({ type: 'string', minLength: 1 })).toThrow(/Did you mean 'min_length'\?/)
+  })
+
+  it.each([
+    ['localized', true, /write `translatable`/],
+    ['multiple', true, /write `many: true`/],
+    ['pattern', '^a', /does not check a pattern yet/],
+    ['min_length', 1, /does not check a minimum length yet/],
+    ['languages', ['en'], /cannot require languages/],
+  ])('refuses %s, saying why', (key, value, message) => {
+    expect(norm({ type: 'string', [key]: value })).toThrow(message)
+  })
+
+  it('CONTROL — every key the standard schemas use is one it reads', () => {
+    for (const name of getSchemaNames()) expect(() => validateAndNormalizeSchema(schemas[name], `@std/${name}`)).not.toThrow()
+  })
+})
+
+// ⭐ A field's rules are its own keys (2026-10-15) — what a registry checks on every write, each
+// on the kinds it applies to. ⛔ Until then the normalizer dropped them.
+describe("a field's rules", () => {
+  const field = (f) => validateAndNormalizeSchema({ fields: { f } }, '@/x').fields.f
+  const norm = (f) => () => field(f)
+
+  it('carries each on its kinds', () => {
+    expect(field({ type: 'string', max_length: 250 })).toEqual({ type: 'string', max_length: 250 })
+    expect(field({ type: 'markdown', max_length: 5000 })).toEqual({ type: 'text', format: 'markdown', max_length: 5000 })
+    expect(field({ type: 'integer', min: 0, max: 10 })).toEqual({ type: 'int', min: 0, max: 10 })
+    expect(field({ type: 'number', min: 0.5 })).toEqual({ type: 'decimal', min: 0.5 })
+    expect(field({ type: 'image', mime_types: ['image/*'], max_size: 2000000 })).toEqual({ type: 'file', mime_types: ['image/*'], max_size: 2000000 })
+  })
+
+  it('a list carries them on each value', () => {
+    expect(field({ type: 'string', many: true, max_length: 40 })).toEqual({ type: 'array', items: { type: 'string', max_length: 40 } })
+  })
+
+  it('refuses one on a kind it does not apply to', () => {
+    expect(norm({ type: 'string', min: 1 })).toThrow(/'min', which applies to int and decimal values, not string/)
+    expect(norm({ type: 'int', max_length: 3 })).toThrow(/'max_length', which applies to string and text values, not int/)
+    expect(norm({ options: '@/lists/countries', max_length: 3 })).toThrow(/a field that picks from a list holds a choice from it/)
+  })
+
+  it('checks each value', () => {
+    expect(norm({ type: 'string', max_length: 0 })).toThrow(/'max_length' must be a whole number above zero/)
+    expect(norm({ type: 'int', min: 1.5 })).toThrow(/'min' must be a whole number on an int/)
+    expect(norm({ type: 'decimal', max: '9' })).toThrow(/'max' must be a number/)
+    expect(norm({ type: 'file', mime_types: ['image'] })).toThrow(/'mime_types' must be a list of media types/)
+    expect(norm({ type: 'int', min: 5, max: 1 })).toThrow(/'min' 5 above 'max' 1/)
+  })
+})
+
+describe('a format is one its kind takes', () => {
+  const field = (f) => validateAndNormalizeSchema({ fields: { f } }, '@/x').fields.f
+  const norm = (f) => () => field(f)
+
+  it("a date's precision — a month or a year", () => {
+    expect(field({ type: 'date', format: 'year-month' })).toEqual({ type: 'date', format: 'year-month' })
+    expect(field({ type: 'date', format: 'year' })).toEqual({ type: 'date', format: 'year' })
+    expect(norm({ type: 'date', format: 'month-day' })).toThrow(/format "month-day", which a 'date' field does not take — it takes year-month, year/)
+  })
+
+  it('currency on a string', () => {
+    expect(field({ type: 'string', format: 'currency' })).toEqual({ type: 'string', format: 'currency' })
+  })
+
+  it('refuses one its kind does not take', () => {
+    expect(norm({ type: 'string', format: 'phone' })).toThrow(/it takes email, url, currency/)
+    expect(norm({ type: 'int', format: 'year' })).toThrow(/a 'int' field does not take — it takes none/)
+  })
+
+  it('a picklist takes neither an enum nor a format', () => {
+    expect(norm({ options: '@/lists/countries', enum: ['ca'] })).toThrow(/picks from a list \('options:'\), so 'enum' does not apply/)
+  })
+
+  it('an enum belongs on a value', () => {
+    expect(norm({ ref: '@/person', enum: ['a'] })).toThrow(/'enum' on a reference/)
+  })
+})
+
+describe("a `fields:` schema's section rules sit beside its fields", () => {
+  const RULE = [{ kind: 'exclusive', fields: ['a', 'b'] }]
+
+  it('carries them', () => {
+    expect(validateAndNormalizeSchema({ fields: { a: 'string', b: 'string' }, constraints: RULE }, '@/x').constraints).toEqual(RULE)
+  })
+
+  it('refuses them beside `sections:` — each section declares its own', () => {
+    expect(() =>
+      validateAndNormalizeSchema({ sections: { s: { fields: { a: 'string' } } }, constraints: RULE }, '@/x')
+    ).toThrow(/'constraints' beside 'sections' rules no section/)
+  })
+})

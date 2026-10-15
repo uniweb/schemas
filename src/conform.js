@@ -23,7 +23,7 @@
  * whether they fail a build (CI treats them as errors).
  */
 
-import { SCALAR_KINDS, FORMAT_TYPES, enumValues } from './format.js'
+import { SCALAR_KINDS, enumValues } from './format.js'
 
 // ── The layout of one record ──────────────────────────────────────────────────
 //
@@ -947,34 +947,85 @@ function validateValue(def, value, path) {
 
   // scalar kind
   if (!isKind(kind, value)) {
+    // A date is text at every precision; a YAML file reads an unquoted `2024` as a number,
+    // which a registry refuses ("must be a string").
+    if ((kind === 'date' || kind === 'datetime') && typeof value === 'number') {
+      out.push(violation(path, 'type', `${fmt(value)} is a number — a date is written as text: '${value}'`))
+      return out
+    }
     out.push(violation(path, 'type', `expected ${kind}, got ${typeName(value)}`))
     return out
   }
 
   // date / datetime — the value is the string as written (the build's YAML resolves
-  // no timestamps), and it must be one a backend stores: a real `YYYY-MM-DD` day for
-  // a date, a day and a time for a datetime. ⛔ Until 2026-09-24 any string passed —
-  // `joined: March 2021` included, which a backend refuses ("is not a valid date").
-  // A datetime's offset is not required here: which a backend demands is its to say.
-  if (typeof value === 'string' && kind === 'date' && !isIsoDate(value)) {
-    out.push(violation(path, 'format', `${fmt(value)} is not a date (YYYY-MM-DD)`))
-    return out
+  // no timestamps), and it must be one a backend stores: a date at the precision its
+  // field declares — a real `YYYY-MM-DD` day, or with `format: year-month` a month
+  // `YYYY-MM`, with `format: year` a year `YYYY` (since 2026-10-15) — and a day and a time
+  // for a datetime. ⛔ Until 2026-09-24 any string passed — `joined: March 2021` included,
+  // which a backend refuses ("is not a valid date"). A datetime's offset is not required
+  // here: which a backend demands is its to say.
+  if (kind === 'date') {
+    const precision = DATE_PRECISION[def.format] ?? DATE_PRECISION.day
+    // A Date object is a day, whatever precision the field declares.
+    const fits = value instanceof Date ? precision === DATE_PRECISION.day : precision.test(value)
+    if (!fits) {
+      out.push(violation(path, 'format', `${fmt(value)} is not ${precision.what} (${precision.shape})`))
+      return out
+    }
   }
   if (typeof value === 'string' && kind === 'datetime' && !isIsoDateTime(value)) {
     out.push(violation(path, 'format', `${fmt(value)} is not a date and time (YYYY-MM-DDTHH:MM)`))
     return out
   }
 
-  // format (url / email) — only on present string scalars
-  if (typeof value === 'string' && FORMAT_TYPES.has(def.format)) {
+  // format — the ones checked against a value: email, url, currency. `markdown`,
+  // `prosemirror` and `scene` say what a value is, and a registry checks none of them, so
+  // neither does this.
+  if (typeof value === 'string') {
     if (def.format === 'email' && !isEmailish(value)) {
       out.push(violation(path, 'format', `${fmt(value)} is not a valid email`))
     } else if (def.format === 'url' && !isUrlish(value)) {
       out.push(violation(path, 'format', `${fmt(value)} is not a valid url`))
+    } else if (def.format === 'currency' && !/^[A-Z]{3}$/.test(value)) {
+      out.push(violation(path, 'format', `${fmt(value)} is not a currency code (ISO 4217, like 'CAD')`))
+    }
+  }
+
+  // A field's rules (`FIELD_RULES` in ./format.js) — what a registry checks on every write.
+  // `max_length` counts characters, as a registry does: code points, not UTF-16 units.
+  if (typeof value === 'string' && def.max_length !== undefined && [...value].length > def.max_length) {
+    out.push(violation(path, 'max_length', `${fmt(value)} is ${[...value].length} characters — at most ${def.max_length}`))
+  }
+  if (typeof value === 'number') {
+    if (def.min !== undefined && value < def.min) out.push(violation(path, 'min', `${value} is below ${def.min}`))
+    if (def.max !== undefined && value > def.max) out.push(violation(path, 'max', `${value} is above ${def.max}`))
+  }
+  // A file's type and size can be checked only where the value says them — an asset's
+  // `mime` and `size`; a path names neither.
+  if (kind === 'file' && isAssetValue(value)) {
+    if (Array.isArray(def.mime_types) && typeof value.mime === 'string' && !def.mime_types.some((t) => mimeMatches(t, value.mime))) {
+      out.push(violation(path, 'mime_types', `${fmt(value.mime)} is not one of [${def.mime_types.map(fmt).join(', ')}]`))
+    }
+    if (def.max_size !== undefined && typeof value.size === 'number' && value.size > def.max_size) {
+      out.push(violation(path, 'max_size', `${value.size} bytes is above ${def.max_size}`))
     }
   }
 
   return out
+}
+
+// A date's precision: the day by default, or what its field's `format` declares.
+const DATE_PRECISION = {
+  day: { test: (v) => isIsoDate(v), what: 'a date', shape: 'YYYY-MM-DD' },
+  'year-month': { test: (v) => /^\d{4}-(0[1-9]|1[0-2])$/.test(v), what: 'a month', shape: 'YYYY-MM' },
+  year: { test: (v) => /^\d{4}$/.test(v), what: 'a year', shape: 'YYYY' },
+}
+
+// `image/*` matches any image; anything else matches itself, ignoring case.
+function mimeMatches(pattern, mime) {
+  const [type, sub] = pattern.toLowerCase().split('/')
+  const [mType, mSub] = mime.toLowerCase().split('/')
+  return type === mType && (sub === '*' || sub === mSub)
 }
 
 // Scalar kinds this checker knows how to verify. Kept in lockstep with the

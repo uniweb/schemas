@@ -18,6 +18,8 @@ import {
   validateAndNormalizeSchema,
   flatRecordFields,
   parseSchemaRef,
+  parseOptionsRef,
+  collectNestedRefs,
   SCALAR_KINDS,
   STRUCTURAL_KINDS,
   FORMAT_TYPES,
@@ -445,5 +447,48 @@ describe('access a schema may declare (2026-10-14)', () => {
     expect(out.fields.peers.readable_with).toBe('read')
     expect(() => validateAndNormalizeSchema({ name: 'x', fields: { a: { type: 'string', readable_with: 'read' } } }, '@/x')).toThrow(/only a reference can/)
     expect(() => validateAndNormalizeSchema({ name: 'x', fields: { c: { ref: '@/c', readable_with: 'owner' } } }, '@/x')).toThrow(/read, edit or admin/)
+  })
+})
+
+// ⭐ A picklist names the SECTION whose items are its choices (2026-10-15): the Model's ref, then the
+// section's path. ⛔ Until then `options:` took a Model alone, and a section path was refused — so a
+// lists Model's second list could never be a field's choices.
+describe('a picklist names a section of a Model', () => {
+  it('parses the Model and the section path', () => {
+    expect(parseOptionsRef('@/country')).toEqual({ model: '@/country', path: null })
+    expect(parseOptionsRef('@/lists/countries')).toEqual({ model: '@/lists', path: 'countries' })
+    expect(parseOptionsRef('@acme/lists/countries/subdivisions')).toEqual({ model: '@acme/lists', path: 'countries/subdivisions' })
+  })
+
+  it.each(['lists', '@acme', '@/lists/', '@/lists//x', '@/lists/$uuid'])('refuses %j', (ref) => {
+    expect(() => parseOptionsRef(ref)).toThrow(/Invalid (options|data-schema) ref/)
+  })
+
+  it('a schema may name a section, a nested one by its path', () => {
+    const out = validateAndNormalizeSchema(
+      { fields: { country: { options: '@/lists/countries' }, province: { options: '@acme/lists/countries/subdivisions' } } },
+      '@/cv'
+    )
+    expect(out.fields.country).toEqual({ type: 'string', options: '@/lists/countries' })
+    expect(out.fields.province).toEqual({ type: 'string', options: '@acme/lists/countries/subdivisions' })
+  })
+
+  it('names the field when the path is malformed', () => {
+    expect(() => validateAndNormalizeSchema({ fields: { country: { options: '@/lists/' } } }, '@/cv')).toThrow(
+      /Data schema '@\/cv': field 'country' 'options': Invalid options ref/
+    )
+  })
+
+  it('the Model is the dependency, not the section', () => {
+    const schema = validateAndNormalizeSchema({ fields: { a: { options: '@/lists/countries' }, b: { options: '@std/lists/x/y' } } }, '@/cv')
+    expect(collectNestedRefs(schema).sort()).toEqual(['@/lists', '@std/lists'])
+  })
+
+  it.each([
+    ['item_ref', /'item_ref', the registry's word[\s\S]*`options:`/],
+    ['entity_ref', /'entity_ref', the registry's word[\s\S]*`ref:`/],
+    ['section', /'section', the registry's word[\s\S]*type: object/],
+  ])("type '%s' is refused by name, saying what to write", (type, message) => {
+    expect(() => validateAndNormalizeSchema({ fields: { country: { type, options: '@/lists/countries' } } }, '@/cv')).toThrow(message)
   })
 })

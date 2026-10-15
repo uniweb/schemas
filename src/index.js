@@ -98,6 +98,7 @@ export {
   AUTHORING_TYPES,
   SCHEMA_EXTENSIONS,
   parseSchemaRef,
+  parseOptionsRef,
   validateAndNormalizeSchema,
   collectNestedRefs,
 } from './format.js'

@@ -93,6 +93,16 @@ const FORMAT_TYPE_ALIASES = {
 // The advertised format-aliasing type words (drives the "Known types" hint).
 export const FORMAT_TYPES = new Set(['url', 'email', 'markdown', 'richtext'])
 
+// The registry's kinds that are NOT authoring types, each with what a data schema writes instead.
+// A registered definition spells a picklist `type: item_ref` and a reference `type: entity_ref`;
+// an author copying one is refused by name and told the spelling, rather than told the type is
+// unknown (2026-10-15 — `@uniweb/api`'s README had taught the registry's spelling).
+const REGISTRY_KINDS = {
+  item_ref: "`options:` naming the section whose items are the choices ('@/lists/countries') — the type follows from it",
+  entity_ref: "`ref:` naming the Model ('@/person') — the type follows from it",
+  section: '`type: object` for one record, or `type: object` with `many: true` for a list of records',
+}
+
 /**
  * `readable_with` — a reference that opens its entry, for `read`, to whoever holds that
  * level (`read`, `edit` or `admin`) on the entry it points to: a submission's `course`
@@ -223,6 +233,43 @@ export function parseSchemaRef(ref) {
     throw new Error(`Invalid data-schema ref '${ref}': expected a single '<name>' segment after the namespace.`)
   }
   return { scope, name }
+}
+
+/**
+ * Parse a picklist's `options:` — the SECTION of a Model whose items are the field's choices,
+ * written as the Model's ref and then the section's path in it:
+ *
+ *   '@/country'                           → { model: '@/country',   path: null }
+ *   '@/lists/countries'                   → { model: '@/lists',     path: 'countries' }
+ *   '@acme/lists/countries/subdivisions'  → { model: '@acme/lists', path: 'countries/subdivisions' }
+ *
+ * A nested section is named by its path from the top, as a write names it. A Model whose top
+ * holds ONE list may be named alone (`path: null`), and that list is the one meant; the build
+ * refuses the short form for a Model with several (`@uniweb/build`, `optionsSectionPath`).
+ * ⛔ Until 2026-10-15 `options:` took a Model alone and the build chose its first list, so a
+ * second list could not be named at all.
+ *
+ * Shape only, like `parseSchemaRef`: whether the Model has the section is the build's to say.
+ *
+ * @param {string} ref
+ * @returns {{ model: string, path: string|null }}
+ */
+export function parseOptionsRef(ref) {
+  if (typeof ref !== 'string' || ref[0] !== '@') {
+    throw new Error(
+      `Invalid options ref ${JSON.stringify(ref)}: must start with '@' — the Model whose section holds ` +
+        `the choices, then the section (e.g. '@/lists/countries').`
+    )
+  }
+  const [namespace, name, ...path] = ref.split('/')
+  parseSchemaRef(name === undefined ? ref : `${namespace}/${name}`)
+  if (path.some((segment) => !segment || segment.startsWith('$'))) {
+    throw new Error(
+      `Invalid options ref '${ref}': after the Model comes the section's path — section names ` +
+        `joined by '/' (e.g. '@/lists/countries/subdivisions').`
+    )
+  }
+  return { model: `${namespace}/${name}`, path: path.length ? path.join('/') : null }
 }
 
 /**
@@ -605,6 +652,12 @@ function normalizeField(field, ref, path) {
     throw new Error(`Data schema '${ref}': field '${path}' has no 'type'.`)
   }
   refuseHtml(field, ref, path)
+  if (REGISTRY_KINDS[rawType]) {
+    throw new Error(
+      `Data schema '${ref}': field '${path}' has type '${rawType}', the registry's word for it, not a ` +
+        `data schema's — write ${REGISTRY_KINDS[rawType]}.`
+    )
+  }
 
   const out = {}
   // Carry-through metadata (render hints / flags / value).
@@ -678,11 +731,15 @@ function normalizeField(field, ref, path) {
   if (field.options !== undefined) {
     if (typeof field.options !== 'string' || field.options[0] !== '@') {
       throw new Error(
-        `Data schema '${ref}': field '${path}' 'options' must be a '@/<name>' ref to a curated options schema. ` +
-          `For an inline list use 'enum:'.`
+        `Data schema '${ref}': field '${path}' 'options' must name the section whose items are the ` +
+          `choices — '@/<name>/<section>', or '@/<name>' for a Model with one list. For an inline list use 'enum:'.`
       )
     }
-    parseSchemaRef(field.options) // shape-check the ref
+    try {
+      parseOptionsRef(field.options) // shape-check: a Model, then a section path
+    } catch (err) {
+      throw new Error(`Data schema '${ref}': field '${path}' 'options': ${err.message}`)
+    }
     out.options = field.options
   }
 
@@ -744,7 +801,8 @@ export function collectNestedRefs(schema) {
     for (const field of Object.values(fields || {})) {
       if (typeof field !== 'object' || !field) continue
       if (typeof field.ref === 'string') found.add(field.ref)
-      if (typeof field.options === 'string') found.add(field.options)
+      // A picklist names a section of a Model; the Model is the dependency.
+      if (typeof field.options === 'string') found.add(parseOptionsRef(field.options).model)
       if (field.fields) walkFields(field.fields)
       if (field.items) walkFields({ _: field.items })
       if (field.values) walkFields({ _: field.values })

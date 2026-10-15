@@ -661,7 +661,7 @@ const { params, content, family, unfilled, elementsInferred } = starterContent(c
 `component` is a foundation schema entry — the same argument `resolveFamily` takes. `content` is the flat content structure and `params` is the frontmatter. Serializing is one call in a package you already have, which is what keeps this one dependency-free:
 
 ```js
-import { buildDoc } from '@uniweb/semantic-parser'        // → ProseMirror, for an editor
+import { buildDoc } from '@uniweb/semantic-parser'        // → ProseMirror: the nodes markdown reads to
 import { serializeSection } from '@uniweb/content-writer'  // → markdown, for a file
 
 const doc = buildDoc(content)

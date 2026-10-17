@@ -83,9 +83,11 @@ export {
   normalizeFoundationSchema,
   normalizeData,
   normalizeParams,
-  qualifyRef,
   schemaDeclarationOf,
 } from './foundation.js'
+
+// `@/x` named in full — also the `@uniweb/schemas/refs` subpath, a leaf a foundation bundle imports.
+export { qualifyRef } from './refs.js'
 
 // The format itself — normalization and conformance. Also available as the
 // `@uniweb/schemas/format` and `@uniweb/schemas/conform` subpaths, which is what

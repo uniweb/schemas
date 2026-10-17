@@ -42,6 +42,10 @@
 import { validateAndNormalizeSchema } from './format.js'
 import { describeContent, conceptTag } from './content.js'
 import { lowerChildren } from './component.js'
+import { qualifyRef } from './refs.js'
+
+// The rule lives in a leaf of its own (`@uniweb/schemas/refs`), which a foundation bundle imports.
+export { qualifyRef }
 
 /** The form `normalizeFoundationSchema` writes: `_self.schemaFormat`. */
 export const FOUNDATION_SCHEMA_FORMAT = 3
@@ -289,19 +293,6 @@ function refuseWholeSuffix(ref) {
     `\`/*\` is retired: write { schema: '${schema}', whole: true } for whole records — ` +
       `and single: true as well when the section shows one record.`
   )
-}
-
-/**
- * `@/x` in the foundation's scope — `@acme/x` for `@acme` (or `acme`). Any other ref, or no scope,
- * as given.
- *
- * @param {string} ref
- * @param {string} [scope]
- * @returns {string}
- */
-export function qualifyRef(ref, scope) {
-  const handle = typeof scope === 'string' ? scope.replace(/^@/, '').replace(/\/.*$/, '') : ''
-  return typeof ref === 'string' && ref.startsWith('@/') && handle ? `@${handle}/${ref.slice(2)}` : ref
 }
 
 /** Every Model a normalized field map names — a `ref` field's `ref`, a picklist's `options` — qualified. */

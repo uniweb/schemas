@@ -987,7 +987,9 @@ function validateValue(def, value, path) {
     if (def.format === 'email' && !isEmailish(value)) {
       out.push(violation(path, 'format', `${fmt(value)} is not a valid email`))
     } else if (def.format === 'url' && value !== '' && storedUrl(value) === null) {
-      out.push(violation(path, 'format', `${fmt(value)} is not a web address — write http:// or https:// and a host, as in 'https://example.com/about'`))
+      out.push(violation(path, 'format', webAddress(value) === null
+        ? `${fmt(value)} is not a web address — write http:// or https:// and a host, as in 'https://example.com/about'`
+        : `${fmt(value)} is not an address a browser can open — its host or its port is not valid`))
     } else if (def.format === 'currency' && !/^[A-Z]{3}$/.test(value)) {
       out.push(violation(path, 'format', `${fmt(value)} is not a currency code (ISO 4217, like 'CAD')`))
     }
@@ -1136,16 +1138,37 @@ function isEmailish(v) {
 // path (`/about`), and what starts with no host name (`localhost:3000`, `192.168.0.1/x`,
 // `a@example.com`). Agrees with a registry's own answers over a corpus of addresses; past it,
 // "letters and digits" is read as Unicode's Alphabetic and Numeric.
+// ⭐ AND ONE A BROWSER CAN OPEN (since 2026-10-17): the WHATWG URL parser — `URL`, the same in every
+// browser and in Node — accepts the address as stored, so a port above 65535 or not a number, an
+// unclosed `[`, a character no host may hold, an empty host, a host ending in a number
+// (`example.123`) and an IPv4 address out of range (`1.2.3.999`) are refused, with a scheme or
+// without. It only narrows: what passes is kept as written, never as the parser would rewrite it.
 // ⛔ Until 2026-10-15 a `format: url` value passed as any `scheme://…`, a path or a bare domain —
 // lenient for static sites — so a value `uniweb validate` passed could be refused on a push.
 const LABEL = String.raw`[\p{Alphabetic}\p{N}](?:[\p{Alphabetic}\p{N}-]*[\p{Alphabetic}\p{N}])?`
 const HOST_START = new RegExp(String.raw`^(?:${LABEL}\.)+(?=[\p{Alphabetic}\p{N}-]*\p{Alphabetic})${LABEL}(?::\d+)?(?:[/?#]|$)`, 'u')
 function storedUrl(v) {
+  const stored = webAddress(v)
+  return stored !== null && opensInBrowser(stored) ? stored : null
+}
+
+// The address as a registry would store it — `http://` or `https://`, or a host name with
+// `https://` in front — or null when the value is not one, before the parser is asked.
+function webAddress(v) {
   if (typeof v !== 'string' || v === '' || /\s/.test(v)) return null
   const scheme = /^(https?):\/\/./i.exec(v)
   if (scheme) return scheme[1].toLowerCase() + v.slice(scheme[1].length)
   const bare = v.startsWith('//') ? v.slice(2) : v
   return HOST_START.test(bare) ? `https://${bare}` : null
+}
+
+function opensInBrowser(address) {
+  try {
+    new URL(address)
+    return true
+  } catch {
+    return false
+  }
 }
 
 /** An asset value: an object whose `url` is a string — `{ url, name?, mime?, size?, preview?, assetId?, … }`. */

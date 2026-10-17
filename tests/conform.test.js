@@ -561,6 +561,54 @@ describe('validateItem — a url is a web address', () => {
   })
 })
 
+// ⭐ And one a browser can open (2026-10-17): the WHATWG URL parser accepts the address as stored.
+// It only narrows — what passes is kept as written.
+describe('validateItem — a url is one a browser can open', () => {
+  const rules = (value) =>
+    validateItem(validateAndNormalizeSchema({ fields: { site: 'url' } }, '@/x'), { site: value }).map((v) => v.rule)
+
+  it.each([
+    'https://example',
+    'https://-example.com',
+    'https://example..com',
+    'https://example.com.',
+    'https:///example.com',
+    'https://example.com:65535',
+    'https://[::1]:8080',
+    'https://ex%41mple.com',
+    'example.com:65535',
+    'example.com:0',
+  ])('passes %s', (value) => {
+    expect(rules(value)).toEqual([])
+  })
+
+  it.each([
+    'https://example.com:99999',
+    'https://example.com:abc',
+    'https://[::1',
+    'https://exa<mple.com',
+    'https://user@/',
+    'https://ex%20ample.com',
+    'https://example.123',
+    'https://1.2.3.999',
+    'example.com:99999',
+  ])('refuses %s', (value) => {
+    expect(rules(value)).toEqual(['format'])
+  })
+
+  it('says it cannot be opened, not how to write a web address', () => {
+    const [finding] = validateItem(validateAndNormalizeSchema({ fields: { site: 'url' } }, '@/x'), { site: 'https://example.com:99999' })
+    expect(finding.message).toBe(`"https://example.com:99999" is not an address a browser can open — its host or its port is not valid`)
+  })
+
+  it('keeps what passes as written, not as the parser rewrites it', () => {
+    const site = validateAndNormalizeSchema({ fields: { site: 'url' } }, '@/x').fields.site
+    expect(storedValue(site, 'https:///example.com')).toBe('https:///example.com')
+    expect(storedValue(site, 'https://ex%41mple.com')).toBe('https://ex%41mple.com')
+    expect(storedValue(site, 'example.com:0')).toBe('https://example.com:0')
+  })
+})
+
 // What a registry keeps, which a file need not write (2026-10-15).
 describe('storedValue', () => {
   const field = (f) => validateAndNormalizeSchema({ fields: { f } }, '@/x').fields.f

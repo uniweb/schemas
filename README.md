@@ -124,8 +124,8 @@ The friendly type you write folds to a small set of **canonical kinds**. Write t
 | `date` / `datetime` | `date` / `datetime` | An ISO-8601 date / timestamp |
 | `image` | `file` | A path or URL to a file |
 | `url` / `email` | `string` + `format` | A validated string |
-| `markdown` / `html` | `text` + `format` | A rich-content body (a source string) |
-| `richtext` | `json` + `format: prosemirror` | A rich document edited in the visual app |
+| `markdown` | `text` + `format: markdown` | A source body (a markdown string) |
+| `richtext` | `json` + `format: richtext` | A rich document edited in the visual app |
 | `json` | `json` | An opaque structured value |
 | `object`, `group` | `object` | A nested record — declare `fields:` or `values:`. `group` is the author-facing spelling |
 | `array` | `array` | A list — declare `items:` (or just use `many:`). Without `items:` the element type is genuinely unknown, and a registered schema records it as opaque `json` rather than guessing |
@@ -201,14 +201,13 @@ An inline array always belongs on `enum:`; `options:` always takes a ref.
 | `format` | Valid on | Use it for |
 |---|---|---|
 | `markdown` | `text` | A markdown body that round-trips as plain source |
-| `html` | `text` | An HTML body |
-| `prosemirror` | `json` | A rich document edited through a structured editor |
+| `richtext` | `json` | A rich document edited in the visual app, held to the rich-text vocabulary |
 | `scene` | `json` | A visual scene composition (rendered by `@uniweb/scene`) |
 | `email`, `url` | `string` | Value validation, not rich content |
 
-The friendly aliases set these for you: `type: markdown` is exactly `type: text, format: markdown`, and `type: richtext` is exactly `type: json, format: prosemirror`.
+The friendly aliases set these for you: `type: markdown` is exactly `type: text, format: markdown`, and `type: richtext` is exactly `type: json, format: richtext`.
 
-**Use `richtext` for a rich body edited in the visual app** — it's the editor's native, lossless document. Use `markdown` / `html` for a **source body** authored as text (file-based projects, or content you want readable as raw source). Don't reach for `markdown` just because it's the familiar word.
+**Use `richtext` for a rich body edited in the visual app** — it's the editor's native, lossless document. Use `markdown` for a **source body** authored as text (file-based projects, or content you want readable as raw source). Don't reach for `markdown` just because it's the familiar word.
 
 ### Translatable fields
 
@@ -237,7 +236,7 @@ translation renders **no tags at all** rather than the original ones.
 The second is a canonical key plus a localized label — two fields, not one translatable field.
 (`@std`'s `tags`, `keywords` and `technologies` are all `translatable: false` for this reason.)
 
-Fields constrained by `enum:`, and strings carrying a value-validator `format` (`email` / `url`), are treated as machine values and are not translated. A *content* format (`markdown` / `html` / `prosemirror`) still translates.
+Fields constrained by `enum:`, and strings carrying a value-validator `format` (`email` / `url`), are treated as machine values and are not translated. A *content* format (`markdown` / `richtext`) still translates.
 
 ### Field options
 

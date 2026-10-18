@@ -73,10 +73,10 @@ export default {
     // What only the article's own page needs — never carried by a list or a reference.
     body: {
       fields: {
-        // A ProseMirror document on the wire (md authoring side).
+        // A rich document on the wire (`format: richtext`; md authoring side).
         content: {
           type: 'json',
-          format: 'prosemirror',
+          format: 'richtext',
           description: 'Full article content',
         },
       },

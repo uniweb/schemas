@@ -432,6 +432,26 @@ describe('there is no html', () => {
   })
 })
 
+describe('rich text is `format: richtext` (2026-10-18)', () => {
+  // Renamed from `prosemirror` for what the value is held to — the rich-text vocabulary —
+  // not how it is encoded [Diego, 2026-10-18].
+  const schemaWith = (field) => ({ name: 'note', fields: { body: field } })
+
+  it('`type: richtext` is `json` + `format: richtext`, and that is what a json field takes', () => {
+    expect(validateAndNormalizeSchema(schemaWith({ type: 'richtext' }), '@/note').fields.body).toMatchObject({ type: 'json', format: 'richtext' })
+    expect(validateAndNormalizeSchema(schemaWith({ type: 'json', format: 'richtext' }), '@/note').fields.body).toMatchObject({ type: 'json', format: 'richtext' })
+    expect(() => validateAndNormalizeSchema(schemaWith({ type: 'string', format: 'richtext' }), '@/note')).toThrow(/valid only on a 'json' field/)
+  })
+
+  it('`format: prosemirror` is refused by name, naming its successor', () => {
+    expect(() => validateAndNormalizeSchema(schemaWith({ type: 'json', format: 'prosemirror' }), '@/note')).toThrow(/'prosemirror', which is now 'richtext'/)
+  })
+
+  it('the standard article holds its content as richtext', () => {
+    expect(schemas.article.sections.body.fields.content.format).toBe('richtext')
+  })
+})
+
 describe('access a schema may declare (2026-10-14)', () => {
   it('`grantable` is a boolean on the schema', () => {
     expect(validateAndNormalizeSchema({ name: 'x', grantable: false, fields: { a: 'string' } }, '@/x').grantable).toBe(false)

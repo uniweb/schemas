@@ -85,12 +85,15 @@ const FORMAT_TYPE_ALIASES = {
   url: { type: 'string', format: 'url' },
   email: { type: 'string', format: 'email' },
   markdown: { type: 'text', format: 'markdown' },
-  // `richtext` → a ProseMirror rich document (`json` + `format: prosemirror`): the
-  // framework's standard way to represent rich text — the structured, lossless form
-  // the visual app edits (text, media, tables, code, data blocks, icons, and inline
-  // components). Synced to file mode as enhanced markdown via content-writer. Contrast
-  // `markdown`, a source-string body (raw text, no structured editor).
-  richtext: { type: 'json', format: 'prosemirror' },
+  // `richtext` → a rich document (`json` + `format: richtext`): the framework's
+  // standard way to represent rich text — the structured, lossless form the visual
+  // app edits (text, media, tables, code, data blocks, icons, and inline components),
+  // held to the rich-text vocabulary (`@uniweb/content-reader/vocabulary`). Synced to
+  // file mode as enhanced markdown via content-writer. Contrast `markdown`, a
+  // source-string body (raw text, no structured editor). ⛔ The format was
+  // `prosemirror` until 2026-10-18 — renamed for what the value is held to, not how it
+  // is encoded [Diego] — and is refused by name since (`refuseRetiredFormat`).
+  richtext: { type: 'json', format: 'richtext' },
 }
 // The advertised format-aliasing type words (drives the "Known types" hint).
 export const FORMAT_TYPES = new Set(['url', 'email', 'markdown', 'richtext'])
@@ -117,14 +120,14 @@ export const FIELD_RULES = Object.freeze({
  * The `format`s each kind takes — closed, because a registry refuses a whole schema for a format
  * its kind does not take (2026-10-15). A kind not listed takes none. On a `date`, the format is
  * its precision: `year-month` holds `2024-05`, `year` holds `2024`, and none holds a day.
- * `markdown`, `prosemirror` and `scene` say what the value is; `email`, `url` and `currency` (an
+ * `markdown`, `richtext` and `scene` say what the value is; `email`, `url` and `currency` (an
  * ISO 4217 code) are checked against it.
  */
 export const FIELD_FORMATS = Object.freeze({
   string: ['email', 'url', 'currency'],
   text: ['email', 'url', 'markdown'],
   date: ['year-month', 'year'],
-  json: ['prosemirror', 'scene'],
+  json: ['richtext', 'scene'],
 })
 
 /**
@@ -237,6 +240,16 @@ function refuseHtml(field, ref, path) {
       `Data schema '${ref}': field '${path}' is HTML, which a data schema cannot declare — ` +
         `content is never markup, and a component decides how it renders. ` +
         `Use \`richtext\` for rich text, or \`markdown\` for a source body.`
+    )
+  }
+}
+
+/** `format: prosemirror` is refused by name — renamed `richtext`, see FORMAT_TYPE_ALIASES. */
+function refuseRetiredFormat(field, ref, path) {
+  if (field.format === 'prosemirror') {
+    throw new Error(
+      `Data schema '${ref}': field '${path}' has format 'prosemirror', which is now 'richtext' — ` +
+        `write \`type: richtext\`, or \`type: json\` with \`format: richtext\`.`
     )
   }
 }
@@ -772,6 +785,7 @@ function normalizeField(field, ref, path) {
     throw new Error(`Data schema '${ref}': field '${path}' has no 'type'.`)
   }
   refuseHtml(field, ref, path)
+  refuseRetiredFormat(field, ref, path)
   if (REGISTRY_KINDS[rawType]) {
     throw new Error(
       `Data schema '${ref}': field '${path}' has type '${rawType}', the registry's word for it, not a ` +
@@ -821,8 +835,8 @@ function normalizeField(field, ref, path) {
   }
 
   // Content `format` markers are registered per-shape (uwx-format.md §3): the
-  // rich-content marker `markdown` belongs on a `text` field; `prosemirror`
-  // (a ProseMirror doc) and `scene` (a Scene Composition Format payload — an opaque
+  // rich-content marker `markdown` belongs on a `text` field; `richtext`
+  // (a rich document) and `scene` (a Scene Composition Format payload — an opaque
   // structured blob the app edits via the Designer / visual canvas) both belong on
   // a `json` field. Catch a mismatch at build time, not at publish (the backend
   // rejects it).
@@ -834,7 +848,7 @@ function normalizeField(field, ref, path) {
   const opensWith = readableWith(field.readable_with, out.type === 'ref', ref, path)
   if (opensWith) out.readable_with = opensWith
 
-  if ((out.format === 'prosemirror' || out.format === 'scene') && out.type !== 'json') {
+  if ((out.format === 'richtext' || out.format === 'scene') && out.type !== 'json') {
     throw new Error(
       `Data schema '${ref}': field '${path}' has format '${out.format}', valid only on a 'json' field (got '${out.type}').`
     )

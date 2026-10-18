@@ -424,7 +424,7 @@ export function storedFromMerged(schema, merged) {
 
 /**
  * The schema's content body field — the one a markdown record's body fills: a markup
- * `text` field (`format: markdown|html`) or a `format: prosemirror` json field, declared
+ * `text` field (`format: markdown`) or a `format: richtext` json field, declared
  * directly on a top-level single section (the brief or another). `section` is where the
  * field sits in the DELIVERED record: null when at the top (a flat schema, or the
  * brief), else the section's name. `fileSection` is where it sits in the record's FILE:
@@ -460,7 +460,7 @@ export function contentBodyField(schema) {
 const isContentBody = (f) =>
   !!f && typeof f === 'object' &&
   ((f.type === 'text' && f.format === 'markdown') ||
-    (f.type === 'json' && f.format === 'prosemirror'))
+    (f.type === 'json' && f.format === 'richtext'))
 
 /**
  * Every reference a record holds — a `ref` field, or each element of a list of them, at
@@ -981,7 +981,7 @@ function validateValue(def, value, path) {
   }
 
   // format — the ones checked against a value: email, url, currency. `markdown`,
-  // `prosemirror` and `scene` say what a value is, and a registry checks none of them, so
+  // `richtext` and `scene` say what a value is, and a registry checks none of them, so
   // neither does this.
   if (typeof value === 'string') {
     if (def.format === 'email' && !isEmailish(value)) {

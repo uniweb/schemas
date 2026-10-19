@@ -120,7 +120,7 @@ describe('every shipped standard is valid in this format', () => {
   })
 
   // …and its icon (2026-10-05 [Diego]) — a framework icon name; the normalizer checks the
-  // spelling, and `_contracts/std-schema-icons.test.js` that the corpus has the icon.
+  // spelling, and a cross-package test that the corpus has the icon.
   it.each(names)("'%s' declares its icon", (name) => {
     const out = validateAndNormalizeSchema(schemas[name], `@std/${name}`)
     expect(out.icon).toMatch(/^[a-z][a-z0-9]*-[a-z0-9-]+$/)

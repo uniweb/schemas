@@ -57,6 +57,8 @@ import form from './standard/form.js'
 import service from './standard/service.js'
 import product from './standard/product.js'
 import testimonial from './standard/testimonial.js'
+import position from './standard/position.js'
+import qualification from './standard/qualification.js'
 
 // Section families — also at the `@uniweb/schemas/families` subpath
 export {
@@ -155,6 +157,8 @@ export const schemas = {
   service,
   product,
   testimonial,
+  position,
+  qualification,
 }
 
 /**

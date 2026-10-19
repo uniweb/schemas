@@ -455,6 +455,8 @@ A schema whose root is a list, such as `@std/nav`, describes the whole value of 
 | `service` | `@std/service` | Services a business offers — a card and a page each |
 | `product` | `@std/product` | Things a business sells — a card and a page each |
 | `testimonial` | `@std/testimonial` | What a customer, client or patient said |
+| `position` | `@std/position` | A role someone held — the entries of a CV's experience |
+| `qualification` | `@std/qualification` | A degree, diploma or certificate someone earned |
 | `nav` | `@std/nav` | Navigation menus (a nestable list) |
 | `scene` | `@std/scene` | Visual scene composition (rendered by `@uniweb/scene`) |
 | `form` | `@std/form` | A form **designed by an author** — a list of the controls a visitor will be asked to fill |

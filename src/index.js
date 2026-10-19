@@ -54,6 +54,9 @@ import publication from './standard/publication.js'
 import nav from './standard/nav.js'
 import scene from './standard/scene.js'
 import form from './standard/form.js'
+import service from './standard/service.js'
+import product from './standard/product.js'
+import testimonial from './standard/testimonial.js'
 
 // Section families — also at the `@uniweb/schemas/families` subpath
 export {
@@ -149,6 +152,9 @@ export const schemas = {
   nav,
   scene,
   form,
+  service,
+  product,
+  testimonial,
 }
 
 /**

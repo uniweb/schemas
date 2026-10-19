@@ -452,6 +452,9 @@ A schema whose root is a list, such as `@std/nav`, describes the whole value of 
 | `project` | `@std/project` | Portfolio items, case studies |
 | `opportunity` | `@std/opportunity` | Jobs, grants, calls for proposals |
 | `publication` | `@std/publication` | Academic papers, research documents |
+| `service` | `@std/service` | Services a business offers — a card and a page each |
+| `product` | `@std/product` | Things a business sells — a card and a page each |
+| `testimonial` | `@std/testimonial` | What a customer, client or patient said |
 | `nav` | `@std/nav` | Navigation menus (a nestable list) |
 | `scene` | `@std/scene` | Visual scene composition (rendered by `@uniweb/scene`) |
 | `form` | `@std/form` | A form **designed by an author** — a list of the controls a visitor will be asked to fill |

@@ -68,11 +68,13 @@ export const SECTION_PARAMS = Object.freeze({
   /**
    * Whether the section stays in view as the page scrolls: `true` or `false`. A section type
    * may default it in its `meta.js` — `sticky: true`, or `{ default, top }` for a type that
-   * sits below another sticking element, `top` a CSS length. The runtime makes sticky the
-   * box that can stick, since no box a component draws can: the layout area's, for a
-   * section in the header or any other area — when any of its sections is sticky — and the
-   * section's own wrapper, for a section in the body. On the block as `block.sticky` and
-   * `block.stickyTop`.
+   * must sit at a set distance from the top, `top` a CSS length (`stickyDeclaration`). The
+   * runtime makes sticky the box that can stick, since no box a component draws can: the
+   * layout area's, for a section in the header or any other area — when any of its sections
+   * is sticky — and the section's own wrapper, for a section in the body or a child section
+   * its parent renders as a section, which stays in view within the box its parent places it
+   * in. Without a `top`, a section stays below whatever is stuck at the top. On the block as
+   * `block.sticky` and `block.stickyTop`.
    */
   sticky: Object.freeze({ component: false }),
 })
@@ -85,6 +87,46 @@ export const SECTION_PARAMS = Object.freeze({
  */
 export function isSectionParam(name) {
   return Object.hasOwn(SECTION_PARAMS, name)
+}
+
+/**
+ * A section type's `sticky` — the default its sections take unless an author says otherwise —
+ * checked, and written in one shape: `{ default }`, with `top` when the type has one. A `meta.js`
+ * writes `true` or `false`, or `{ default, top }` with either left out: `default` a boolean,
+ * `false` when absent; `top` how far below the top the section stays — one CSS value, `4rem` or
+ * `var(--header-height)`, written into the style of the box that sticks, so a declaration (`;`, a
+ * brace) is refused.
+ *
+ * ⭐ `top` is never filled in: without one the runtime places the section — below whatever is
+ * stuck at the top, or, for an area, at the very top — and `'0px'` would say the very top, under a
+ * stuck header.
+ *
+ * The one reading of a declaration: the build checks a `meta.js` with it and writes the result
+ * into the lean runtime schema, and `normalizeFoundationSchema` (`./foundation`) writes a
+ * registered entry's. Idempotent — the shape it returns reads back as itself.
+ *
+ * @param {*} declared - a section type's `sticky`
+ * @returns {{ default: boolean, top?: string }}
+ * @throws {Error} for any other shape
+ */
+export function stickyDeclaration(declared) {
+  if (typeof declared === 'boolean') return { default: declared }
+  if (!declared || typeof declared !== 'object' || Array.isArray(declared)) {
+    throw new Error(`Invalid 'sticky': write true, false or { default, top } — got ${JSON.stringify(declared)}`)
+  }
+  const unknown = Object.keys(declared).filter((key) => key !== 'default' && key !== 'top')
+  if (unknown.length) throw new Error(`Invalid 'sticky': ${unknown.join(', ')} — it takes default and top`)
+  if (declared.default !== undefined && typeof declared.default !== 'boolean') {
+    throw new Error(`Invalid 'sticky.default': write true or false`)
+  }
+  const out = { default: declared.default === true }
+  if (declared.top !== undefined) {
+    if (typeof declared.top !== 'string' || !declared.top.trim() || /[;{}]/.test(declared.top)) {
+      throw new Error(`Invalid 'sticky.top': one CSS length, such as '4rem' or 'var(--header-height)'`)
+    }
+    out.top = declared.top.trim()
+  }
+  return out
 }
 
 /**

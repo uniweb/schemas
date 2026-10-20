@@ -336,3 +336,50 @@ describe('the parts', () => {
     })
   })
 })
+
+// ⭐ A SECTION TYPE'S `sticky` IN ONE SHAPE — `{ default }`, with `top` when the type has one
+// (2026-10-20 [Diego]), so a reader asks `entry.sticky?.default === true` and keeps no copy of the
+// grammar. ⛔ Until then format 3 carried it as declared: `true` and `{ default: true }` both.
+describe("a section type's sticky — { default }, with `top` when it has one", () => {
+  const withSticky = () => ({
+    _self: { name: '@acme/site', schemaFormat: 2 },
+    _layouts: { Default: { name: 'Default', sticky: 'header' } },
+    Header: { name: 'Header', sticky: true },
+    Subnav: { name: 'Subnav', sticky: { default: true, top: ' var(--header-height) ' } },
+    Panel: { name: 'Panel', sticky: { top: '4rem' } },
+    Banner: { name: 'Banner', sticky: false },
+    Hero: { name: 'Hero' },
+  })
+  const out = normalizeFoundationSchema(withSticky(), { scope: 'acme' })
+
+  test('writes `default` always, and `top` only where the type has one', () => {
+    expect(out.Header.sticky).toEqual({ default: true })
+    expect(out.Subnav.sticky).toEqual({ default: true, top: 'var(--header-height)' })
+    expect(out.Panel.sticky).toEqual({ default: false, top: '4rem' })
+    expect(out.Banner.sticky).toEqual({ default: false })
+  })
+
+  test('CONTROL — a type that declares none keeps none: absence is not filled in', () => {
+    expect('sticky' in out.Hero).toBe(false)
+  })
+
+  test("a layout's `sticky` is not framework's, and is left as written", () => {
+    expect(out._layouts.Default.sticky).toBe('header')
+  })
+
+  test('a version registered in format 3 before reads the same — normalized again, idempotent', () => {
+    const before = { _self: { schemaFormat: 3 }, Header: { name: 'Header', sticky: true } }
+    expect(normalizeFoundationSchema(before).Header.sticky).toEqual({ default: true })
+    expect(normalizeFoundationSchema(out, { scope: 'acme' })).toEqual(out)
+  })
+
+  test('strict — what register runs — refuses a shape no section type may declare, naming it', () => {
+    const bad = { _self: {}, Header: { name: 'Header', sticky: 'yes' } }
+    expect(() => normalizeFoundationSchema(bad)).toThrow(/^Header: Invalid 'sticky'/)
+  })
+
+  test('read mode keeps it as written, which reads as off', () => {
+    const bad = { _self: {}, Header: { name: 'Header', sticky: 'yes' } }
+    expect(normalizeFoundationSchema(bad, { strict: false }).Header.sticky).toBe('yes')
+  })
+})

@@ -16,6 +16,9 @@
  *   params    a select's `options` always `[{ value, label }]`.
  *   content   as format 2 — the lowered list, `[]` for a component that takes no content, absent
  *             for one that declares nothing.
+ *   sticky    a section type's, `{ default }` with `top` when it has one — `true` is
+ *             `{ default: true }`, `false` and `{}` are `{ default: false }` (`stickyDeclaration`,
+ *             `./section`). `top` is never filled in: without one the runtime places the section.
  *
  * ⭐ ABSENCE STAYS MEANINGFUL. Normalizing changes how a meaning is SPELLED, never whether it was
  * declared: an absent `title` still says the component is unnamed, and an absent `content` still
@@ -43,6 +46,7 @@ import { validateAndNormalizeSchema } from './format.js'
 import { describeContent, conceptTag } from './content.js'
 import { lowerChildren } from './component.js'
 import { qualifyRef } from './refs.js'
+import { stickyDeclaration } from './section.js'
 
 // The rule lives in a leaf of its own (`@uniweb/schemas/refs`), which a foundation bundle imports.
 export { qualifyRef }
@@ -71,6 +75,7 @@ const DECLARATION_KEYS = Object.freeze(['schema', 'single', 'whole'])
  * @returns {object} the schema in format 3
  * @throws {Error} when strict, naming the component and key, for a `data:` value that cannot be
  *   normalized — an inline field map that is not a valid data schema, or a value that is no schema
+ *   — and naming the component for a `sticky` in any shape `stickyDeclaration` refuses
  */
 export function normalizeFoundationSchema(schema, { scope, strict = true } = {}) {
   if (!isPlainObject(schema)) throw new Error('normalizeFoundationSchema: expected a foundation schema object.')
@@ -80,7 +85,7 @@ export function normalizeFoundationSchema(schema, { scope, strict = true } = {})
     if (key === '_self') out._self = normalizeSelf(value, scope, strict)
     else if (key === '_layouts') out._layouts = mapValues(value, (layout, name) => normalizeEntry(layout, { format, scope, strict, owner: `layout ${name}` }))
     else if (key.startsWith('_') || key === 'dataSchemas') out[key] = value
-    else out[key] = isPlainObject(value) ? normalizeEntry(value, { format, scope, strict, owner: key }) : value
+    else out[key] = isPlainObject(value) ? normalizeEntry(value, { format, scope, strict, owner: key, section: true }) : value
   }
   out._self = { ...(isPlainObject(out._self) ? out._self : {}), schemaFormat: FOUNDATION_SCHEMA_FORMAT }
   return out
@@ -97,9 +102,10 @@ function normalizeSelf(self, scope, strict) {
 
 /**
  * One component's (or layout's) entry in format 3. A format-1 entry — its `meta.js` as written —
- * is lowered first, as the build lowers one (`content`, `children`).
+ * is lowered first, as the build lowers one (`content`, `children`). `section` says the entry is a
+ * section type's, whose `sticky` is framework's; a layout's is not, and is left as written.
  */
-function normalizeEntry(entry, { format, scope, strict, owner }) {
+function normalizeEntry(entry, { format, scope, strict, owner, section = false }) {
   if (!isPlainObject(entry)) return entry
   const out = { ...entry }
 
@@ -119,7 +125,28 @@ function normalizeEntry(entry, { format, scope, strict, owner }) {
   else out.data = data
 
   if (out.params !== undefined) out.params = normalizeParams(out.params)
+  if (section && out.sticky !== undefined) out.sticky = normalizeSticky(out.sticky, { strict, owner })
   return out
+}
+
+/**
+ * A section type's `sticky` in format 3 — `{ default }`, with `top` when it has one
+ * (`stickyDeclaration`). An entry that declares none keeps none: absence is not filled in, and
+ * reads as off. Read mode keeps a value it cannot read as written, which reads as off too.
+ *
+ * @param {*} sticky - the entry's `sticky`
+ * @param {object} options
+ * @param {boolean} options.strict - throw for a shape no section type may declare
+ * @param {string} options.owner - the component, for an error
+ * @returns {{ default: boolean, top?: string }|*}
+ */
+function normalizeSticky(sticky, { strict, owner }) {
+  try {
+    return stickyDeclaration(sticky)
+  } catch (err) {
+    if (strict) throw new Error(`${owner}: ${err.message}`)
+    return sticky
+  }
 }
 
 /**

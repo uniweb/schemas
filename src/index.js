@@ -35,10 +35,11 @@
  *                 module, since kit renders with it.
  *                 → `./content`, `./component`, `./grid`
  *
- *   the SECTION   the names framework reserves in a section's params —
- *                 `background`, `grid`, `theme`, `vars`, `fetch` — settings of the section
+ *   the SECTION   the names framework reserves in a section's params — `SECTION_PARAMS`,
+ *                 `background`, `theme`, `sticky` among them — settings of the section
  *                 that framework applies, which an editor offers as the section's
- *                 settings rather than its component's.
+ *                 settings rather than its component's; and the one reading of the
+ *                 `sticky` default a section type declares (`stickyDeclaration`).
  *                 → `./section`
  *
  * Both vocabularies' labels are translated in `./locales/*`, keyed by id.

@@ -64,6 +64,17 @@ export const SECTION_PARAMS = Object.freeze({
    * `block.fetch`.
    */
   fetch: Object.freeze({ component: false }),
+
+  /**
+   * Whether the section stays in view as the page scrolls: `true` or `false`. A section type
+   * may default it in its `meta.js` — `sticky: true`, or `{ default, top }` for a type that
+   * sits below another sticking element, `top` a CSS length. The runtime makes sticky the
+   * box that can stick, since no box a component draws can: the layout area's, for a
+   * section in the header or any other area — when any of its sections is sticky — and the
+   * section's own wrapper, for a section in the body. On the block as `block.sticky` and
+   * `block.stickyTop`.
+   */
+  sticky: Object.freeze({ component: false }),
 })
 
 /**

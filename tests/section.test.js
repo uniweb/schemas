@@ -3,7 +3,7 @@ import { SECTION_PARAMS, isSectionParam, SECTION_KEYS, isSectionKey } from '../s
 
 describe('SECTION_PARAMS', () => {
   test('names the settings of a section that framework applies', () => {
-    expect(Object.keys(SECTION_PARAMS).sort()).toEqual(['background', 'fetch', 'grid', 'theme', 'vars'])
+    expect(Object.keys(SECTION_PARAMS).sort()).toEqual(['background', 'fetch', 'grid', 'sticky', 'theme', 'vars'])
   })
 
   test('a component receives none of them as a param', () => {
@@ -21,6 +21,7 @@ describe('isSectionParam', () => {
     expect(isSectionParam('grid')).toBe(true)
     expect(isSectionParam('theme')).toBe(true)
     expect(isSectionParam('vars')).toBe(true)
+    expect(isSectionParam('sticky')).toBe(true)
     expect(isSectionParam('layout')).toBe(false)
     expect(isSectionParam('toString')).toBe(false)
   })

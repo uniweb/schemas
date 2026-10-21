@@ -4,7 +4,7 @@ Uniweb's standard names, and the language they're written in. Six things, and it
 
 - **The data-schema format** — the language schemas are written in: its type vocabulary, the normalizer that folds friendly type names to canonical kinds, and the conformance checker that validates a record against a schema.
 - **The standard schemas** — a shared vocabulary of common content types (`person`, `article`, `event`, …) written in that format, referenced as `@std/<name>`.
-- **The section families** — the standard section types a component can claim with `family:` in its `meta.js`, so an editor can show the right illustration and a label it can translate. [Section families](#section-families).
+- **The section families** — the standard section types a component can claim with `family:` in its `meta.js`, so an editor can show the right illustration, an icon and a label it can translate. [Section families](#section-families).
 - **The site tags** — the standard words for what a site is for, declared with `tags:` in `site.yml`, so a list of sites can be filtered and labelled the same way everywhere. [Site tags](#site-tags).
 - **The content declaration** — a reader for the `content:` block a section type writes, so a tool can show what a component expects without learning the grammar. [The content declaration](#the-content-declaration).
 - **Starter content** — a component's `content:` declaration turned into something an author can edit instead of an empty box. [Starter content](#starter-content).
@@ -570,8 +570,10 @@ export default { title: 'Researcher Profile', family: 'profile' }
 ```js
 import { resolveFamily, FAMILIES, GROUPS } from '@uniweb/schemas/families'
 
-resolveFamily(component)   // → { id, label, group, source, unknown }
+resolveFamily(component)   // → { id, label, group, icon, source, unknown }
 ```
+
+Every family names its **icon** — a framework icon name written `family-name` (`lu-quote` is the icon `quote` of the icon family `lu`), the form a standard schema's `icon` takes, and the same icon where a family is the section that shows that schema's records: Testimonials and `testimonial` are both `lu-quote`. Nothing declares an icon — a component's comes from its family — and a component with no family has none (`icon: null`).
 
 `@uniweb/schemas/families.json` is the same data as JSON. English and French labels are at `@uniweb/schemas/locales/en` and `/fr`, keyed by id, never by label (`family.<id>.label`, `group.<id>.label`, `group.<id>.description`).
 

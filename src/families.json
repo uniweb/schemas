@@ -45,337 +45,404 @@
     {
       "id": "hero",
       "label": "Hero",
-      "group": "opening"
+      "group": "opening",
+      "icon": "lu-layout-panel-top"
     },
     {
       "id": "profile",
       "label": "Profile",
-      "group": "opening"
+      "group": "opening",
+      "icon": "lu-user"
     },
     {
       "id": "statement",
       "label": "Statement",
-      "group": "opening"
+      "group": "opening",
+      "icon": "lu-type"
     },
     {
       "id": "announcement",
       "label": "Announcement",
-      "group": "opening"
+      "group": "opening",
+      "icon": "lu-megaphone"
     },
     {
       "id": "countdown",
       "label": "Countdown",
-      "group": "opening"
+      "group": "opening",
+      "icon": "lu-timer"
     },
     {
       "id": "marquee",
       "label": "Marquee",
-      "group": "opening"
+      "group": "opening",
+      "icon": "lu-move-horizontal"
     },
     {
       "id": "canvas",
       "label": "Canvas",
-      "group": "opening"
+      "group": "opening",
+      "icon": "lu-shapes"
     },
     {
       "id": "article",
       "label": "Article",
-      "group": "explaining"
+      "group": "explaining",
+      "icon": "lu-newspaper"
     },
     {
       "id": "rich-text",
       "label": "Rich Text",
-      "group": "explaining"
+      "group": "explaining",
+      "icon": "lu-letter-text"
     },
     {
       "id": "story",
       "label": "Story",
-      "group": "explaining"
+      "group": "explaining",
+      "icon": "lu-scroll-text"
     },
     {
       "id": "editorial",
       "label": "Editorial",
-      "group": "explaining"
+      "group": "explaining",
+      "icon": "lu-feather"
     },
     {
       "id": "figure",
       "label": "Figure",
-      "group": "explaining"
+      "group": "explaining",
+      "icon": "lu-image"
     },
     {
       "id": "gallery",
       "label": "Gallery",
-      "group": "explaining"
+      "group": "explaining",
+      "icon": "lu-images"
     },
     {
       "id": "video",
       "label": "Video",
-      "group": "explaining"
+      "group": "explaining",
+      "icon": "lu-circle-play"
     },
     {
       "id": "code-block",
       "label": "Code Block",
-      "group": "explaining"
+      "group": "explaining",
+      "icon": "lu-code"
     },
     {
       "id": "callout",
       "label": "Callout",
-      "group": "explaining"
+      "group": "explaining",
+      "icon": "lu-info"
     },
     {
       "id": "steps",
       "label": "Steps",
-      "group": "explaining"
+      "group": "explaining",
+      "icon": "lu-list-ordered"
     },
     {
       "id": "process",
       "label": "Process",
-      "group": "explaining"
+      "group": "explaining",
+      "icon": "lu-workflow"
     },
     {
       "id": "roadmap",
       "label": "Roadmap",
-      "group": "explaining"
+      "group": "explaining",
+      "icon": "lu-milestone"
     },
     {
       "id": "faq",
       "label": "FAQ",
-      "group": "explaining"
+      "group": "explaining",
+      "icon": "lu-circle-help"
     },
     {
       "id": "card-grid",
       "label": "Card Grid",
-      "group": "listing"
+      "group": "listing",
+      "icon": "lu-layout-grid"
     },
     {
       "id": "team",
       "label": "Team",
-      "group": "listing"
+      "group": "listing",
+      "icon": "lu-users"
     },
     {
       "id": "products",
       "label": "Products",
-      "group": "listing"
+      "group": "listing",
+      "icon": "lu-shopping-bag"
     },
     {
       "id": "jobs",
       "label": "Jobs",
-      "group": "listing"
+      "group": "listing",
+      "icon": "lu-briefcase"
     },
     {
       "id": "schedule",
       "label": "Schedule",
-      "group": "listing"
+      "group": "listing",
+      "icon": "lu-calendar-days"
     },
     {
       "id": "menu",
       "label": "Menu",
-      "group": "listing"
+      "group": "listing",
+      "icon": "lu-utensils"
     },
     {
       "id": "social-feed",
       "label": "Social Feed",
-      "group": "listing"
+      "group": "listing",
+      "icon": "lu-rss"
     },
     {
       "id": "changelog",
       "label": "Changelog",
-      "group": "listing"
+      "group": "listing",
+      "icon": "lu-history"
     },
     {
       "id": "downloads",
       "label": "Downloads",
-      "group": "listing"
+      "group": "listing",
+      "icon": "lu-download"
     },
     {
       "id": "bibliography",
       "label": "Bibliography",
-      "group": "listing"
+      "group": "listing",
+      "icon": "lu-book-open"
     },
     {
       "id": "teaser",
       "label": "Teaser",
-      "group": "listing"
+      "group": "listing",
+      "icon": "lu-eye"
     },
     {
       "id": "recommendations",
       "label": "Recommendations",
-      "group": "listing"
+      "group": "listing",
+      "icon": "lu-thumbs-up"
     },
     {
       "id": "features",
       "label": "Features",
-      "group": "convincing"
+      "group": "convincing",
+      "icon": "lu-sparkles"
     },
     {
       "id": "testimonials",
       "label": "Testimonials",
-      "group": "convincing"
+      "group": "convincing",
+      "icon": "lu-quote"
     },
     {
       "id": "evidence",
       "label": "Evidence",
-      "group": "convincing"
+      "group": "convincing",
+      "icon": "lu-badge-check"
     },
     {
       "id": "logo-cloud",
       "label": "Logo Cloud",
-      "group": "convincing"
+      "group": "convincing",
+      "icon": "lu-handshake"
     },
     {
       "id": "integrations",
       "label": "Integrations",
-      "group": "convincing"
+      "group": "convincing",
+      "icon": "lu-plug"
     },
     {
       "id": "spotlight",
       "label": "Spotlight",
-      "group": "convincing"
+      "group": "convincing",
+      "icon": "lu-focus"
     },
     {
       "id": "hotspots",
       "label": "Hotspots",
-      "group": "convincing"
+      "group": "convincing",
+      "icon": "lu-crosshair"
     },
     {
       "id": "pricing",
       "label": "Pricing",
-      "group": "convincing"
+      "group": "convincing",
+      "icon": "lu-tag"
     },
     {
       "id": "stats",
       "label": "Stats",
-      "group": "convincing"
+      "group": "convincing",
+      "icon": "lu-trending-up"
     },
     {
       "id": "metrics",
       "label": "Metrics",
-      "group": "convincing"
+      "group": "convincing",
+      "icon": "lu-chart-column"
     },
     {
       "id": "data-table",
       "label": "Data Table",
-      "group": "convincing"
+      "group": "convincing",
+      "icon": "lu-table"
     },
     {
       "id": "comparison",
       "label": "Comparison",
-      "group": "convincing"
+      "group": "convincing",
+      "icon": "lu-scale"
     },
     {
       "id": "cta",
       "label": "Call to Action",
-      "group": "acting"
+      "group": "acting",
+      "icon": "lu-mouse-pointer-click"
     },
     {
       "id": "contact",
       "label": "Contact Form",
-      "group": "acting"
+      "group": "acting",
+      "icon": "lu-mail"
     },
     {
       "id": "newsletter",
       "label": "Newsletter Signup",
-      "group": "acting"
+      "group": "acting",
+      "icon": "lu-mail-plus"
     },
     {
       "id": "booking",
       "label": "Booking",
-      "group": "acting"
+      "group": "acting",
+      "icon": "lu-calendar-check"
     },
     {
       "id": "wizard",
       "label": "Wizard",
-      "group": "acting"
+      "group": "acting",
+      "icon": "lu-wand-sparkles"
     },
     {
       "id": "quiz",
       "label": "Quiz",
-      "group": "acting"
+      "group": "acting",
+      "icon": "lu-clipboard-check"
     },
     {
       "id": "calculator",
       "label": "Calculator",
-      "group": "acting"
+      "group": "acting",
+      "icon": "lu-calculator"
     },
     {
       "id": "estimate",
       "label": "Estimate Request",
-      "group": "acting"
+      "group": "acting",
+      "icon": "lu-receipt-text"
     },
     {
       "id": "search",
       "label": "Search",
-      "group": "acting"
+      "group": "acting",
+      "icon": "lu-search"
     },
     {
       "id": "auth",
       "label": "Sign In",
-      "group": "acting"
+      "group": "acting",
+      "icon": "lu-log-in"
     },
     {
       "id": "paywall",
       "label": "Paywall",
-      "group": "acting"
+      "group": "acting",
+      "icon": "lu-lock"
     },
     {
       "id": "app",
       "label": "App",
-      "group": "acting"
+      "group": "acting",
+      "icon": "lu-app-window"
     },
     {
       "id": "header",
       "label": "Header",
-      "group": "navigating"
+      "group": "navigating",
+      "icon": "lu-panel-top"
     },
     {
       "id": "footer",
       "label": "Footer",
-      "group": "navigating"
+      "group": "navigating",
+      "icon": "lu-panel-bottom"
     },
     {
       "id": "pathways",
       "label": "Pathways",
-      "group": "navigating"
+      "group": "navigating",
+      "icon": "lu-signpost"
     },
     {
       "id": "toc",
       "label": "Table of Contents",
-      "group": "navigating"
+      "group": "navigating",
+      "icon": "lu-table-of-contents"
     },
     {
       "id": "map",
       "label": "Map",
-      "group": "embedding"
+      "group": "embedding",
+      "icon": "lu-map-pin"
     },
     {
       "id": "embed",
       "label": "Embed",
-      "group": "embedding"
+      "group": "embedding",
+      "icon": "lu-frame"
     },
     {
       "id": "raw-code",
       "label": "Raw HTML",
-      "group": "embedding"
+      "group": "embedding",
+      "icon": "lu-code-xml"
     },
     {
       "id": "widget",
       "label": "Widget",
-      "group": "embedding"
+      "group": "embedding",
+      "icon": "lu-puzzle"
     },
     {
       "id": "grid",
       "label": "Grid",
-      "group": "organizing"
+      "group": "organizing",
+      "icon": "lu-layout-dashboard"
     },
     {
       "id": "tabs",
       "label": "Tabs",
-      "group": "organizing"
+      "group": "organizing",
+      "icon": "lu-notebook-tabs"
     },
     {
       "id": "accordion",
       "label": "Accordion",
-      "group": "organizing"
+      "group": "organizing",
+      "icon": "lu-list-collapse"
     }
   ]
 }

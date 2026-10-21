@@ -23,9 +23,20 @@
  * ⚖️ TWO DIFFERENT CONTRACTS LIVE IN ONE TABLE:
  *   - a family `id` is DECLARED in a `meta.js` in the wild, so the list is
  *     APPEND-ONLY. Removing or renaming one breaks that declaration.
- *   - a `group` is declared by NOBODY. Moving a family between groups breaks
- *     nothing — the picker draws a different heading — so the grouping is
- *     freely revisable and is expected to be revised.
+ *   - a `group` and an `icon` are declared by NOBODY. Moving a family between
+ *     groups, or giving it another icon, breaks nothing — the picker draws a
+ *     different heading or picture — so both are freely revisable, and the
+ *     grouping is expected to be revised.
+ *
+ * ⭐ EVERY FAMILY NAMES ITS ICON, SO A COMPONENT NEVER DOES (2026-10-20). The icon
+ * is a framework icon name written `family-name` — `lu-quote` is the icon `quote`
+ * of the ICON family `lu`, a library, not a section family — the vocabulary a
+ * standard data schema's `icon` is written in. Where a family is the section that
+ * shows a standard schema's records, it names that schema's icon: a
+ * `testimonials` section and a testimonial are both `lu-quote`. ⛔ There is no
+ * `icon:` in `meta.js`: icons picked per section, foundation by foundation, would
+ * give one picker several styles and one shape several icons. A section with no
+ * family gets the editor's generic icon, as it gets its generic illustration.
  */
 
 /**
@@ -70,7 +81,8 @@ export const GROUPS = [
 ]
 
 /**
- * The families, grouped for readability. `FAMILIES` below is the flat form.
+ * The families, grouped for readability: `[id, label, icon]`. `FAMILIES` below is
+ * the flat form.
  *
  * ⭐ THE LABEL IS WHAT AN AUTHOR READS; THE ID IS WHAT A DEVELOPER TYPES. They
  * diverge on purpose where the spoken word is not the natural token — `toc` /
@@ -100,93 +112,96 @@ export const GROUPS = [
  */
 const BY_GROUP = {
   opening: [
-    ['hero', 'Hero'],
-    ['profile', 'Profile'],
-    ['statement', 'Statement'],
-    ['announcement', 'Announcement'],
-    ['countdown', 'Countdown'],
-    ['marquee', 'Marquee'],
-    ['canvas', 'Canvas'],
+    ['hero', 'Hero', 'lu-layout-panel-top'],
+    ['profile', 'Profile', 'lu-user'],
+    ['statement', 'Statement', 'lu-type'],
+    ['announcement', 'Announcement', 'lu-megaphone'],
+    ['countdown', 'Countdown', 'lu-timer'],
+    ['marquee', 'Marquee', 'lu-move-horizontal'],
+    ['canvas', 'Canvas', 'lu-shapes'],
   ],
   explaining: [
-    ['article', 'Article'],
-    ['rich-text', 'Rich Text'],
-    ['story', 'Story'],
-    ['editorial', 'Editorial'],
-    ['figure', 'Figure'],
-    ['gallery', 'Gallery'],
-    ['video', 'Video'],
-    ['code-block', 'Code Block'],
-    ['callout', 'Callout'],
-    ['steps', 'Steps'],
-    ['process', 'Process'],
-    ['roadmap', 'Roadmap'],
-    ['faq', 'FAQ'],
+    ['article', 'Article', 'lu-newspaper'],
+    ['rich-text', 'Rich Text', 'lu-letter-text'],
+    ['story', 'Story', 'lu-scroll-text'],
+    ['editorial', 'Editorial', 'lu-feather'],
+    ['figure', 'Figure', 'lu-image'],
+    ['gallery', 'Gallery', 'lu-images'],
+    ['video', 'Video', 'lu-circle-play'],
+    ['code-block', 'Code Block', 'lu-code'],
+    ['callout', 'Callout', 'lu-info'],
+    ['steps', 'Steps', 'lu-list-ordered'],
+    ['process', 'Process', 'lu-workflow'],
+    ['roadmap', 'Roadmap', 'lu-milestone'],
+    ['faq', 'FAQ', 'lu-circle-help'],
   ],
   listing: [
-    ['card-grid', 'Card Grid'],
-    ['team', 'Team'],
-    ['products', 'Products'],
-    ['jobs', 'Jobs'],
-    ['schedule', 'Schedule'],
-    ['menu', 'Menu'],
-    ['social-feed', 'Social Feed'],
-    ['changelog', 'Changelog'],
-    ['downloads', 'Downloads'],
-    ['bibliography', 'Bibliography'],
-    ['teaser', 'Teaser'],
-    ['recommendations', 'Recommendations'],
+    ['card-grid', 'Card Grid', 'lu-layout-grid'],
+    ['team', 'Team', 'lu-users'],
+    ['products', 'Products', 'lu-shopping-bag'],
+    ['jobs', 'Jobs', 'lu-briefcase'],
+    ['schedule', 'Schedule', 'lu-calendar-days'],
+    ['menu', 'Menu', 'lu-utensils'],
+    ['social-feed', 'Social Feed', 'lu-rss'],
+    ['changelog', 'Changelog', 'lu-history'],
+    ['downloads', 'Downloads', 'lu-download'],
+    ['bibliography', 'Bibliography', 'lu-book-open'],
+    ['teaser', 'Teaser', 'lu-eye'],
+    ['recommendations', 'Recommendations', 'lu-thumbs-up'],
   ],
   convincing: [
-    ['features', 'Features'],
-    ['testimonials', 'Testimonials'],
-    ['evidence', 'Evidence'],
-    ['logo-cloud', 'Logo Cloud'],
-    ['integrations', 'Integrations'],
-    ['spotlight', 'Spotlight'],
-    ['hotspots', 'Hotspots'],
-    ['pricing', 'Pricing'],
-    ['stats', 'Stats'],
-    ['metrics', 'Metrics'],
-    ['data-table', 'Data Table'],
-    ['comparison', 'Comparison'],
+    ['features', 'Features', 'lu-sparkles'],
+    ['testimonials', 'Testimonials', 'lu-quote'],
+    ['evidence', 'Evidence', 'lu-badge-check'],
+    ['logo-cloud', 'Logo Cloud', 'lu-handshake'],
+    ['integrations', 'Integrations', 'lu-plug'],
+    ['spotlight', 'Spotlight', 'lu-focus'],
+    ['hotspots', 'Hotspots', 'lu-crosshair'],
+    ['pricing', 'Pricing', 'lu-tag'],
+    ['stats', 'Stats', 'lu-trending-up'],
+    ['metrics', 'Metrics', 'lu-chart-column'],
+    ['data-table', 'Data Table', 'lu-table'],
+    ['comparison', 'Comparison', 'lu-scale'],
   ],
   acting: [
-    ['cta', 'Call to Action'],
-    ['contact', 'Contact Form'],
-    ['newsletter', 'Newsletter Signup'],
-    ['booking', 'Booking'],
-    ['wizard', 'Wizard'],
-    ['quiz', 'Quiz'],
-    ['calculator', 'Calculator'],
-    ['estimate', 'Estimate Request'],
-    ['search', 'Search'],
-    ['auth', 'Sign In'],
-    ['paywall', 'Paywall'],
-    ['app', 'App'],
+    ['cta', 'Call to Action', 'lu-mouse-pointer-click'],
+    ['contact', 'Contact Form', 'lu-mail'],
+    ['newsletter', 'Newsletter Signup', 'lu-mail-plus'],
+    ['booking', 'Booking', 'lu-calendar-check'],
+    ['wizard', 'Wizard', 'lu-wand-sparkles'],
+    ['quiz', 'Quiz', 'lu-clipboard-check'],
+    ['calculator', 'Calculator', 'lu-calculator'],
+    ['estimate', 'Estimate Request', 'lu-receipt-text'],
+    ['search', 'Search', 'lu-search'],
+    ['auth', 'Sign In', 'lu-log-in'],
+    ['paywall', 'Paywall', 'lu-lock'],
+    ['app', 'App', 'lu-app-window'],
   ],
   navigating: [
-    ['header', 'Header'],
-    ['footer', 'Footer'],
-    ['pathways', 'Pathways'],
-    ['toc', 'Table of Contents'],
+    ['header', 'Header', 'lu-panel-top'],
+    ['footer', 'Footer', 'lu-panel-bottom'],
+    ['pathways', 'Pathways', 'lu-signpost'],
+    ['toc', 'Table of Contents', 'lu-table-of-contents'],
   ],
   embedding: [
-    ['map', 'Map'],
-    ['embed', 'Embed'],
-    ['raw-code', 'Raw HTML'],
-    ['widget', 'Widget'],
+    ['map', 'Map', 'lu-map-pin'],
+    ['embed', 'Embed', 'lu-frame'],
+    ['raw-code', 'Raw HTML', 'lu-code-xml'],
+    ['widget', 'Widget', 'lu-puzzle'],
   ],
   organizing: [
-    ['grid', 'Grid'],
-    ['tabs', 'Tabs'],
-    ['accordion', 'Accordion'],
+    ['grid', 'Grid', 'lu-layout-dashboard'],
+    ['tabs', 'Tabs', 'lu-notebook-tabs'],
+    ['accordion', 'Accordion', 'lu-list-collapse'],
   ],
 }
 
-/** Every family, flat, in picker order. @type {{id: string, label: string, group: string}[]} */
+/**
+ * Every family, flat, in picker order.
+ * @type {{id: string, label: string, group: string, icon: string}[]}
+ */
 export const FAMILIES = GROUPS.flatMap(({ id: group }) =>
-  BY_GROUP[group].map(([id, label]) => ({ id, label, group })),
+  BY_GROUP[group].map(([id, label, icon]) => ({ id, label, group, icon })),
 )
 
 const BY_ID = new Map(FAMILIES.map(f => [f.id, f]))
@@ -240,23 +255,23 @@ export function normalizeName(name) {
  * from a declared one.
  *
  * @param {{name?: string, family?: string}} component - a schema.json entry
- * @returns {{id: string|null, label: string|null, group: string|null,
+ * @returns {{id: string|null, label: string|null, group: string|null, icon: string|null,
  *            source: 'declared'|'name'|null, unknown: string|null}}
  */
 export function resolveFamily(component) {
-  const miss = { id: null, label: null, group: null, source: null, unknown: null }
+  const miss = { id: null, label: null, group: null, icon: null, source: null, unknown: null }
   if (!component || typeof component !== 'object') return miss
 
   const declared = typeof component.family === 'string' ? component.family.trim() : ''
   if (declared) {
     const hit = BY_ID.get(declared)
     return hit
-      ? { id: hit.id, label: hit.label, group: hit.group, source: 'declared', unknown: null }
+      ? { id: hit.id, label: hit.label, group: hit.group, icon: hit.icon, source: 'declared', unknown: null }
       : { ...miss, unknown: declared }
   }
 
   const hit = BY_ID.get(normalizeName(component.name))
   return hit
-    ? { id: hit.id, label: hit.label, group: hit.group, source: 'name', unknown: null }
+    ? { id: hit.id, label: hit.label, group: hit.group, icon: hit.icon, source: 'name', unknown: null }
     : miss
 }

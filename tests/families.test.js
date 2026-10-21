@@ -11,6 +11,7 @@ import {
 } from '../src/families.js'
 import { renderFamiliesJson, renderLocaleJson, FAMILIES_JSON, LOCALE_EN } from '../scripts/gen-vocabulary.mjs'
 import { ALIASES, AMBIGUOUS, SHAPE_SUFFIXES, suggestFamily } from '../src/family-aliases.js'
+import { schemas } from '../src/index.js'
 
 describe('the list', () => {
   it('has unique ids and unique labels', () => {
@@ -47,6 +48,37 @@ describe('the list', () => {
   })
 })
 
+describe('icons', () => {
+  it('names one for every family, as a framework icon name', () => {
+    // `family-name`, the spelling a standard schema's `icon` is checked against
+    // (`format.js`). Whether the corpus HAS the icon is a cross-package question,
+    // answered by a test outside this package, as it is for those schemas.
+    for (const f of FAMILIES) expect(f.icon, f.id).toMatch(/^[a-z][a-z0-9]*-[a-z0-9]+(?:-[a-z0-9]+)*$/)
+  })
+
+  it('gives no two families the same icon', () => {
+    // ⛔ The same danger as a duplicate label: two rows that look alike in the
+    // picker, with no error anywhere.
+    expect(new Set(FAMILIES.map(f => f.icon)).size).toBe(FAMILIES.length)
+  })
+
+  it.each([
+    ['article', 'article'],
+    ['profile', 'person'],
+    ['products', 'product'],
+    ['jobs', 'position'],
+    ['jobs', 'opportunity'],
+    ['schedule', 'event'],
+    ['testimonials', 'testimonial'],
+    ['bibliography', 'publication'],
+    ['canvas', 'scene'],
+  ])("'%s' shows %s records, so it names that schema's icon", (family, schema) => {
+    // ⭐ One thing, one icon: a testimonial in a list of records and a
+    // Testimonials section in the picker are drawn the same.
+    expect(getFamily(family).icon).toBe(schemas[schema].icon)
+  })
+})
+
 describe('normalizeName', () => {
   it.each([
     ['CardGrid', 'card-grid'],
@@ -69,6 +101,7 @@ describe('resolveFamily', () => {
       id: 'hero',
       label: 'Hero',
       group: 'opening',
+      icon: 'lu-layout-panel-top',
       source: 'name',
     })
   })
@@ -82,6 +115,7 @@ describe('resolveFamily', () => {
     // the list, so the component says which family it is.
     expect(resolveFamily({ name: 'ProfileHero', family: 'profile' })).toMatchObject({
       id: 'profile',
+      icon: 'lu-user',
       source: 'declared',
     })
   })
@@ -100,16 +134,20 @@ describe('resolveFamily', () => {
       id: null,
       label: null,
       group: null,
+      icon: null,
       source: null,
       unknown: 'heros',
     })
   })
 
   it('returns a miss for a name nobody standardized', () => {
+    // No icon either: the editor draws its generic one, as it draws its
+    // generic illustration.
     expect(resolveFamily({ name: 'MemberBand' })).toEqual({
       id: null,
       label: null,
       group: null,
+      icon: null,
       source: null,
       unknown: null,
     })
@@ -161,7 +199,12 @@ describe('the page-role regrouping', () => {
 
 describe('lookups', () => {
   it('finds a family and a group by id', () => {
-    expect(getFamily('toc')).toEqual({ id: 'toc', label: 'Table of Contents', group: 'navigating' })
+    expect(getFamily('toc')).toEqual({
+      id: 'toc',
+      label: 'Table of Contents',
+      group: 'navigating',
+      icon: 'lu-table-of-contents',
+    })
     expect(getGroup('organizing').label).toBe('Organizing')
     expect(isFamily('app')).toBe(true)
     expect(isFamily('generic')).toBe(false) // a picker state, never a family

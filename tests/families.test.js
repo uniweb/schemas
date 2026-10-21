@@ -101,7 +101,7 @@ describe('resolveFamily', () => {
       id: 'hero',
       label: 'Hero',
       group: 'opening',
-      icon: 'lu-layout-panel-top',
+      icon: 'lu-captions',
       source: 'name',
     })
   })

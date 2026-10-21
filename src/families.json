@@ -46,7 +46,7 @@
       "id": "hero",
       "label": "Hero",
       "group": "opening",
-      "icon": "lu-layout-panel-top"
+      "icon": "lu-captions"
     },
     {
       "id": "profile",
@@ -418,7 +418,7 @@
       "id": "raw-code",
       "label": "Raw HTML",
       "group": "embedding",
-      "icon": "lu-code-xml"
+      "icon": "lu-square-code"
     },
     {
       "id": "widget",
@@ -430,7 +430,7 @@
       "id": "grid",
       "label": "Grid",
       "group": "organizing",
-      "icon": "lu-layout-dashboard"
+      "icon": "lu-columns3"
     },
     {
       "id": "tabs",

@@ -115,7 +115,7 @@ export const GROUPS = [
  */
 const BY_GROUP = {
   opening: [
-    ['hero', 'Hero', 'lu-layout-panel-top'],
+    ['hero', 'Hero', 'lu-captions'],
     ['profile', 'Profile', 'lu-user'],
     ['statement', 'Statement', 'lu-type'],
     ['announcement', 'Announcement', 'lu-megaphone'],
@@ -189,11 +189,11 @@ const BY_GROUP = {
   embedding: [
     ['map', 'Map', 'lu-map-pin'],
     ['embed', 'Embed', 'lu-frame'],
-    ['raw-code', 'Raw HTML', 'lu-code-xml'],
+    ['raw-code', 'Raw HTML', 'lu-square-code'],
     ['widget', 'Widget', 'lu-puzzle'],
   ],
   organizing: [
-    ['grid', 'Grid', 'lu-layout-dashboard'],
+    ['grid', 'Grid', 'lu-columns3'],
     ['tabs', 'Tabs', 'lu-notebook-tabs'],
     ['accordion', 'Accordion', 'lu-list-collapse'],
   ],

@@ -577,7 +577,7 @@ Every family names its **icon** — a framework icon name written `family-name` 
 
 `@uniweb/schemas/families.json` is the same data as JSON. English and French labels are at `@uniweb/schemas/locales/en` and `/fr`, keyed by id, never by label (`family.<id>.label`, `group.<id>.label`, `group.<id>.description`).
 
-⛔ Nothing in the build, the runtime or a delivered site reads `family`. It is a claim about **shape** — never about entitlement, tier or capability — and a component that declares none renders identically. An unrecognized value is legal: it falls back rather than failing.
+⛔ Nothing acts on `family`. The build copies it, as written, into the foundation schema an editor reads; the runtime and a delivered site never see it. It is a claim about **shape** — never about entitlement, tier or capability — and a component that declares none renders identically. An unrecognized value is legal: it falls back rather than failing.
 
 ---
 

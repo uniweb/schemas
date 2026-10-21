@@ -9,9 +9,12 @@
  * `PublicationsByYear`.
  *
  * ⛔ A FAMILY IS A CLAIM ABOUT SHAPE — never about entitlement, quality or
- * behaviour. Nothing in the build, the runtime or the wire reads it. A
+ * behaviour. Nothing acts on it: the build copies it, as written, into the
+ * foundation schema an editor reads, and the runtime never sees it. A
  * foundation that declares none renders identically, and an unrecognized value
  * is legal: it falls back, it does not fail. Nobody waits on this list.
+ * ⛔ *Until 2026-10-20 this said nothing in the build reads it — read as if the
+ * schema did not carry it.*
  *
  * ⛔ EXACT MATCHING ONLY, HERE. An alias in the resolver is a silent guess —
  * map `Banner -> hero` and someone whose Banner is a cookie notice gets a

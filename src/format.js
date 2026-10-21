@@ -142,7 +142,7 @@ export const FIELD_FORMATS = Object.freeze({
  */
 const FIELD_KEYS = new Set([
   'type', 'label', 'description', 'help', 'required', 'translatable', 'default', 'many',
-  'enum', 'format', 'constraints', 'ref', 'options', 'readable_with',
+  'enum', 'format', 'constraints', 'ref', 'options', 'readable_with', 'sold_with',
   'fields', 'items', 'values', 'tree', 'nestable', 'append_only',
   ...Object.keys(FIELD_RULES),
 ])
@@ -231,6 +231,26 @@ function readableWith(value, isReference, ref, path) {
     )
   }
   return value
+}
+
+/**
+ * `sold_with` — a reference a purchase travels along: a buyer of the entry can read what the
+ * field names, through it, and onward along that entry's own `sold_with` fields. A boolean, and
+ * only a reference can declare it — a `ref` field, or a list of them, each element its own link
+ * (2026-10-21, backend's purchase reach). `false` says what leaving it out says, so it is dropped.
+ */
+function soldWith(value, isReference, ref, path) {
+  if (value === undefined) return undefined
+  if (typeof value !== 'boolean') {
+    throw new Error(`Data schema '${ref}': field '${path}' 'sold_with' must be a boolean, got ${JSON.stringify(value)}.`)
+  }
+  if (!isReference) {
+    throw new Error(
+      `Data schema '${ref}': field '${path}' declares 'sold_with', which only a reference can — ` +
+        `a 'ref' field, or a list of them. It carries a purchase of the entry to the entry it points to.`
+    )
+  }
+  return value || undefined
 }
 
 /** `html` and `format: html` are refused by name — see FORMAT_TYPE_ALIASES. */
@@ -762,6 +782,11 @@ function normalizeField(field, ref, path) {
       if (out.readable_with !== undefined) {
         out.readable_with = readableWith(out.readable_with, out.items.type === 'ref', ref, path)
       }
+      if (out.sold_with !== undefined) {
+        const carries = soldWith(out.sold_with, out.items.type === 'ref', ref, path)
+        if (carries) out.sold_with = true
+        else delete out.sold_with
+      }
       // A list of records becomes a section, so it accepts the section flags.
       normalizeSectionFlags(out, ref, path, out.items.type === 'object')
       return out
@@ -847,6 +872,7 @@ function normalizeField(field, ref, path) {
   }
   const opensWith = readableWith(field.readable_with, out.type === 'ref', ref, path)
   if (opensWith) out.readable_with = opensWith
+  if (soldWith(field.sold_with, out.type === 'ref', ref, path)) out.sold_with = true
 
   if ((out.format === 'richtext' || out.format === 'scene') && out.type !== 'json') {
     throw new Error(

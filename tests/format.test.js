@@ -468,6 +468,29 @@ describe('access a schema may declare (2026-10-14)', () => {
     expect(() => validateAndNormalizeSchema({ name: 'x', fields: { a: { type: 'string', readable_with: 'read' } } }, '@/x')).toThrow(/only a reference can/)
     expect(() => validateAndNormalizeSchema({ name: 'x', fields: { c: { ref: '@/c', readable_with: 'owner' } } }, '@/x')).toThrow(/read, edit or admin/)
   })
+
+  it('`sold_with` is a boolean, on a reference or a list of them; false is dropped', () => {
+    const out = validateAndNormalizeSchema(
+      {
+        name: 'course',
+        fields: {
+          syllabus: { ref: '@/doc', sold_with: true },
+          lessons: { ref: '@/lesson', many: true, sold_with: true },
+          mentor: { ref: '@/person', sold_with: false },
+          peers: { ref: '@/person', many: true, sold_with: false },
+        },
+      },
+      '@/course'
+    )
+    expect(out.fields.syllabus.sold_with).toBe(true)
+    expect(out.fields.lessons.sold_with).toBe(true)
+    expect(out.fields.mentor).not.toHaveProperty('sold_with')
+    expect(out.fields.peers).not.toHaveProperty('sold_with')
+    expect(() => validateAndNormalizeSchema({ name: 'x', fields: { a: { type: 'string', sold_with: true } } }, '@/x')).toThrow(/only a reference can/)
+    expect(() => validateAndNormalizeSchema({ name: 'x', fields: { a: { type: 'string', many: true, sold_with: true } } }, '@/x')).toThrow(/only a reference can/)
+    expect(() => validateAndNormalizeSchema({ name: 'x', fields: { o: { options: '@/lists/countries', sold_with: true } } }, '@/x')).toThrow(/only a reference can/)
+    expect(() => validateAndNormalizeSchema({ name: 'x', fields: { c: { ref: '@/c', sold_with: 'yes' } } }, '@/x')).toThrow(/must be a boolean/)
+  })
 })
 
 // ⭐ A picklist names the SECTION whose items are its choices (2026-10-15): the Model's ref, then the

@@ -120,11 +120,13 @@ export const FIELD_RULES = Object.freeze({
  * The `format`s each kind takes — closed, because a registry refuses a whole schema for a format
  * its kind does not take (2026-10-15). A kind not listed takes none. On a `date`, the format is
  * its precision: `year-month` holds `2024-05`, `year` holds `2024`, and none holds a day.
- * `markdown`, `richtext` and `scene` say what the value is; `email`, `url` and `currency` (an
- * ISO 4217 code) are checked against it.
+ * `markdown`, `richtext`, `scene` and `icon` say what the value is; `email`, `url` and `currency`
+ * (an ISO 4217 code) are checked against it. `icon` holds a framework icon name (`ICON_NAME`,
+ * below) — `lu-flame` — which a registry keeps as written, so no value is refused for it
+ * (2026-10-22).
  */
 export const FIELD_FORMATS = Object.freeze({
-  string: ['email', 'url', 'currency'],
+  string: ['email', 'url', 'currency', 'icon'],
   text: ['email', 'url', 'markdown'],
   date: ['year-month', 'year'],
   json: ['richtext', 'scene'],

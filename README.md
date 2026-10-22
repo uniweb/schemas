@@ -204,6 +204,7 @@ An inline array always belongs on `enum:`; `options:` always takes a ref.
 | `richtext` | `json` | A rich document edited in the visual app, held to the rich-text vocabulary |
 | `scene` | `json` | A visual scene composition (rendered by `@uniweb/scene`) |
 | `email`, `url` | `string` | Value validation, not rich content |
+| `icon` | `string` | A framework icon name, written `family-name` like `lu-flame` — kept as written, not checked |
 
 The friendly aliases set these for you: `type: markdown` is exactly `type: text, format: markdown`, and `type: richtext` is exactly `type: json, format: richtext`.
 
@@ -236,7 +237,7 @@ translation renders **no tags at all** rather than the original ones.
 The second is a canonical key plus a localized label — two fields, not one translatable field.
 (`@std`'s `tags`, `keywords` and `technologies` are all `translatable: false` for this reason.)
 
-Fields constrained by `enum:`, and strings carrying a value-validator `format` (`email` / `url`), are treated as machine values and are not translated. A *content* format (`markdown` / `richtext`) still translates.
+Fields constrained by `enum:`, and strings carrying a format that is not a content format (`email`, `url`, `currency`, `icon`), are treated as machine values and are not translated. A *content* format (`markdown` / `richtext`) still translates.
 
 ### Field options
 

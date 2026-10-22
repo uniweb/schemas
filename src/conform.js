@@ -981,8 +981,9 @@ function validateValue(def, value, path) {
   }
 
   // format — the ones checked against a value: email, url, currency. `markdown`,
-  // `richtext` and `scene` say what a value is, and a registry checks none of them, so
-  // neither does this.
+  // `richtext`, `scene` and `icon` say what a value is, and a registry checks none of them,
+  // so neither does this: a registry holds an icon field's value as written, an icon name
+  // or not, and refusing one here would refuse a push of what a pull wrote back.
   if (typeof value === 'string') {
     if (def.format === 'email' && !isEmailish(value)) {
       out.push(violation(path, 'format', `${fmt(value)} is not a valid email`))

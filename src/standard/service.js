@@ -34,6 +34,8 @@ export default {
         },
         icon: {
           type: 'string',
+          // A framework icon name, `family-name` — the spelling `![](lu-flame)` uses in content.
+          format: 'icon',
           translatable: false,
           description: 'Icon (library ref like lu-flame)',
         },

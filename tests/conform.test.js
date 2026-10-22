@@ -491,6 +491,11 @@ describe('validateItem — a date at its precision, and a field\'s rules', () =>
     expect(check({ type: 'string', format: 'currency' }, 'cad')).toEqual(["format: \"cad\" is not a currency code (ISO 4217, like 'CAD')"])
   })
 
+  it('an icon name is held as written — an icon name or not, as a registry holds it', () => {
+    expect(check({ type: 'string', format: 'icon' }, 'lu-flame')).toEqual([])
+    expect(check({ type: 'string', format: 'icon' }, 'not an icon')).toEqual([])
+  })
+
   it("a file's type and size, where the value says them", () => {
     const f = { type: 'file', mime_types: ['image/*'], max_size: 100 }
     expect(check(f, { url: '/a.png', mime: 'image/png', size: 50 })).toEqual([])

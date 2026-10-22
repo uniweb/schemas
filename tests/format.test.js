@@ -639,8 +639,18 @@ describe('a format is one its kind takes', () => {
     expect(field({ type: 'string', format: 'currency' })).toEqual({ type: 'string', format: 'currency' })
   })
 
+  it('icon on a string — a framework icon name — and on no other kind', () => {
+    expect(field({ type: 'string', format: 'icon' })).toEqual({ type: 'string', format: 'icon' })
+    expect(norm({ type: 'text', format: 'icon' })).toThrow(/format "icon", which a 'text' field does not take — it takes email, url, markdown/)
+  })
+
+  it("@std/service's brief.icon declares it", () => {
+    const service = validateAndNormalizeSchema(schemas.service, '@std/service')
+    expect(service.sections.brief.fields.icon).toMatchObject({ type: 'string', format: 'icon' })
+  })
+
   it('refuses one its kind does not take', () => {
-    expect(norm({ type: 'string', format: 'phone' })).toThrow(/it takes email, url, currency/)
+    expect(norm({ type: 'string', format: 'phone' })).toThrow(/it takes email, url, currency, icon/)
     expect(norm({ type: 'int', format: 'year' })).toThrow(/a 'int' field does not take — it takes none/)
   })
 

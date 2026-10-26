@@ -550,7 +550,7 @@ These are utilities for tooling — none is required to use a schema in a founda
 - **Schemas in Practice** — where a schema file lives, and how a second project consumes it: `development/schemas-in-practice.md`
 - **Component Metadata** — the full `data:` binding reference: `reference/component-metadata.md`
 
-Full documentation index: <https://www.uniweb.io/llms.txt>
+Full documentation index: <https://uniweb.io/llms.txt>
 
 ## License
 

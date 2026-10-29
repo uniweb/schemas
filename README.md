@@ -319,7 +319,7 @@ The flat `fields:` form is the common case. Reach for `sections:` only when you 
 | `tree` | A `many` section whose records nest **under each other**. `nestable` is the lower-level spelling |
 | `append_only` | A `many` section whose records are insert-only — added, never edited or deleted |
 | `constraints` | Cross-cutting write rules for the section |
-| `label`, `description` | Display prose for the section itself. Plain strings — translations live in `locales/`, never as an inline `{ en: … }` object |
+| `label`, `description` | Display prose for the section itself. Plain strings in the schema's source locale — never an inline `{ en: … }` object |
 
 ### The brief
 

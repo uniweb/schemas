@@ -469,8 +469,7 @@ function assertProseStrings(node, ref, path, keys = ['label', 'description']) {
       const got = Array.isArray(node[k]) ? 'a list' : `an ${typeof node[k]}`.replace(/^an ([^aeiou])/, 'a $1')
       throw new Error(
         `Data schema '${ref}': '${k}' on '${path}' must be a plain string, got ${got}. ` +
-          `Write the source-locale text inline; translations live in the locales/ folder, ` +
-          `not as a per-locale object.`
+          `Write it once, in the schema's source locale — not as a per-locale object.`
       )
     }
   }

@@ -156,9 +156,9 @@ describe('label and description must be plain strings', () => {
     )
   })
 
-  it('rejects a list, and says where translations actually live', () => {
+  it('rejects a list, and says what to write instead', () => {
     expect(norm({ fields: { a: { type: 'string', description: ['x'] } } })).toThrow(/got a list/)
-    expect(norm({ fields: { a: { type: 'string', description: ['x'] } } })).toThrow(/locales\/ folder/)
+    expect(norm({ fields: { a: { type: 'string', description: ['x'] } } })).toThrow(/once, in the schema's source locale/)
   })
 
   it('accepts a plain string, which is the whole supported shape', () => {

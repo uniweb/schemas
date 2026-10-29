@@ -41,6 +41,8 @@ import {
   validateKeyValue,
   validateStoredRecord,
   storedValue,
+  briefSectionName,
+  markedBriefPath,
 } from '../src/conform.js'
 import { validateAndNormalizeSchema } from '../src/format.js'
 import { validate, nav } from '../src/index.js'
@@ -676,5 +678,28 @@ describe('validateItem — a pattern', () => {
     expect(check(orcid, 'orcid.org/0000-0002-1825-0097')).toEqual([])
     expect(check(orcid, 'HTTPS://orcid.org/0000-0002-1825-0097')).toEqual([])
     expect(check(orcid, 'example.com/0000')).toHaveLength(1)
+  })
+})
+
+describe('briefSectionName — the brief every reader agrees on with the lowering', () => {
+  const norm = (sections) => validateAndNormalizeSchema({ sections }, '@/x')
+
+  it('names a brief marked at the top', () => {
+    expect(briefSectionName(norm({ a: { fields: { x: 'string' } }, b: { brief: true, fields: { y: 'string' } } }))).toBe('b')
+  })
+
+  it('names none when the brief is marked inside a group — never another section in its place', () => {
+    const schema = norm({
+      personal: { sections: { identity: { brief: true, fields: { name: 'string' } } } },
+      profile: { fields: { bio: 'string' } },
+    })
+    expect(markedBriefPath(schema)).toBe('personal/identity')
+    expect(briefSectionName(schema)).toBeNull()
+  })
+
+  it('with none marked, takes the first top-level single section not marked `brief: false`', () => {
+    const schema = norm({ a: { brief: false, fields: { x: 'string' } }, b: { fields: { y: 'string' } } })
+    expect(markedBriefPath(schema)).toBeNull()
+    expect(briefSectionName(schema)).toBe('b')
   })
 })

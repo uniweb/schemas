@@ -315,7 +315,7 @@ The flat `fields:` form is the common case. Reach for `sections:` only when you 
 |---|---|
 | `fields` | The section's fields |
 | `sections` | Child sections (a section carrying only these is a grouping container) |
-| `brief` | This section is the card a reference to this type hydrates into. **Optional** — at most one per schema, and it must be a single record (not `many`). Without one the type simply isn't referenceable; see [A schema whose root is a list](#a-schema-whose-root-is-a-list) |
+| `brief` | This section is the card a reference to this type hydrates into. **Optional** — at most one per schema, a single record (not `many`), at any depth but under a list. `brief: false` keeps a section from being taken for the brief when none is marked. Without one the type simply isn't referenceable; see [A schema whose root is a list](#a-schema-whose-root-is-a-list) |
 | `many` | A repeating list of records rather than one |
 | `tree` | A `many` section whose records nest **under each other**. `nestable` is the lower-level spelling |
 | `append_only` | A `many` section whose records are insert-only — added, never edited or deleted |
@@ -324,7 +324,7 @@ The flat `fields:` form is the common case. Reach for `sections:` only when you 
 
 ### The brief
 
-The **brief** is the section that represents the whole record when something references it — the card. At most one section may be marked `brief: true`, and it must be a single record. A schema with no brief is not referenceable as a target (there's no card to show), which is fine for types that are pure lists — `@std/nav` is exactly that.
+The **brief** is the section that represents the whole record when something references it — the card. At most one section may be marked `brief: true`, and it must be a single record. It may sit inside another section (a group), but not under a list, which holds one record for each of its items. With no section marked, the first top-level single section is the brief, unless it says `brief: false`. A schema with no brief is not referenceable as a target (there's no card to show), which is fine for types that are pure lists — `@std/nav` is exactly that.
 
 ### A schema whose root is a list
 

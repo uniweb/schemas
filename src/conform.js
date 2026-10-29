@@ -64,21 +64,44 @@ import { matchesPattern } from './pattern.js'
 const RECORD_OWN_KEYS = new Set(['slug', 'draft'])
 
 /**
- * The section that is a schema's brief — its card, the part a reference and a list
- * carry: the one marked `brief: true`, else the first top-level single section. That is
- * the rule `@uniweb/build`'s lowering applies, so every reader agrees on it. The
- * `fields:` shorthand's one section is its brief, and has no name here (it is `brief` on
- * the wire). Null when the schema has none — a list at its root, say.
+ * The path of the section a schema marks `brief: true`, at any depth (`personal/identity`), or
+ * null when it marks none.
+ *
+ * @param {Object} schema - a normalized data schema
+ * @returns {string|null}
+ */
+export function markedBriefPath(schema) {
+  const find = (sections, prefix) => {
+    for (const [name, section] of Object.entries(sections || {})) {
+      if (!section || typeof section !== 'object') continue
+      if (section.brief === true) return `${prefix}${name}`
+      const nested = find(section.sections, `${prefix}${name}/`)
+      if (nested) return nested
+    }
+    return null
+  }
+  return schema && typeof schema === 'object' ? find(schema.sections, '') : null
+}
+
+/**
+ * The top-level section that is a schema's brief — its card, the part a reference and a list
+ * carry: the one marked `brief: true`, else the first top-level single section not marked
+ * `brief: false`. That is the rule `@uniweb/build`'s lowering applies, so every reader agrees
+ * on it. The `fields:` shorthand's one section is its brief, and has no name here (it is
+ * `brief` on the wire). Null when the schema has none — a list at its root, say — and when
+ * its brief sits inside another section, whose record is then read by section: never another
+ * section taken for it. ⛔ Until 2026-10-29 a brief marked below the top was not seen here,
+ * and the first top-level single section was named instead.
  *
  * @param {Object} schema - a normalized data schema
  * @returns {string|null}
  */
 export function briefSectionName(schema) {
   if (!schema || typeof schema !== 'object' || !schema.sections) return null
+  const marked = markedBriefPath(schema)
+  if (marked) return marked.includes('/') ? null : marked
   const entries = Object.entries(schema.sections).filter(([, s]) => s && typeof s === 'object')
-  const marked = entries.find(([, s]) => s.brief === true)
-  if (marked) return marked[0]
-  return entries.find(([, s]) => (s.kind || 'single') === 'single')?.[0] ?? null
+  return entries.find(([, s]) => (s.kind || 'single') === 'single' && s.brief !== false)?.[0] ?? null
 }
 
 /**

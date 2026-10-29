@@ -724,3 +724,32 @@ describe("i18n — a schema's labels in other languages", () => {
     expect(norm({ source_locale: 'en', i18n: { fr: { 'model.plural': 'Articles' } } }).i18n.fr['model.plural']).toBe('Articles')
   })
 })
+
+describe('brief — one per schema, at any depth but under a list', () => {
+  const norm = (sections) => validateAndNormalizeSchema({ sections }, '@/x')
+
+  it('carries a brief marked inside a group, and a `brief: false`', () => {
+    const out = norm({
+      personal: { sections: { identity: { brief: true, fields: { name: 'string' } } } },
+      profile: { brief: false, fields: { bio: 'string' } },
+    })
+    expect(out.sections.personal.sections.identity.brief).toBe(true)
+    expect(out.sections.profile.brief).toBe(false)
+  })
+
+  it('refuses two, at whatever depths they are marked', () => {
+    expect(() =>
+      norm({ top: { brief: true, fields: { a: 'string' } }, g: { sections: { inner: { brief: true, fields: { b: 'string' } } } } })
+    ).toThrow(/more than one section marked 'brief: true'/)
+  })
+
+  it('refuses one under a list, which holds a record for each item', () => {
+    expect(() =>
+      norm({ degrees: { many: true, fields: { title: 'string' }, sections: { thesis: { brief: true, fields: { t: 'string' } } } } })
+    ).toThrow(/brief section 'sections.degrees.sections.thesis' sits under a list/)
+  })
+
+  it('refuses a `brief` that is neither true nor false', () => {
+    expect(() => norm({ a: { brief: 'yes', fields: { x: 'string' } } })).toThrow(/'brief' must be true or false/)
+  })
+})

@@ -707,7 +707,7 @@ function refuseSystemName(name, ref, kind, path) {
   }
 }
 
-function normalizeSection(section, ref, path, briefState) {
+function normalizeSection(section, ref, path, briefState, underList = false) {
   if (!section || typeof section !== 'object' || Array.isArray(section)) {
     throw new Error(`Data schema '${ref}': section '${path}' must be an object.`)
   }
@@ -737,14 +737,30 @@ function normalizeSection(section, ref, path, briefState) {
   }
   assertProseStrings(out, ref, path)
 
+  // `brief` — the section an entry's card is made of: `true` marks it, at any depth but under
+  // a list, and `false` keeps a section from being taken for it when none is marked (the first
+  // top-level single one is). At most one in the whole schema. ⛔ Until 2026-10-29 `false` was
+  // dropped here and the count ran per level, so a brief marked inside a group and the first
+  // top-level section, taken for one beside it, both reached a register, which refuses two.
+  if (section.brief !== undefined && typeof section.brief !== 'boolean') {
+    throw new Error(`Data schema '${ref}': section '${path}' 'brief' must be true or false.`)
+  }
   if (section.brief === true) {
     if (kind !== 'single') {
       throw new Error(`Data schema '${ref}': brief section '${path}' must be a single record (drop 'many').`)
+    }
+    if (underList) {
+      throw new Error(
+        `Data schema '${ref}': brief section '${path}' sits under a list — an entry has one brief, ` +
+          `and a section under a list holds one record for each of the list's.`
+      )
     }
     if (++briefState.count > 1) {
       throw new Error(`Data schema '${ref}': more than one section marked 'brief: true' (at most one).`)
     }
     out.brief = true
+  } else if (section.brief === false) {
+    out.brief = false
   }
 
   if (kind === 'binder') {
@@ -763,11 +779,10 @@ function normalizeSection(section, ref, path, briefState) {
     if (key === 'fields' && section.fields !== undefined) {
       out.fields = normalizeFields(section.fields, ref, path)
     } else if (key === 'sections' && section.sections !== undefined) {
-      const childBrief = { count: 0 }
       out.sections = {}
       for (const [n, s] of Object.entries(section.sections)) {
         refuseSystemName(n, ref, 'section', `${path}.sections.${n}`)
-        out.sections[n] = normalizeSection(s, ref, `${path}.sections.${n}`, childBrief)
+        out.sections[n] = normalizeSection(s, ref, `${path}.sections.${n}`, briefState, underList || kind === 'multi')
       }
     }
   }

@@ -106,6 +106,7 @@ fields:
 | `plural` | What many entries are called — `label: Person`, `plural: People` |
 | `icon` | The type's icon — a framework icon name written `family-name`: `lu-user` is the icon `user` of the family `lu`. One value for every language |
 | `description` | Human-readable description |
+| `i18n` | The schema's labels in other languages: each language maps a label's path to its text — `model.label`, `section.<path>.label`, `section.<path>.field.<key>.label` (and `.description`; `model.plural`), a section by its full `/`-path and a `fields:` schema's one section as `brief`. Never the `source_locale` language, whose labels are written inline |
 | `fields` | A flat record's fields — **xor** `sections` |
 | `sections` | Named sections of a structured type — **xor** `fields` |
 | `sort_date` | Names a **date field** records sort by (see [The sort axis](#the-sort-axis)). `sortDate` is an accepted alias |

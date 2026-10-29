@@ -284,8 +284,22 @@ export const SECTION_KINDS = new Set(['single', 'multi', 'binder'])
 const MODEL_KEYS = new Set([
   'name', 'version', 'label', 'plural', 'icon', 'description', 'source_locale', 'sourceLocale',
   'linkable', 'grantable', 'sort_date', 'sortDate',
-  'fields', 'sections', 'constraints'
+  'fields', 'sections', 'constraints', 'i18n'
 ])
+
+/**
+ * A language tag, as a key of `i18n`: `fr`, `pt-BR`, `zh-Hant`. The shape a language takes
+ * everywhere else in this framework; a registry is the authority on which it accepts.
+ */
+const LANGUAGE_TAG = /^[A-Za-z]+(?:[-_][A-Za-z0-9]+)*$/
+
+/**
+ * A label's path, as a key of one language in `i18n`: `model.label`, `model.plural`,
+ * `model.description`; `section.<path>.label` or `.description`; and
+ * `section.<path>.field.<key>.label` or `.description`. Whether the path names a section and
+ * a field of this schema is checked where the sections get their names (`@uniweb/build`).
+ */
+const LABEL_PATH = /^(?:model\.(?:label|plural|description)|section\..+\.(?:label|description))$/
 
 /**
  * A framework icon name — `family-name`: `lu-user` is the icon `user` of the family `lu`.
@@ -476,6 +490,49 @@ function assertProseStrings(node, ref, path, keys = ['label', 'description']) {
 }
 
 /**
+ * A schema's `i18n`, checked for shape and copied: each key a language tag other than the
+ * schema's source locale, each holding a map of label paths (`LABEL_PATH`) to strings.
+ */
+function normalizeI18n(i18n, ref, sourceLocale) {
+  const isMap = (v) => v !== null && typeof v === 'object' && !Array.isArray(v)
+  if (!isMap(i18n)) {
+    throw new Error(
+      `Data schema '${ref}': 'i18n' must be a map of language → labels, like ` +
+        `{ fr: { 'model.label': 'Chercheur' } }.`
+    )
+  }
+  const out = {}
+  for (const [language, labels] of Object.entries(i18n)) {
+    if (!LANGUAGE_TAG.test(language)) {
+      throw new Error(`Data schema '${ref}': i18n '${language}' is not a language — a tag like 'fr' or 'pt-BR'.`)
+    }
+    if (sourceLocale && language === sourceLocale) {
+      throw new Error(
+        `Data schema '${ref}': i18n '${language}' is the schema's source locale — its labels in ` +
+          `'${language}' are the ones written inline.`
+      )
+    }
+    if (!isMap(labels)) {
+      throw new Error(`Data schema '${ref}': i18n '${language}' must be a map of label path → text.`)
+    }
+    for (const [path, text] of Object.entries(labels)) {
+      if (!LABEL_PATH.test(path)) {
+        throw new Error(
+          `Data schema '${ref}': i18n '${language}': '${path}' is not a label path — write ` +
+            `model.label, section.<path>.label or section.<path>.field.<key>.label ` +
+            `(each also with .description, and model.plural).`
+        )
+      }
+      if (typeof text !== 'string') {
+        throw new Error(`Data schema '${ref}': i18n '${language}': '${path}' must be a string, got ${typeof text}.`)
+      }
+    }
+    out[language] = { ...labels }
+  }
+  return out
+}
+
+/**
  * Validate a schema definition against the authoring format and return a
  * normalized copy (type aliases folded to canonical kinds). Pure — no I/O.
  * Throws an Error naming the schema + the offending field/section.
@@ -553,6 +610,14 @@ export function validateAndNormalizeSchema(schema, ref) {
     }
     out.grantable = schema.grantable
   }
+
+  // `i18n` — the schema's labels in other languages, each language a map of a label's path to
+  // its text: `{ fr: { 'model.label': 'Chercheur', 'section.brief.field.name.label': 'Nom' } }`.
+  // A section is named by its full `/`-path from the root, and a `fields:` schema's one section
+  // is `brief`. The schema's own labels stay inline, in its source locale, so that language is
+  // refused here. It is carried whole: a register sends the whole set every time, and a language
+  // taken out of it goes. Since 2026-10-28.
+  if (schema.i18n !== undefined) out.i18n = normalizeI18n(schema.i18n, ref, sourceLocale)
 
   // ⛔ `creatable_by` is RETIRED (2026-09-23): Models are open. Anyone signed in may
   // create entries of any Model; who may see or edit an entry is decided by the

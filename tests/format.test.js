@@ -13,7 +13,7 @@
  *      lived in different packages.
  */
 
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   validateAndNormalizeSchema,
   flatRecordFields,
@@ -689,5 +689,38 @@ describe("a section's fields and sections keep the order they were written in", 
   it('fields above sections', () => {
     const out = validateAndNormalizeSchema({ sections: { s: { fields: { t: 'string' }, sections: { c: child } } } }, '@/x')
     expect(order(out.sections.s)).toEqual(['fields', 'sections'])
+  })
+})
+
+describe("i18n — a schema's labels in other languages", () => {
+  const norm = (extra) => validateAndNormalizeSchema({ fields: { title: 'string' }, ...extra }, '@/x')
+  const refuses = (extra) => () => norm(extra)
+
+  it('is carried as written, and is absent from a schema that writes none', () => {
+    const labels = { fr: { 'model.label': 'Article', 'section.brief.field.title.label': 'Titre' } }
+    expect(norm({ i18n: labels }).i18n).toEqual(labels)
+    expect(norm({})).not.toHaveProperty('i18n')
+  })
+
+  it('is a model-level key: no warning that it will not be carried', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    norm({ i18n: { fr: {} } })
+    expect(warn).not.toHaveBeenCalled()
+    warn.mockRestore()
+  })
+
+  it('refuses what a registry refuses, at the author’s screen', () => {
+    expect(refuses({ i18n: ['fr'] })).toThrow(/'i18n' must be a map of language → labels/)
+    expect(refuses({ i18n: { 'fr fr': {} } })).toThrow(/i18n 'fr fr' is not a language/)
+    expect(refuses({ source_locale: 'en', i18n: { en: { 'model.label': 'Article' } } })).toThrow(
+      /i18n 'en' is the schema's source locale/
+    )
+    expect(refuses({ i18n: { fr: 'Article' } })).toThrow(/i18n 'fr' must be a map of label path → text/)
+    expect(refuses({ i18n: { fr: { title: 'Titre' } } })).toThrow(/'title' is not a label path/)
+    expect(refuses({ i18n: { fr: { 'model.label': 3 } } })).toThrow(/'model.label' must be a string, got number/)
+  })
+
+  it('CONTROL — a language other than the source locale is taken', () => {
+    expect(norm({ source_locale: 'en', i18n: { fr: { 'model.plural': 'Articles' } } }).i18n.fr['model.plural']).toBe('Articles')
   })
 })

@@ -676,3 +676,18 @@ describe("a `fields:` schema's section rules sit beside its fields", () => {
     ).toThrow(/'constraints' beside 'sections' rules no section/)
   })
 })
+
+describe("a section's fields and sections keep the order they were written in", () => {
+  const order = (section) => Object.keys(section).filter((k) => k === 'fields' || k === 'sections')
+  const child = { fields: { n: 'string' } }
+
+  it('sections above fields', () => {
+    const out = validateAndNormalizeSchema({ sections: { s: { sections: { c: child }, fields: { t: 'string' } } } }, '@/x')
+    expect(order(out.sections.s)).toEqual(['sections', 'fields'])
+  })
+
+  it('fields above sections', () => {
+    const out = validateAndNormalizeSchema({ sections: { s: { fields: { t: 'string' }, sections: { c: child } } } }, '@/x')
+    expect(order(out.sections.s)).toEqual(['fields', 'sections'])
+  })
+})

@@ -690,13 +690,20 @@ function normalizeSection(section, ref, path, briefState) {
       throw new Error(`Data schema '${ref}': binder section '${path}' must declare child 'sections'.`)
     }
   }
-  if (section.fields !== undefined) out.fields = normalizeFields(section.fields, ref, path)
-  if (section.sections !== undefined) {
-    const childBrief = { count: 0 }
-    out.sections = {}
-    for (const [n, s] of Object.entries(section.sections)) {
-      refuseSystemName(n, ref, 'section', `${path}.sections.${n}`)
-      out.sections[n] = normalizeSection(s, ref, `${path}.sections.${n}`, childBrief)
+  // `fields` and `sections` enter the IR in the order the author wrote them, so the lowering can
+  // list a section's child sections where they were written: before its fields or after them. A
+  // registry lists a definition's sections in the declared order. ⛔ Until 2026-10-28 `fields`
+  // always came first here, and the lowering put every child section after the fields.
+  for (const key of Object.keys(section)) {
+    if (key === 'fields' && section.fields !== undefined) {
+      out.fields = normalizeFields(section.fields, ref, path)
+    } else if (key === 'sections' && section.sections !== undefined) {
+      const childBrief = { count: 0 }
+      out.sections = {}
+      for (const [n, s] of Object.entries(section.sections)) {
+        refuseSystemName(n, ref, 'section', `${path}.sections.${n}`)
+        out.sections[n] = normalizeSection(s, ref, `${path}.sections.${n}`, childBrief)
+      }
     }
   }
   if (section.constraints !== undefined) {

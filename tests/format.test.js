@@ -491,6 +491,80 @@ describe('access a schema may declare (2026-10-14)', () => {
     expect(() => validateAndNormalizeSchema({ name: 'x', fields: { o: { options: '@/lists/countries', sold_with: true } } }, '@/x')).toThrow(/only a reference can/)
     expect(() => validateAndNormalizeSchema({ name: 'x', fields: { c: { ref: '@/c', sold_with: 'yes' } } }, '@/x')).toThrow(/must be a boolean/)
   })
+
+  // A site's visitor may fill a field marked `visitor_fills` — the type takes visitors'
+  // submissions exactly when one is (backend, 2026-11-04). Refused where a registry refuses it.
+  describe('`visitor_fills`', () => {
+    const norm = (schema) => validateAndNormalizeSchema({ name: 'x', ...schema }, '@/x')
+
+    it('is a boolean on a value, a list of values or a reference; false is dropped', () => {
+      const out = norm({
+        fields: {
+          name: { type: 'string', required: true, visitor_fills: true },
+          tags: { type: 'string', many: true, visitor_fills: true },
+          car: { ref: '@/car', visitor_fills: true },
+          country: { options: '@/lists/countries', visitor_fills: true },
+          notes: { type: 'text', visitor_fills: false },
+          status: 'string',
+        },
+      })
+      expect(out.fields.name.visitor_fills).toBe(true)
+      expect(out.fields.tags.visitor_fills).toBe(true)
+      expect(out.fields.car.visitor_fills).toBe(true)
+      expect(out.fields.country.visitor_fills).toBe(true)
+      expect(out.fields.notes).not.toHaveProperty('visitor_fills')
+      expect(out.fields.status).not.toHaveProperty('visitor_fills')
+      expect(() => norm({ fields: { a: { type: 'string', visitor_fills: 'yes' } } })).toThrow(/must be a boolean/)
+    })
+
+    it('is refused on an object, a list of records, a file, and a reference that opens or sells', () => {
+      expect(() => norm({ fields: { o: { type: 'object', fields: { a: 'string' }, visitor_fills: true } } })).toThrow(/on an object/)
+      expect(() => norm({ fields: { o: { type: 'object', many: true, fields: { a: 'string' }, visitor_fills: true } } })).toThrow(/a list of records/)
+      expect(() => norm({ fields: { f: { type: 'file', visitor_fills: true } } })).toThrow(/cannot upload/)
+      expect(() => norm({ fields: { f: { type: 'image', many: true, visitor_fills: true } } })).toThrow(/cannot upload/)
+      expect(() => norm({ fields: { c: { ref: '@/c', readable_with: 'read', visitor_fills: true } } })).toThrow(/'readable_with'/)
+      expect(() => norm({ fields: { c: { ref: '@/c', many: true, sold_with: true, visitor_fills: true } } })).toThrow(/'sold_with'/)
+      expect(() => norm({ fields: { t: { type: 'array', items: { type: 'string', visitor_fills: true } } } })).toThrow(/on its items/)
+    })
+
+    it('sits on the fields of a top-level section, one or a list — never inside a nested one', () => {
+      const out = norm({
+        sections: {
+          main: { fields: { name: { type: 'string', visitor_fills: true } } },
+          guests: { many: true, fields: { email: { type: 'email', visitor_fills: true } } },
+        },
+      })
+      expect(out.sections.guests.fields.email.visitor_fills).toBe(true)
+      expect(() => norm({ fields: { address: { type: 'object', fields: { city: { type: 'string', visitor_fills: true } } } } })).toThrow(
+        /'address.city' declares 'visitor_fills' inside a nested section/
+      )
+      expect(() =>
+        norm({ fields: { people: { type: 'object', many: true, fields: { name: { type: 'string', visitor_fills: true } } } } })
+      ).toThrow(/inside a nested section/)
+      expect(() =>
+        norm({ sections: { main: { fields: { a: 'string' }, sections: { extra: { fields: { b: { type: 'string', visitor_fills: true } } } } } } })
+      ).toThrow(/'sections.main.sections.extra.b' declares 'visitor_fills' inside a nested section/)
+    })
+
+    it("refuses a required field left unmarked in a section that marks any — and only there", () => {
+      expect(() => norm({ fields: { name: { type: 'string', visitor_fills: true }, code: { type: 'string', required: true } } })).toThrow(
+        /leaves required 'code' unmarked/
+      )
+      // A section with no marked field is not written by a submission, so its required fields ask nothing.
+      expect(() =>
+        norm({
+          sections: {
+            main: { fields: { name: { type: 'string', required: true, visitor_fills: true } } },
+            internal: { fields: { code: { type: 'string', required: true } } },
+          },
+        })
+      ).not.toThrow()
+      // Nor does a required field inside a nested section.
+      expect(() =>
+        norm({ fields: { name: { type: 'string', visitor_fills: true }, address: { type: 'object', fields: { city: { type: 'string', required: true } } } } })
+      ).not.toThrow()
+    })
+  })
 })
 
 // ⭐ A picklist names the SECTION whose items are its choices (2026-10-15): the Model's ref, then the

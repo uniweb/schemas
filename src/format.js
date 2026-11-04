@@ -144,7 +144,7 @@ export const FIELD_FORMATS = Object.freeze({
  */
 const FIELD_KEYS = new Set([
   'type', 'label', 'description', 'help', 'required', 'translatable', 'default', 'many',
-  'enum', 'format', 'constraints', 'ref', 'options', 'readable_with', 'sold_with',
+  'enum', 'format', 'constraints', 'ref', 'options', 'readable_with', 'sold_with', 'visitor_fills',
   'fields', 'items', 'values', 'tree', 'nestable', 'append_only',
   ...Object.keys(FIELD_RULES),
 ])
@@ -253,6 +253,109 @@ function soldWith(value, isReference, ref, path) {
     )
   }
   return value || undefined
+}
+
+/**
+ * `visitor_fills` — a site's visitor, with no account, may fill this field when submitting an
+ * entry of the type. A type takes such submissions exactly when one of its fields says so; there
+ * is no other switch (backend's visitor requests, 2026-11-04). A boolean, and `false` says what
+ * leaving it out says, so it is dropped.
+ *
+ * Refused here, field by field, where a registry refuses it: on a list of records or an object
+ * (it marks a value, not a section), on a file (a visitor uploads nothing), and on a reference
+ * that also declares `readable_with` or `sold_with` (a visitor's choice of target would decide
+ * who reads the entry, or what it is sold with). Where it may sit in the schema, and what it asks
+ * of the section's other fields, is `assertVisitorFills` below.
+ *
+ * @param {Object} out - the normalized field, its `type` (and a list's `items`) set
+ */
+function visitorFills(value, out, ref, path) {
+  if (value === undefined) return undefined
+  if (typeof value !== 'boolean') {
+    throw new Error(`Data schema '${ref}': field '${path}' 'visitor_fills' must be a boolean, got ${JSON.stringify(value)}.`)
+  }
+  if (!value) return undefined
+  const kind = out.type === 'array' ? out.items?.type : out.type
+  if (out.type === 'object' || kind === 'object') {
+    throw new Error(
+      `Data schema '${ref}': field '${path}' declares 'visitor_fills' on ${out.type === 'object' ? 'an object' : 'a list of records'} — ` +
+        `it marks a value a visitor may fill: declare it on the fields of a top-level section.`
+    )
+  }
+  if (kind === 'file') {
+    throw new Error(`Data schema '${ref}': field '${path}' declares 'visitor_fills' on a file, which a visitor cannot upload.`)
+  }
+  if (out.readable_with !== undefined || out.sold_with !== undefined) {
+    throw new Error(
+      `Data schema '${ref}': field '${path}' declares 'visitor_fills' on a reference that also declares ` +
+        `'${out.readable_with !== undefined ? 'readable_with' : 'sold_with'}' — a visitor's choice would then decide ` +
+        `who reads the entry, or what it is sold with.`
+    )
+  }
+  return true
+}
+
+// A section-shaped field: an object, or a list of records. Everything else is a value.
+function isSectionShaped(field) {
+  return field.type === 'object' || (field.type === 'array' && field.items?.type === 'object')
+}
+
+/**
+ * Where `visitor_fills` may sit, over the normalized schema: on the values of a TOP-LEVEL section
+ * (a `fields:` schema's one section, or any key of `sections:`, one or a list), never inside a
+ * section nested in one — a visitor's submission fills each top-level section with one item. And
+ * a section with any marked field marks every `required` one too, or no visitor could submit it
+ * whole: a section with none marked is not written by a submission, so its rules are not asked
+ * (backend, 2026-11-04).
+ */
+function assertVisitorFills(normalized, ref) {
+  const top = normalized.sections
+    ? Object.entries(normalized.sections).map(([name, s]) => [`sections.${name}`, s])
+    : [['', { fields: normalized.fields }]]
+
+  const refuseInside = (fields, path) => {
+    for (const [key, f] of Object.entries(fields || {})) {
+      const at = path ? `${path}.${key}` : key
+      if (f.visitor_fills) {
+        throw new Error(
+          `Data schema '${ref}': field '${at}' declares 'visitor_fills' inside a nested section — ` +
+            `a visitor fills only the fields of a top-level section.`
+        )
+      }
+      walkField(f, at)
+    }
+  }
+  const walkField = (f, at) => {
+    if (f.type === 'object') {
+      if (f.fields) refuseInside(f.fields, at)
+      if (f.values) walkField(f.values, `${at}{}`)
+    } else if (f.type === 'array' && f.items) {
+      walkField(f.items, `${at}[]`)
+    }
+  }
+  const walkSections = (sections, path) => {
+    for (const [name, s] of Object.entries(sections || {})) {
+      const at = `${path}.sections.${name}`
+      refuseInside(s.fields, at)
+      walkSections(s.sections, at)
+    }
+  }
+
+  for (const [path, section] of top) {
+    const fields = Object.entries(section.fields || {})
+    for (const [key, f] of fields) if (isSectionShaped(f)) walkField(f, path ? `${path}.${key}` : key)
+    walkSections(section.sections, path)
+
+    if (!fields.some(([, f]) => f.visitor_fills)) continue
+    const unmarked = fields.filter(([, f]) => f.required && !f.visitor_fills && !isSectionShaped(f)).map(([k]) => k)
+    if (unmarked.length) {
+      throw new Error(
+        `Data schema '${ref}': ${path ? `section '${path}'` : 'the schema'} marks fields 'visitor_fills' but leaves ` +
+          `required ${unmarked.map((k) => `'${k}'`).join(', ')} unmarked, so no visitor could submit it whole — ` +
+          `mark ${unmarked.length === 1 ? 'it' : 'them'} too, or make ${unmarked.length === 1 ? 'it' : 'them'} optional.`
+      )
+    }
+  }
 }
 
 /** `html` and `format: html` are refused by name — see FORMAT_TYPE_ALIASES. */
@@ -677,6 +780,7 @@ export function validateAndNormalizeSchema(schema, ref) {
   } else {
     out.fields = normalizeFields(schema.fields, ref, '')
   }
+  assertVisitorFills(out, ref)
   return out
 }
 
@@ -875,6 +979,8 @@ function normalizeField(field, ref, path) {
         if (carries) out.sold_with = true
         else delete out.sold_with
       }
+      if (visitorFills(out.visitor_fills, out, ref, path)) out.visitor_fills = true
+      else delete out.visitor_fills
       // A list of records becomes a section, so it accepts the section flags.
       normalizeSectionFlags(out, ref, path, out.items.type === 'object')
       return out
@@ -1065,6 +1171,9 @@ function normalizeField(field, ref, path) {
     // no declared element type is an untyped list.
     if (field.items !== undefined) {
       out.items = normalizeField(field.items, ref, `${path}[]`)
+      if (out.items.visitor_fills) {
+        throw new Error(`Data schema '${ref}': field '${path}' declares 'visitor_fills' on its items — declare it on the list.`)
+      }
     }
   } else if (out.type === 'ref') {
     if (typeof field.ref !== 'string' || field.ref[0] !== '@') {
@@ -1074,6 +1183,7 @@ function normalizeField(field, ref, path) {
     out.ref = field.ref
   }
 
+  if (visitorFills(field.visitor_fills, out, ref, path)) out.visitor_fills = true
   return out
 }
 

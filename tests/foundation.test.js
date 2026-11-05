@@ -383,3 +383,38 @@ describe("a section type's sticky — { default }, with `top` when it has one", 
     expect(normalizeFoundationSchema(bad, { strict: false }).Header.sticky).toBe('yes')
   })
 })
+
+// A section type's `area` — `true`, an area's name or a list (2026-11-05) — is carried as declared,
+// since `describePlacement` reads every form, and strict refuses what `areaNames` cannot read.
+describe("a section type's area — as declared, and checked", () => {
+  const withAreas = () => ({
+    _self: { name: '@acme/site', schemaFormat: 2 },
+    _layouts: { Docs: { name: 'Docs', areas: ['header', 'left'], area: 7 } },
+    Header: { name: 'Header', area: 'header' },
+    Nav: { name: 'Nav', area: ['left', 'right'] },
+    Banner: { name: 'Banner', area: true },
+    Hero: { name: 'Hero' },
+  })
+
+  test('carries each form as declared, and adds none where none is declared', () => {
+    const out = normalizeFoundationSchema(withAreas(), { scope: 'acme' })
+    expect(out.Header.area).toBe('header')
+    expect(out.Nav.area).toEqual(['left', 'right'])
+    expect(out.Banner.area).toBe(true)
+    expect('area' in out.Hero).toBe(false)
+  })
+
+  test("a layout's own keys are not checked as a section type's", () => {
+    expect(normalizeFoundationSchema(withAreas(), { scope: 'acme' })._layouts.Docs.area).toBe(7)
+  })
+
+  test('strict — what register runs — refuses a value no section type may declare, naming it', () => {
+    const bad = { _self: {}, Header: { name: 'Header', area: '' } }
+    expect(() => normalizeFoundationSchema(bad)).toThrow(/^Header: Invalid 'area'/)
+  })
+
+  test('read mode keeps it as written, which reads as no area', () => {
+    const bad = { _self: {}, Header: { name: 'Header', area: 3 } }
+    expect(normalizeFoundationSchema(bad, { strict: false }).Header.area).toBe(3)
+  })
+})

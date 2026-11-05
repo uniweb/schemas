@@ -37,25 +37,66 @@ export function inferTitle(name) {
 }
 
 /**
+ * The layout areas a section type's `area:` names.
+ *
+ *     true                  null: any area
+ *     'header'              ['header']
+ *     ['left', 'right']     ['left', 'right']
+ *     false, or absent      []: no area, so a section of a page
+ *
+ * A name is an area as a layout calls it: one it declares in its `meta.js` (`areas:`), which is
+ * how a site's `layout/` folder names it too, such as `header`, `footer`, `left` or `right`.
+ * Throws for anything else (a number, an empty name, an empty list, a list holding something
+ * other than names), saying what the key takes. The build stops on it, naming the component.
+ *
+ * @param {*} declared - a section type's `area:` value
+ * @returns {string[]|null} the names, trimmed and each once; `null` for any area
+ */
+export function areaNames(declared) {
+  if (declared === undefined || declared === false) return []
+  if (declared === true) return null
+  const list = typeof declared === 'string' ? [declared] : declared
+  const named = Array.isArray(list) && list.length > 0 && list.every((n) => typeof n === 'string' && n.trim() !== '')
+  if (!named) {
+    throw new Error(
+      `Invalid 'area': write true for any layout area, an area's name such as 'header', or a list of names — got ${JSON.stringify(declared)}`
+    )
+  }
+  return [...new Set(list.map((n) => n.trim()))]
+}
+
+/**
  * Where a component may be placed.
  *
  *     (no `inset`, no `area`)        a section of a page — the default
  *     inset: true                    an inset only: placed inside another section's content
- *     area: true                     a layout area only: a header, a footer, a side panel
- *     inset: true, section: true     an inset and a page's section; `area: true, section: true` likewise
+ *     area: true                     a layout area's only, any area: a header, a footer, a side panel
+ *     area: 'header'                 the header area's only; `area: ['left', 'right']` either of those
+ *     inset: true, section: true     an inset and a page's section; `area: …, section: true` likewise
  *
- * `section` means something only beside `inset: true` or `area: true`: without either, a
- * component is a section whatever `section` says. A layout-area type is offered where an author
- * fills an area, and left out of a page's sections; one meant for both says `section: true`.
+ * `section` means something only beside `inset: true` or `area`: without either, a component is
+ * a section whatever `section` says. A layout-area type is offered where an author fills an area
+ * it names, and left out of a page's sections; one meant for both says `section: true`.
+ *
+ * `areas` is what `areaNames` reads: `null` for any area, the names, or `[]` for a type that is
+ * not a layout area's. An `area:` value it cannot read counts as none here, as a reader of a
+ * registered schema takes it; the build and `register` refuse one.
  *
  * @param {object} entry
- * @returns {{ section: boolean, inset: boolean, area: boolean }}
+ * @returns {{ section: boolean, inset: boolean, area: boolean, areas: string[]|null }}
  */
 export function describePlacement(entry) {
-  const says = (key) => Boolean(entry && typeof entry === 'object' && entry[key] === true)
+  const own = entry && typeof entry === 'object' ? entry : {}
+  const says = (key) => own[key] === true
   const inset = says('inset')
-  const area = says('area')
-  return { inset, area, section: (!inset && !area) || says('section') }
+  let areas
+  try {
+    areas = areaNames(own.area)
+  } catch {
+    areas = []
+  }
+  const area = areas === null || areas.length > 0
+  return { inset, area, areas, section: (!inset && !area) || says('section') }
 }
 
 const CHILDREN_KEYS = ['label', 'hint', 'min', 'max', 'types', 'grid']

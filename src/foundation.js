@@ -19,6 +19,8 @@
  *   sticky    a section type's, `{ default }` with `top` when it has one — `true` is
  *             `{ default: true }`, `false` and `{}` are `{ default: false }` (`stickyDeclaration`,
  *             `./section`). `top` is never filled in: without one the runtime places the section.
+ *   area      a section type's, as declared: `true`, an area's name or a list of names, read by
+ *             `describePlacement` (`./component`). Strict refuses a value `areaNames` cannot read.
  *
  * ⭐ ABSENCE STAYS MEANINGFUL. Normalizing changes how a meaning is SPELLED, never whether it was
  * declared: an absent `title` still says the component is unnamed, and an absent `content` still
@@ -44,7 +46,7 @@
 
 import { validateAndNormalizeSchema } from './format.js'
 import { describeContent, conceptTag } from './content.js'
-import { lowerChildren } from './component.js'
+import { areaNames, lowerChildren } from './component.js'
 import { qualifyRef } from './refs.js'
 import { stickyDeclaration } from './section.js'
 
@@ -126,7 +128,24 @@ function normalizeEntry(entry, { format, scope, strict, owner, section = false }
 
   if (out.params !== undefined) out.params = normalizeParams(out.params)
   if (section && out.sticky !== undefined) out.sticky = normalizeSticky(out.sticky, { strict, owner })
+  if (section && strict && out.area !== undefined) refuseArea(out.area, owner)
   return out
+}
+
+/**
+ * A section type's `area` stays as declared — `true`, a name or a list, all read by
+ * `describePlacement` — and strict mode refuses a value `areaNames` cannot read, naming the
+ * component. Read mode keeps it as written, which reads as no area.
+ *
+ * @param {*} area - the entry's `area`
+ * @param {string} owner - the component, for an error
+ */
+function refuseArea(area, owner) {
+  try {
+    areaNames(area)
+  } catch (err) {
+    throw new Error(`${owner}: ${err.message}`)
+  }
 }
 
 /**

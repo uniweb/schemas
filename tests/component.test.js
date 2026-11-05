@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest'
-import { describeChildren, describeVisuals, describePlacement, inferTitle, lowerChildren } from '../src/component.js'
+import { areaNames, describeChildren, describeVisuals, describePlacement, inferTitle, lowerChildren } from '../src/component.js'
 
 describe('inferTitle', () => {
   test('splits a PascalCase name into words, keeping acronyms whole', () => {
@@ -11,27 +11,62 @@ describe('inferTitle', () => {
 })
 
 describe('describePlacement', () => {
+  const page = { section: true, inset: false, area: false, areas: [] }
+
   test('a component with no `inset` or `area` is a section only', () => {
-    expect(describePlacement({ name: 'Hero' })).toEqual({ section: true, inset: false, area: false })
+    expect(describePlacement({ name: 'Hero' })).toEqual(page)
   })
 
   test('`inset: true` is an inset only', () => {
-    expect(describePlacement({ inset: true })).toEqual({ section: false, inset: true, area: false })
+    expect(describePlacement({ inset: true })).toEqual({ section: false, inset: true, area: false, areas: [] })
   })
 
   test('`inset: true, section: true` is both', () => {
-    expect(describePlacement({ inset: true, section: true })).toEqual({ section: true, inset: true, area: false })
+    expect(describePlacement({ inset: true, section: true })).toEqual({ section: true, inset: true, area: false, areas: [] })
   })
 
-  test("`area: true` is a layout area's only, and `area: true, section: true` is both", () => {
-    expect(describePlacement({ area: true })).toEqual({ section: false, inset: false, area: true })
-    expect(describePlacement({ area: true, section: true })).toEqual({ section: true, inset: false, area: true })
+  test("`area: true` is any layout area's, and `area: true, section: true` is both", () => {
+    expect(describePlacement({ area: true })).toEqual({ section: false, inset: false, area: true, areas: null })
+    expect(describePlacement({ area: true, section: true })).toEqual({ section: true, inset: false, area: true, areas: null })
   })
 
-  test('`section` means nothing without `inset: true` or `area: true`', () => {
-    expect(describePlacement({ section: false })).toEqual({ section: true, inset: false, area: false })
-    expect(describePlacement({ inset: 'yes', section: false })).toEqual({ section: true, inset: false, area: false })
-    expect(describePlacement({ area: 'yes', section: false })).toEqual({ section: true, inset: false, area: false })
+  test('⭐ a named area is that area\'s only, and a list names each', () => {
+    expect(describePlacement({ area: 'header' })).toEqual({ section: false, inset: false, area: true, areas: ['header'] })
+    expect(describePlacement({ area: ['left', 'right'] })).toEqual({ section: false, inset: false, area: true, areas: ['left', 'right'] })
+    expect(describePlacement({ area: 'left', section: true })).toEqual({ section: true, inset: false, area: true, areas: ['left'] })
+  })
+
+  test('`section` means nothing without `inset: true` or `area`', () => {
+    expect(describePlacement({ section: false })).toEqual(page)
+    expect(describePlacement({ inset: 'yes', section: false })).toEqual(page)
+    expect(describePlacement({ area: false, section: false })).toEqual(page)
+  })
+
+  test('an `area:` value the build refuses reads as no area, never as a throw', () => {
+    expect(describePlacement({ area: 3 })).toEqual(page)
+    expect(describePlacement({ area: '' })).toEqual(page)
+    expect(describePlacement({ area: [] })).toEqual(page)
+    expect(describePlacement(null)).toEqual(page)
+  })
+})
+
+describe('areaNames', () => {
+  test('`true` is any area, a name or a list are those areas, and none is none', () => {
+    expect(areaNames(true)).toBe(null)
+    expect(areaNames('header')).toEqual(['header'])
+    expect(areaNames(['left', 'right'])).toEqual(['left', 'right'])
+    expect(areaNames(undefined)).toEqual([])
+    expect(areaNames(false)).toEqual([])
+  })
+
+  test('names are trimmed and listed once', () => {
+    expect(areaNames([' left', 'left ', 'right'])).toEqual(['left', 'right'])
+  })
+
+  test('refuses anything else, saying what the key takes', () => {
+    for (const bad of [3, '', '  ', [], ['header', ''], ['header', 2], { header: true }, null]) {
+      expect(() => areaNames(bad)).toThrow(/^Invalid 'area': write true for any layout area, an area's name/)
+    }
   })
 })
 

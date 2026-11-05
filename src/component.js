@@ -39,19 +39,23 @@ export function inferTitle(name) {
 /**
  * Where a component may be placed.
  *
- *     (no `inset`)                   a section — the default
+ *     (no `inset`, no `area`)        a section of a page — the default
  *     inset: true                    an inset only: placed inside another section's content
- *     inset: true, section: true     both
+ *     area: true                     a layout area only: a header, a footer, a side panel
+ *     inset: true, section: true     an inset and a page's section; `area: true, section: true` likewise
  *
- * `section` means something only beside `inset: true`: without it, a component is a
- * section whatever `section` says.
+ * `section` means something only beside `inset: true` or `area: true`: without either, a
+ * component is a section whatever `section` says. A layout-area type is offered where an author
+ * fills an area, and left out of a page's sections; one meant for both says `section: true`.
  *
  * @param {object} entry
- * @returns {{ section: boolean, inset: boolean }}
+ * @returns {{ section: boolean, inset: boolean, area: boolean }}
  */
 export function describePlacement(entry) {
-  const inset = Boolean(entry && typeof entry === 'object' && entry.inset === true)
-  return { inset, section: !inset || entry.section === true }
+  const says = (key) => Boolean(entry && typeof entry === 'object' && entry[key] === true)
+  const inset = says('inset')
+  const area = says('area')
+  return { inset, area, section: (!inset && !area) || says('section') }
 }
 
 const CHILDREN_KEYS = ['label', 'hint', 'min', 'max', 'types', 'grid']

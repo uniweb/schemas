@@ -11,21 +11,27 @@ describe('inferTitle', () => {
 })
 
 describe('describePlacement', () => {
-  test('a component with no `inset` is a section only', () => {
-    expect(describePlacement({ name: 'Hero' })).toEqual({ section: true, inset: false })
+  test('a component with no `inset` or `area` is a section only', () => {
+    expect(describePlacement({ name: 'Hero' })).toEqual({ section: true, inset: false, area: false })
   })
 
   test('`inset: true` is an inset only', () => {
-    expect(describePlacement({ inset: true })).toEqual({ section: false, inset: true })
+    expect(describePlacement({ inset: true })).toEqual({ section: false, inset: true, area: false })
   })
 
   test('`inset: true, section: true` is both', () => {
-    expect(describePlacement({ inset: true, section: true })).toEqual({ section: true, inset: true })
+    expect(describePlacement({ inset: true, section: true })).toEqual({ section: true, inset: true, area: false })
   })
 
-  test('`section` means nothing without `inset: true`', () => {
-    expect(describePlacement({ section: false })).toEqual({ section: true, inset: false })
-    expect(describePlacement({ inset: 'yes', section: false })).toEqual({ section: true, inset: false })
+  test("`area: true` is a layout area's only, and `area: true, section: true` is both", () => {
+    expect(describePlacement({ area: true })).toEqual({ section: false, inset: false, area: true })
+    expect(describePlacement({ area: true, section: true })).toEqual({ section: true, inset: false, area: true })
+  })
+
+  test('`section` means nothing without `inset: true` or `area: true`', () => {
+    expect(describePlacement({ section: false })).toEqual({ section: true, inset: false, area: false })
+    expect(describePlacement({ inset: 'yes', section: false })).toEqual({ section: true, inset: false, area: false })
+    expect(describePlacement({ area: 'yes', section: false })).toEqual({ section: true, inset: false, area: false })
   })
 })
 

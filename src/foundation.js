@@ -48,7 +48,7 @@ import { validateAndNormalizeSchema } from './format.js'
 import { describeContent, conceptTag } from './content.js'
 import { areaNames, lowerChildren } from './component.js'
 import { qualifyRef } from './refs.js'
-import { stickyDeclaration } from './section.js'
+import { stickyDeclaration, underHeaderDeclaration, heightDeclaration } from './section.js'
 
 // The rule lives in a leaf of its own (`@uniweb/schemas/refs`), which a foundation bundle imports.
 export { qualifyRef }
@@ -128,6 +128,8 @@ function normalizeEntry(entry, { format, scope, strict, owner, section = false }
 
   if (out.params !== undefined) out.params = normalizeParams(out.params)
   if (section && out.sticky !== undefined) out.sticky = normalizeSticky(out.sticky, { strict, owner })
+  if (section && out.underHeader !== undefined) out.underHeader = normalizeWith(underHeaderDeclaration, out.underHeader, { strict, owner })
+  if (section && out.height !== undefined) out.height = normalizeWith(heightDeclaration, out.height, { strict, owner })
   if (section && strict && out.area !== undefined) refuseArea(out.area, owner)
   return out
 }
@@ -165,6 +167,26 @@ function normalizeSticky(sticky, { strict, owner }) {
   } catch (err) {
     if (strict) throw new Error(`${owner}: ${err.message}`)
     return sticky
+  }
+}
+
+/**
+ * A section type's declaration read by its one rule (`underHeaderDeclaration`, `heightDeclaration`):
+ * strict mode refuses what the rule refuses, naming the component; read mode keeps it as written,
+ * which the runtime reads as nothing declared.
+ *
+ * @param {(declared: *) => *} rule
+ * @param {*} declared
+ * @param {object} options
+ * @param {boolean} options.strict
+ * @param {string} options.owner
+ */
+function normalizeWith(rule, declared, { strict, owner }) {
+  try {
+    return rule(declared)
+  } catch (err) {
+    if (strict) throw new Error(`${owner}: ${err.message}`)
+    return declared
   }
 }
 

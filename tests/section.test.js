@@ -1,9 +1,9 @@
 import { describe, test, expect } from 'vitest'
-import { SECTION_PARAMS, isSectionParam, SECTION_KEYS, isSectionKey, stickyDeclaration } from '../src/section.js'
+import { SECTION_PARAMS, isSectionParam, SECTION_KEYS, isSectionKey, stickyDeclaration, underHeaderDeclaration, heightDeclaration } from '../src/section.js'
 
 describe('SECTION_PARAMS', () => {
   test('names the settings of a section that framework applies', () => {
-    expect(Object.keys(SECTION_PARAMS).sort()).toEqual(['background', 'fetch', 'grid', 'sticky', 'theme', 'vars'])
+    expect(Object.keys(SECTION_PARAMS).sort()).toEqual(['background', 'fetch', 'grid', 'sticky', 'theme', 'underHeader', 'vars'])
   })
 
   test('a component receives none of them as a param', () => {
@@ -22,6 +22,7 @@ describe('isSectionParam', () => {
     expect(isSectionParam('theme')).toBe(true)
     expect(isSectionParam('vars')).toBe(true)
     expect(isSectionParam('sticky')).toBe(true)
+    expect(isSectionParam('underHeader')).toBe(true)
     expect(isSectionParam('layout')).toBe(false)
     expect(isSectionParam('toString')).toBe(false)
   })
@@ -84,5 +85,28 @@ describe("stickyDeclaration — a section type's `sticky`, in one shape", () => 
     expect(() => stickyDeclaration({ top: '' })).toThrow(/sticky\.top/)
     expect(() => stickyDeclaration({ top: 4 })).toThrow(/sticky\.top/)
     expect(() => stickyDeclaration({ top: '0; background: red' })).toThrow(/sticky\.top/)
+  })
+})
+
+describe("underHeaderDeclaration — whether the header lies over a type's sections (2026-11-06)", () => {
+  test('true or false', () => {
+    expect(underHeaderDeclaration(true)).toBe(true)
+    expect(underHeaderDeclaration(false)).toBe(false)
+  })
+
+  test.each([['yes'], [1], [{ default: true }], [null]])('refuses %j', (value) => {
+    expect(() => underHeaderDeclaration(value)).toThrow(/Invalid 'underHeader'/)
+  })
+})
+
+describe("heightDeclaration — a header type's height before the browser measures it (2026-11-06)", () => {
+  test('one CSS length, trimmed', () => {
+    expect(heightDeclaration('4rem')).toBe('4rem')
+    expect(heightDeclaration(' var(--header-height) ')).toBe('var(--header-height)')
+    expect(heightDeclaration('calc(var(--header-height) + 1px)')).toBe('calc(var(--header-height) + 1px)')
+  })
+
+  test.each([[''], ['4rem; color: red'], ['}'], [64], [null]])('refuses %j', (value) => {
+    expect(() => heightDeclaration(value)).toThrow(/Invalid 'height'/)
   })
 })

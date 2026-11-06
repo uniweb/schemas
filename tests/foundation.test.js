@@ -418,3 +418,29 @@ describe("a section type's area — as declared, and checked", () => {
     expect(normalizeFoundationSchema(bad, { strict: false }).Header.area).toBe(3)
   })
 })
+
+// ⭐ `underHeader` AND `height` (2026-11-06): a type whose sections can lie under the header, and a
+// header type's height for the first paint. Kept as declared, checked by their one rule.
+describe("a section type's underHeader and height", () => {
+  const out = normalizeFoundationSchema({
+    _self: { name: '@acme/site', schemaFormat: 2 },
+    Hero: { name: 'Hero', underHeader: true },
+    Header: { name: 'Header', sticky: true, height: ' var(--header-height) ' },
+    Plain: { name: 'Plain' },
+  }, { scope: 'acme' })
+
+  test('keeps each as its rule reads it', () => {
+    expect(out.Hero.underHeader).toBe(true)
+    expect(out.Header.height).toBe('var(--header-height)')
+  })
+
+  test('CONTROL — a type that declares neither keeps neither', () => {
+    expect('underHeader' in out.Plain).toBe(false)
+    expect('height' in out.Plain).toBe(false)
+  })
+
+  test('strict refuses a value no type may declare, naming the type', () => {
+    expect(() => normalizeFoundationSchema({ _self: {}, Hero: { name: 'Hero', underHeader: 'yes' } })).toThrow(/^Hero: Invalid 'underHeader'/)
+    expect(() => normalizeFoundationSchema({ _self: {}, Header: { name: 'Header', height: '4rem; x' } })).toThrow(/^Header: Invalid 'height'/)
+  })
+})

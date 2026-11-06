@@ -77,6 +77,17 @@ export const SECTION_PARAMS = Object.freeze({
    * `block.sticky` and `block.stickyTop`.
    */
   sticky: Object.freeze({ component: false }),
+
+  /**
+   * Whether the header lies over the section when it opens a page: `true` or `false`. A section
+   * type that can sit under a see-through header — a hero with a picture that should reach the top
+   * of the window — says so in its `meta.js`, `underHeader: true` (`underHeaderDeclaration`), and an
+   * author turns it off for one section with `underHeader: false`. The runtime then lays the
+   * header's box over the section, the header keeping its own height, measures it, and gives the
+   * section `--uw-header-height` to keep its content clear of it. On the block as
+   * `block.underHeader`, and in `getBlockInfo()`, where a header reads it to paint itself see-through.
+   */
+  underHeader: Object.freeze({ component: false }),
 })
 
 /**
@@ -127,6 +138,39 @@ export function stickyDeclaration(declared) {
     out.top = declared.top.trim()
   }
   return out
+}
+
+/**
+ * A section type's `underHeader` — whether the header lies over its sections when one opens a
+ * page, unless an author says otherwise. `true` or `false`, nothing else.
+ *
+ * @param {*} declared - a section type's `underHeader`
+ * @returns {boolean}
+ * @throws {Error} for any other value
+ */
+export function underHeaderDeclaration(declared) {
+  if (typeof declared !== 'boolean') {
+    throw new Error(`Invalid 'underHeader': write true or false — got ${JSON.stringify(declared)}`)
+  }
+  return declared
+}
+
+/**
+ * A header section type's `height` — how tall it is before the browser has measured it, for the
+ * first paint of a page whose opening section lies under the header (`underHeader`). One CSS
+ * value, `4rem` or `var(--header-height)`, written into the page's style, so a declaration (`;`,
+ * a brace) is refused. The browser's measurement replaces it, so a header that wraps on a phone
+ * is still cleared.
+ *
+ * @param {*} declared - a section type's `height`
+ * @returns {string}
+ * @throws {Error} for any other value
+ */
+export function heightDeclaration(declared) {
+  if (typeof declared !== 'string' || !declared.trim() || /[;{}]/.test(declared)) {
+    throw new Error(`Invalid 'height': one CSS length, such as '4rem' or 'var(--header-height)' — got ${JSON.stringify(declared)}`)
+  }
+  return declared.trim()
 }
 
 /**

@@ -98,6 +98,8 @@ fields:
 
 `name` and `version` are the schema's **identity** — which named schema at which version a foundation depends on. They are not `content.data` keys; the `content.data` key is whatever the section's `data:` binding names it.
 
+A field is named by its key, `start_year` or `extra-large`, hyphens included. A name that starts with `$` is refused, since `$uuid`, `$name` and `$tags` belong to the record itself.
+
 | Schema key | Meaning |
 |---|---|
 | `name` | Schema identity (short name) |

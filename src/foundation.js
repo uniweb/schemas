@@ -373,7 +373,6 @@ function qualifyFieldRefs(schema, scope) {
     if (typeof out.options === 'string') out.options = qualifyRef(out.options, scope)
     if (isPlainObject(out.fields)) out.fields = mapValues(out.fields, field)
     if (out.items !== undefined) out.items = field(out.items)
-    if (out.values !== undefined) out.values = field(out.values)
     return out
   }
   return isPlainObject(schema.fields) ? { ...schema, fields: mapValues(schema.fields, field) } : schema

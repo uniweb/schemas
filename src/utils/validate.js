@@ -3,7 +3,7 @@
  *
  * This file used to hold a SECOND reader of the schema format, written when the
  * real one was locked inside `@uniweb/build`. It drifted, as a second reader
- * does: it never learned `many:`, `values:`, or the `sections:` form, and it knew
+ * does: it never learned `many:` or the `sections:` form, and it knew
  * only the friendly type words — so `{ type: 'string', many: true }` given a
  * perfectly good array reported "Expected string, got object", and a
  * `sections:`-form schema silently returned valid no matter what you passed it.

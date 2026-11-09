@@ -282,7 +282,7 @@ describe('read mode — strict: false', () => {
         author: { type: 'ref', ref: '@acme/person' },
         content: { type: 'object', default: null },
       },
-      problems: [expect.stringMatching(/object field 'content' must declare nested 'fields'/)],
+      problems: [expect.stringMatching(/object field 'content' must declare its 'fields'/)],
     })
     expect(out.Article.data.junk).toEqual({ kind: 'untyped', problems: [expect.stringMatching(/data\.junk is not a schema/)] })
   })

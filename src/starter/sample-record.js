@@ -242,11 +242,6 @@ function sampleField(name, def, depth, index = 0, parent = null) {
       if (Object.keys(nested).length === 0 && !def.required) return null
       return nested
     }
-    // An OPEN MAP — the keys belong to the author, so a sample invents one
-    // rather than pretending to know their names.
-    if (def.values) {
-      return { example: sampleField('example', def.values, depth + 1, index, parent) }
-    }
     return {}
   }
 

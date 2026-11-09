@@ -14,8 +14,8 @@
  * does file I/O and ref resolution — so anything that wanted to *understand* a
  * schema had to depend on a package that pulls Vite, esbuild and sharp. This
  * package's own `validate()` therefore grew a second, simplified reader that
- * drifted: it never learned `many:`, `values:`, the `sections:` form, or the
- * canonical kinds, and reported false failures on correct data. Moving the
+ * drifted: it never learned `many:`, the `sections:` form, or the canonical
+ * kinds, and reported false failures on correct data. Moving the
  * pure part here and re-exporting it from the build is what makes one
  * implementation possible. (Same move, same reason, as the search extraction
  * into `@uniweb/projections`.)
@@ -145,7 +145,7 @@ export const FIELD_FORMATS = Object.freeze({
 const FIELD_KEYS = new Set([
   'type', 'label', 'description', 'help', 'required', 'translatable', 'default', 'many',
   'enum', 'format', 'constraints', 'ref', 'options', 'readable_with', 'sold_with', 'visitor_fills',
-  'fields', 'items', 'values', 'tree', 'nestable', 'append_only',
+  'fields', 'items', 'tree', 'nestable', 'append_only',
   ...Object.keys(FIELD_RULES),
 ])
 
@@ -159,6 +159,15 @@ const REFUSED_FIELD_KEYS = {
   precision: 'a data schema cannot declare a decimal\'s precision',
   scale: 'a data schema cannot declare a decimal\'s scale',
   compact: 'a data schema cannot declare it',
+  // ⛔ `values:`, an open map, was a field key from 2026-07-31 to 2026-11-09, when it was retired
+  // [Diego: "we should definitely retire it"]. It was made for `@std/form`'s map of fields, which became
+  // a list of controls five days later, and stayed with no use. A backend keeps a group of fields as an
+  // object and a list as a list, but a map only as a list of its entries, so a component got a map from
+  // a static build and a list from a backend-hosted page, which has no schema to turn it back.
+  values:
+    'name the keys as `fields:` when the schema knows them (`fields: { small: number, medium: number }`), ' +
+    'and when the keys are data, make it a list of records that each carry their key (`many: true`, ' +
+    'with a field for the key, or a `ref:` to the record it is keyed by)',
 }
 
 function refuseUnknownFieldKeys(field, ref, path) {
@@ -328,7 +337,6 @@ function assertVisitorFills(normalized, ref) {
   const walkField = (f, at) => {
     if (f.type === 'object') {
       if (f.fields) refuseInside(f.fields, at)
-      if (f.values) walkField(f.values, `${at}{}`)
     } else if (f.type === 'array' && f.items) {
       walkField(f.items, `${at}[]`)
     }
@@ -1140,32 +1148,13 @@ function normalizeField(field, ref, path) {
 
   // Structural kinds.
   if (out.type === 'object') {
-    // Two ways to describe an object, and they answer different questions:
-    //
-    //   fields  the object's KNOWN keys — `{ street, city }`
-    //   values  an OPEN MAP whose keys belong to the author and whose values all
-    //           conform to one shape — `{ <anything>: <a field spec> }`
-    //
-    // `values` is to an object what `items` is to an array, and it exists for
-    // the same reason: a form's `fields` is a map keyed by author-chosen names
-    // (see `@std/form`), which could not be described at all until this landed.
-    // Requested by the editor team 2026-07-31 — the shape they needed and could
-    // not state in this vocabulary either.
-    if (field.values !== undefined && field.fields !== undefined) {
-      throw new Error(
-        `Data schema '${ref}': object field '${path}' declares both 'fields' and 'values'. ` +
-          `Use 'fields' for known keys, 'values' for an open map — not both.`
-      )
+    // An object is a group of fields, its keys known when the schema is written: `{ street, city }`,
+    // a price for each of a product's tiers. A map whose keys are data is a list of records that each
+    // carry their key (`many: true`), and `values:` is refused with both (`REFUSED_FIELD_KEYS`).
+    if (field.fields === undefined) {
+      throw new Error(`Data schema '${ref}': object field '${path}' must declare its 'fields', the keys it holds.`)
     }
-    if (field.values !== undefined) {
-      out.values = normalizeField(field.values, ref, `${path}{}`)
-    } else if (field.fields === undefined) {
-      throw new Error(
-        `Data schema '${ref}': object field '${path}' must declare nested 'fields' (known keys) or 'values' (an open map).`
-      )
-    } else {
-      out.fields = normalizeFields(field.fields, ref, path)
-    }
+    out.fields = normalizeFields(field.fields, ref, path)
   } else if (out.type === 'array') {
     // `items` (the element type) is recommended but optional — an array with
     // no declared element type is an untyped list.
@@ -1204,7 +1193,6 @@ export function collectNestedRefs(schema) {
       if (typeof field.options === 'string') found.add(parseOptionsRef(field.options).model)
       if (field.fields) walkFields(field.fields)
       if (field.items) walkFields({ _: field.items })
-      if (field.values) walkFields({ _: field.values })
     }
   }
   const walkSections = (sections) => {

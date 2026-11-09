@@ -128,7 +128,7 @@ The friendly type you write folds to a small set of **canonical kinds**. Write t
 | `markdown` | `text` + `format: markdown` | A source body (a markdown string) |
 | `richtext` | `json` + `format: richtext` | A rich document edited in the visual app |
 | `json` | `json` | An opaque structured value |
-| `object`, `group` | `object` | A nested record — declare `fields:` or `values:`. `group` is the author-facing spelling |
+| `object`, `group` | `object` | A group of fields — declare them as `fields:`. `group` is the author-facing spelling |
 | `array` | `array` | A list — declare `items:` (or just use `many:`). Without `items:` the element type is genuinely unknown, and a registered schema records it as opaque `json` rather than guessing |
 | `ref` | `ref` | A reference to another schema — `{ ref: '@/person' }` |
 
@@ -154,31 +154,46 @@ Collection-level metadata (`required`, `label`, `help`, `description`) rides on 
 
 > **One limit worth knowing about `required`.** It is enforced on a list of *values* — `{ type: string, many: true, required: true }` — and on a list of references. It is **not** enforced on a list of *records*, or on a nested `object`: those become sections when the schema is registered, and `required` binds the record that is *written* — it cannot force a record to *exist*. Put the flag on a field *inside* the record, where it holds, and reach for `min_items` below when you mean "don't let this become empty".
 
-### Nested records and open maps
+### Groups of fields, and keyed data
 
-An `object` field describes its shape one of two ways, and they answer different questions:
+An `object` field is a group of fields, and names them in `fields:`:
 
 ```yaml
 fields:
-  address:                          # KNOWN keys
+  address:
     type: object
     fields:
       street: { type: string }
       city:   { type: string }
-
-  controls:                         # an OPEN MAP — keys belong to the author
-    type: object
-    values:
-      type: object
-      fields:
-        type:  { type: string, required: true }
-        label: { type: string }
 ```
 
-- **`fields:`** — the object's known keys.
-- **`values:`** — a map whose keys are the author's and whose values all conform to one shape. `values` is to an object what `items` is to an array.
+A record holds no open map: what looks like one is one of two things.
 
-Declaring both is an error. Reach for `values:` whenever the keys are the author's rather than yours — a set of per-region overrides, a bag of feature flags, anything a `fields:` list could not enumerate because the names do not exist until someone writes them. No standard schema uses it today (`@std/form` did until it became a list of controls), so it is a construct waiting for the shape rather than a description of one.
+- **Keys the schema knows are fields.** A price for each of a product's tiers is a group with a field per tier, so each price is checked, labeled and translated like any other field:
+
+  ```yaml
+  price:
+    type: object
+    fields:
+      small:  { type: number, label: Small }
+      medium: { type: number, label: Medium }
+  ```
+
+- **Keys that are data make a list.** When the names don't exist until an author writes them, each entry is a record that carries its own name, and the list keeps their order:
+
+  ```yaml
+  measurements:
+    type: object
+    many: true
+    fields:
+      label: { type: string, required: true }
+      value: { type: number }
+      unit:  { type: string }
+  ```
+
+  When the key names another record, the entry holds a reference to it: `tier: { ref: '@/tier' }`.
+
+`values:` is refused, and the error names these two forms.
 
 ### References and picklists
 
@@ -256,7 +271,6 @@ Fields constrained by `enum:`, and strings carrying a format that is not a conte
 | `options` | string | A `@/<name>` ref to a curated options schema |
 | `translatable` | boolean | Set `false` to opt a text field out of localization |
 | `fields` | object | Nested fields — `object` type |
-| `values` | object | Value shape of an open map — `object` type |
 | `items` | object | Item definition — `array` type (or use `many:`) |
 | `ref` | string | Target schema — `ref` type |
 | `constraints` | array | Rules for the section this field becomes — `object` and `many`-of-`object` only (see below) |

@@ -21,17 +21,6 @@ const { validate, schemas } = api
 
 const paths = (result) => result.errors.map((e) => `${e.path}:${e.rule}`)
 
-/** A map whose keys belong to the author — the shape `values:` exists for. */
-const OPEN_MAP = {
-  name: 'open',
-  fields: {
-    m: {
-      type: 'object',
-      values: { type: 'object', fields: { type: { type: 'string', required: true }, required: { type: 'bool' } } },
-    },
-  },
-}
-
 describe('regressions — answers this API used to get wrong', () => {
   it('a `many: true` field accepts a list (was: "Expected string, got object")', () => {
     // The old reader never learned `many:`, so it checked the LIST against the
@@ -56,17 +45,6 @@ describe('regressions — answers this API used to get wrong', () => {
       'order:type',
       'hidden:type',
     ])
-  })
-
-  it('an open map validates each entry (was: unvisited)', () => {
-    // `values:` describes a map whose keys belong to the author. The old reader
-    // only descended into `fields`, so every entry of such a map went unchecked.
-    //
-    // Uses a schema of its own rather than a standard: this was written against
-    // `@std/form` v1, which was built on `values:` — and v2 is a list of controls,
-    // so borrowing it made a test of the CONSTRUCT depend on one schema's shape.
-    // `values:` is still in the vocabulary; it just has no standard using it today.
-    expect(paths(validate({ m: { a: { label: 'nameless' } } }, OPEN_MAP))).toEqual(['m.a.type:required'])
   })
 })
 
@@ -97,11 +75,18 @@ describe('validate', () => {
     expect(validate({ name: 'A' }, 'person')).toEqual({ valid: true, errors: [] })
   })
 
-  it('names the entry in an open map, not just the field', () => {
-    // "expected string" with no key is unactionable on a map of twenty entries.
-    expect(paths(validate({ m: { email: { type: 'string', required: 'yes' } } }, OPEN_MAP))).toEqual([
-      'm.email.required:type',
-    ])
+  it('refuses an open map, naming the two forms keyed data takes', () => {
+    // `values:` was retired 2026-11-09: keys the schema knows are `fields:`, and keys that are
+    // data make a list of records that each carry their key.
+    const open = { fields: { license: { type: 'object', values: { type: 'number' } } } }
+    expect(() => validate({}, open)).toThrow(/field 'license' declares 'values', which a data schema does not take/)
+    expect(() => validate({}, open)).toThrow(/`fields:` when the schema knows them.*`many: true`/)
+  })
+
+  it('checks a group of fields by each of its keys', () => {
+    const tiers = { fields: { price: { type: 'object', fields: { small: { type: 'number' }, medium: { type: 'number' } } } } }
+    expect(validate({ price: { small: 59, medium: 99 } }, tiers)).toEqual({ valid: true, errors: [] })
+    expect(paths(validate({ price: { small: 'cheap' } }, tiers))).toEqual(['price.small:type'])
   })
 
   it('reports an unknown schema name rather than throwing', () => {
@@ -138,7 +123,6 @@ describe('no defaults', () => {
       if (Object.hasOwn(s, 'default')) found.push(path)
       fields(s.fields, `${path}.`)
       spec(s.items, `${path}[]`)
-      spec(s.values, `${path}{}`)
     }
     const fields = (map, prefix) => {
       if (!map || typeof map !== 'object' || Array.isArray(map)) return

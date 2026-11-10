@@ -14,12 +14,20 @@
  * to a host, the asset's identity beside the URL (`assetId`, `assetExt`, and the preview's). The
  * same object on every lane, so a component reads `file.url` wherever it renders.
  *
- * One section, the brief, named `brief` — the `fields:` form — and one field.
+ * One section, the brief, named `brief`, and one field.
  */
 export default {
   name: 'file',
   label: 'File',
-  fields: {
-    file: { type: 'file', required: true },
+  // The `sections:` form for one reason: its section is labelled, as the backend's is (2026-11-09),
+  // and the `fields:` form has no place for a section's label. Same section, `brief`, as before.
+  sections: {
+    brief: {
+      brief: true,
+      label: 'Details',
+      fields: {
+        file: { type: 'file', required: true, label: 'File' },
+      },
+    },
   },
 }

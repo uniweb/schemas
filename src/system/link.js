@@ -10,13 +10,21 @@
  * `records/folder.yml` gives them (`label:`, `tags:`), as it does for every record, and a
  * component receives them as `$label` and `$tags`.
  *
- * One section, the brief, named `brief` — the `fields:` form — and one field.
+ * One section, the brief, named `brief`, and one field.
  */
 export default {
   name: 'link',
   label: 'Link',
-  fields: {
-    // An absolute URL — `format: url`, as the backend declares it (2026-09-28 [Diego]). Never translated.
-    url: { type: 'url', required: true },
+  // The `sections:` form for one reason: its section is labelled, as the backend's is (2026-11-09),
+  // and the `fields:` form has no place for a section's label. Same section, `brief`, as before.
+  sections: {
+    brief: {
+      brief: true,
+      label: 'Details',
+      fields: {
+        // An absolute URL — `format: url`, as the backend declares it (2026-09-28 [Diego]). Never translated.
+        url: { type: 'url', required: true, label: 'URL' },
+      },
+    },
   },
 }

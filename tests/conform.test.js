@@ -37,6 +37,7 @@ import {
   contentBodyField,
   misplacedFields,
   undeclaredFields,
+  withoutUndeclared,
   referencesOf,
   mapReferences,
   validateKeyValue,
@@ -773,5 +774,57 @@ describe('undeclaredFields — the keys a record file holds that its schema has 
     const schema = { name: 'ev', sections: { details: { brief: true, fields: { title: 'string' } }, sessions: { many: true, fields: { title: 'string' } } } }
     expect(paths(schema, { details: 'Launch', sessions: { title: 'Keynote' } })).toEqual([])
     expect(paths(schema, { details: { title: 'x' }, sessions: ['Keynote', { title: 'y', room: 'B' }] })).toEqual(['sessions[1].room'])
+  })
+})
+
+// ⭐ One shape on both lanes [Diego, 2026-11-11]: a static build delivers the record a host
+// delivers, which never holds a key its schema has no place for, since a push cannot send one.
+describe('withoutUndeclared — the record without what its schema has no place for', () => {
+  it('leaves out exactly what undeclaredFields names, at every depth, and keeps the rest in order', () => {
+    const schema = norm({
+      name: 'event',
+      sections: {
+        details: { brief: true, fields: { title: 'string', venue: { type: 'object', fields: { city: 'string' } } } },
+        sessions: { many: true, fields: { title: 'string' } },
+        more: { sections: { faq: { many: true, tree: true, fields: { q: 'string' } } } },
+      },
+    })
+    const record = {
+      $uuid: 'u',
+      draft: true,
+      details: { title: 'Launch', color: 'red', venue: { city: 'Ottawa', zip: 'K1A' } },
+      sessions: [{ title: 'Keynote', room: 'A' }, 'Lunch'],
+      more: { faq: [{ q: 'Why?', children: [{ q: 'How?', a: 'So' }] }], extra: {} },
+      order: 3,
+    }
+    expect(undeclaredFields(schema, record).map((u) => u.path)).toEqual([
+      'details.color',
+      'details.venue.zip',
+      'sessions[0].room',
+      'more.faq[0].children[0].a',
+      'more.extra',
+      'order',
+    ])
+    expect(withoutUndeclared(schema, record)).toEqual({
+      $uuid: 'u',
+      draft: true,
+      details: { title: 'Launch', venue: { city: 'Ottawa' } },
+      sessions: [{ title: 'Keynote' }, 'Lunch'],
+      more: { faq: [{ q: 'Why?', children: [{ q: 'How?' }] }] },
+    })
+    // The file's record is not changed.
+    expect(record.details.color).toBe('red')
+  })
+
+  it('a flat record keeps its own keys and its leaves as written; a key the flat form wrote is not its to drop', () => {
+    const quote = norm({ name: 'quote', fields: { quote: 'text', photo: 'image' } })
+    expect(withoutUndeclared(quote, { slug: 'a', quote: 'Hi', photo: { src: 'a.jpg', alt: 'A' }, logo: 'x' })).toEqual({
+      slug: 'a',
+      quote: 'Hi',
+      photo: { src: 'a.jpg', alt: 'A' },
+    })
+    const course = norm({ name: 'course', sections: { identity: { brief: true, fields: { title: 'string' } }, pricing: { fields: { amount: 'number' } } } })
+    expect(withoutUndeclared(course, { title: 'Rust', color: 'red' })).toEqual({ title: 'Rust' })
+    expect(withoutUndeclared(course, 'not a record')).toBe('not a record')
   })
 })

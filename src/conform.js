@@ -255,79 +255,95 @@ export function misplacedFields(schema, record) {
  *   has where the key was written: the fields there, and the child sections
  */
 export function undeclaredFields(schema, record) {
+  return splitUndeclared(schema, record).undeclared
+}
+
+/**
+ * A record FILE without the keys its data schema has no place for (`undeclaredFields`): the record
+ * a host delivers, since a push cannot send such a key. A static build delivers this, so a
+ * component receives one shape on both lanes [Diego, 2026-11-11: "drop it, one shape on both
+ * lanes"]. Everything else is kept as written, in the same order: the record's own keys, `$` keys,
+ * a key the retired flat form wrote, a value of the wrong shape, a leaf's value. ⛔ Until 2026-11-11
+ * a static build delivered every key, and a component reading one worked on a static site only.
+ *
+ * @param {Object} schema - a normalized data schema
+ * @param {*} record - the record, as its file holds it
+ * @returns {*} a copy without those keys (anything but a record, as it came)
+ */
+export function withoutUndeclared(schema, record) {
+  return splitUndeclared(schema, record).record
+}
+
+// One walk for both: what a record file holds that its schema has no place for, and the record
+// without it, so what is reported and what is left out cannot differ.
+function splitUndeclared(schema, record) {
   const layout = recordLayout(schema)
-  if (!layout || !isPlainObject(record)) return []
+  if (!layout || !isPlainObject(record)) return { undeclared: [], record }
   const out = []
-  if (schema.fields) {
-    undeclaredInRecord(schema.fields, null, record, '', { top: true }, out)
-    return out
-  }
+  if (schema.fields) return { undeclared: out, record: keepRecord(schema.fields, null, record, '', { top: true }, out) }
   if (layout.flat) {
     const section = layout.sections[0][1]
-    undeclaredInRecord(section.fields, section.sections, record, '', { top: true }, out)
-    return out
+    return { undeclared: out, record: keepRecord(section.fields, section.sections, record, '', { top: true }, out) }
   }
   const names = new Set(layout.sections.map(([n]) => n))
   const misplaced = new Set(misplacedFields(schema, record).map((m) => m.key))
   const declared = layout.sections.map(([n]) => n)
+  const kept = {}
   for (const [key, value] of Object.entries(record)) {
-    if (key.startsWith('$') || RECORD_OWN_KEYS.has(key) || misplaced.has(key)) continue
-    if (names.has(key)) undeclaredInSection(schema.sections[key], value, key, out)
+    if (key.startsWith('$') || RECORD_OWN_KEYS.has(key) || misplaced.has(key)) kept[key] = value
+    else if (names.has(key)) kept[key] = keepSection(schema.sections[key], value, key, out)
     else out.push({ path: key, declared })
   }
-  return out
+  return { undeclared: out, record: kept }
 }
 
 // One record of a section or an `object` field: each key a field or a child section, a field
 // that holds records read the same way. `top` — the record itself, whose own keys are not
 // fields; `reserved` — the one key a tree list's records nest under.
-function undeclaredInRecord(fields, sections, record, prefix, { top = false, reserved = null } = {}, out) {
+function keepRecord(fields, sections, record, prefix, { top = false, reserved = null } = {}, out) {
   const fieldMap = fields || {}
   const sectionMap = sections || {}
   const declared = [...Object.keys(fieldMap), ...Object.keys(sectionMap)]
+  const kept = {}
   for (const [key, value] of Object.entries(record)) {
-    if (key.startsWith('$') || key === reserved || (top && RECORD_OWN_KEYS.has(key))) continue
     const path = `${prefix}${key}`
-    if (Object.prototype.hasOwnProperty.call(fieldMap, key)) undeclaredInField(asFieldDef(fieldMap[key]), value, path, out)
-    else if (Object.prototype.hasOwnProperty.call(sectionMap, key)) undeclaredInSection(sectionMap[key], value, path, out)
+    if (key.startsWith('$') || key === reserved || (top && RECORD_OWN_KEYS.has(key))) kept[key] = value
+    else if (Object.prototype.hasOwnProperty.call(fieldMap, key)) kept[key] = keepField(asFieldDef(fieldMap[key]), value, path, out)
+    else if (Object.prototype.hasOwnProperty.call(sectionMap, key)) kept[key] = keepSection(sectionMap[key], value, path, out)
     else out.push({ path, declared })
   }
+  return kept
 }
 
 // A section's value: a record for a single one, a list of records for a `many` one, an object of
 // child sections for a binder. A value of the wrong shape is `validateRecordFile`'s to report.
-function undeclaredInSection(section, value, path, out) {
-  if (!section || typeof section !== 'object') return
-  if (section.kind === 'multi') {
-    undeclaredInList(section.fields, section.sections, section.nestable === true, value, path, out)
-    return
-  }
-  if (!isPlainObject(value)) return
-  if (section.kind === 'binder') {
-    undeclaredInRecord(null, section.sections, value, `${path}.`, {}, out)
-    return
-  }
-  undeclaredInRecord(section.fields, section.sections, value, `${path}.`, {}, out)
+function keepSection(section, value, path, out) {
+  if (!section || typeof section !== 'object') return value
+  if (section.kind === 'multi') return keepList(section.fields, section.sections, section.nestable === true, value, path, out)
+  if (!isPlainObject(value)) return value
+  if (section.kind === 'binder') return keepRecord(null, section.sections, value, `${path}.`, {}, out)
+  return keepRecord(section.fields, section.sections, value, `${path}.`, {}, out)
 }
 
 // A field whose value holds records — an `object`, or a list of objects — the way a push lowers
 // it, to a section. Any other field is a leaf, and what its value holds is not a key of the record.
-function undeclaredInField(def, value, path, out) {
-  if (def.type === 'object' && def.fields) {
-    if (isPlainObject(value)) undeclaredInRecord(def.fields, null, value, `${path}.`, {}, out)
-    return
-  }
+function keepField(def, value, path, out) {
+  if (def.type === 'object' && def.fields) return isPlainObject(value) ? keepRecord(def.fields, null, value, `${path}.`, {}, out) : value
   const items = def.type === 'array' && def.items !== undefined ? asFieldDef(def.items) : null
-  if (items?.type === 'object' && items.fields) undeclaredInList(items.fields, null, def.nestable === true, value, path, out)
+  if (items?.type === 'object' && items.fields) return keepList(items.fields, null, def.nestable === true, value, path, out)
+  return value
 }
 
-function undeclaredInList(fields, sections, nests, value, path, out) {
-  if (!Array.isArray(value)) return
-  value.forEach((item, i) => {
-    if (!isPlainObject(item)) return
+function keepList(fields, sections, nests, value, path, out) {
+  if (!Array.isArray(value)) return value
+  return value.map((item, i) => {
+    if (!isPlainObject(item)) return item
     const at = `${path}[${i}]`
-    undeclaredInRecord(fields, sections, item, `${at}.`, { reserved: nests ? TREE_CHILDREN_KEY : null }, out)
-    if (nests) undeclaredInList(fields, sections, true, item[TREE_CHILDREN_KEY], `${at}.${TREE_CHILDREN_KEY}`, out)
+    const kept = keepRecord(fields, sections, item, `${at}.`, { reserved: nests ? TREE_CHILDREN_KEY : null }, out)
+    if (nests && Array.isArray(item[TREE_CHILDREN_KEY])) {
+      kept[TREE_CHILDREN_KEY] = keepList(fields, sections, true, item[TREE_CHILDREN_KEY], `${at}.${TREE_CHILDREN_KEY}`, out)
+    }
+    return kept
   })
 }
 

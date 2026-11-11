@@ -36,6 +36,7 @@ import {
   toDeliveredRecord,
   contentBodyField,
   misplacedFields,
+  undeclaredFields,
   referencesOf,
   mapReferences,
   validateKeyValue,
@@ -701,5 +702,76 @@ describe('briefSectionName — the brief every reader agrees on with the lowerin
     const schema = norm({ a: { brief: false, fields: { x: 'string' } }, b: { fields: { y: 'string' } } })
     expect(markedBriefPath(schema)).toBeNull()
     expect(briefSectionName(schema)).toBe('b')
+  })
+})
+
+// ⭐ What a push refuses, `uniweb validate` reports — and until 2026-11-11 it did not: a record
+// holding a field its schema lacks passed the check, built, and stopped at the push.
+describe('undeclaredFields — the keys a record file holds that its schema has no place for', () => {
+  const paths = (schema, record) => undeclaredFields(norm(schema), record).map((u) => u.path)
+  const quote = { name: 'quote', fields: { quote: 'text', name: 'string' } }
+
+  it("a flat record: each key no field declares — never the record's own, or a $ key", () => {
+    expect(paths(quote, { slug: 'ada', draft: true, $uuid: 'u', quote: 'Hi', name: 'Ada', order: 3, logo: 'x.svg' })).toEqual([
+      'order',
+      'logo',
+    ])
+    expect(undeclaredFields(norm(quote), { quote: 'Hi', order: 3 })).toEqual([{ path: 'order', declared: ['quote', 'name'] }])
+    expect(paths(quote, { quote: 'Hi', name: 'Ada' })).toEqual([])
+  })
+
+  it('a record by section: a key that is no section — and not one the retired flat form wrote', () => {
+    const course = {
+      name: 'course',
+      sections: { identity: { brief: true, fields: { title: 'string' } }, modules: { many: true, fields: { title: 'string' } } },
+    }
+    // `title` belongs under `identity:` (`misplacedFields` says so); `color` belongs nowhere.
+    expect(undeclaredFields(norm(course), { title: 'Rust', color: 'red' })).toEqual([
+      { path: 'color', declared: ['identity', 'modules'] },
+    ])
+  })
+
+  it("inside a section, each record of a list, a binder's child sections and a tree's children", () => {
+    const schema = {
+      name: 'event',
+      sections: {
+        details: { brief: true, fields: { title: 'string' } },
+        sessions: { many: true, fields: { title: 'string' }, sections: { notes: { many: true, fields: { text: 'string' } } } },
+        more: { sections: { faq: { many: true, tree: true, fields: { q: 'string' } } } },
+      },
+    }
+    expect(
+      paths(schema, {
+        details: { title: 'Launch', color: 'red' },
+        sessions: [{ title: 'Keynote', room: 'A', notes: [{ text: 'x', by: 'Ada' }] }],
+        more: { faq: [{ q: 'Why?', children: [{ q: 'How?', a: 'So' }] }], extra: {} },
+      })
+    ).toEqual(['details.color', 'sessions[0].room', 'sessions[0].notes[0].by', 'more.faq[0].children[0].a', 'more.extra'])
+  })
+
+  it("an object field and a list of objects hold records too; what a leaf's value holds is not a key", () => {
+    const schema = {
+      name: 'ev',
+      fields: {
+        venue: { type: 'object', fields: { city: 'string' } },
+        speakers: { type: 'array', items: { type: 'object', fields: { name: 'string' } } },
+        photo: 'image',
+        extra: 'json',
+      },
+    }
+    expect(
+      paths(schema, {
+        venue: { city: 'Ottawa', zip: 'K1A' },
+        speakers: [{ name: 'Ada', $uuid: 'u' }, { name: 'Bob', twitter: '@bob' }],
+        photo: { src: 'a.jpg', alt: 'A' },
+        extra: { anything: true },
+      })
+    ).toEqual(['venue.zip', 'speakers[1].twitter'])
+  })
+
+  it("a value of the wrong shape is the shape check's, not this one's", () => {
+    const schema = { name: 'ev', sections: { details: { brief: true, fields: { title: 'string' } }, sessions: { many: true, fields: { title: 'string' } } } }
+    expect(paths(schema, { details: 'Launch', sessions: { title: 'Keynote' } })).toEqual([])
+    expect(paths(schema, { details: { title: 'x' }, sessions: ['Keynote', { title: 'y', room: 'B' }] })).toEqual(['sessions[1].room'])
   })
 })

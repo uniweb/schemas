@@ -234,6 +234,104 @@ export function misplacedFields(schema, record) {
 }
 
 /**
+ * The keys of a record FILE that its data schema has no place for, each by its path in the file
+ * (`order`, `details.color`, `sessions[1].note`), with the names the schema has at that place.
+ *
+ * A push cannot send these, and the next pull would write the file without them, so it refuses a
+ * record holding one (`@uniweb/build` `uwx/records.js`), and `uniweb validate` reports them, which
+ * the push and the publish run first. This follows the push's reading of a file: a single section
+ * is a record of its fields and child sections, a list one is a list of them, a binder holds its
+ * child sections, an `object` field is a record of its fields and a list of objects a list of
+ * them, and a `tree` list's records nest under `children`. ⛔ Until 2026-11-11 only the push
+ * looked, so a site learned at its first push that its records could not sync.
+ *
+ * None of these is one: a record's own keys (`slug`, `draft`), a `$` key, a key the retired
+ * flat form wrote (`misplacedFields`), a value of the wrong shape for its section
+ * (`validateRecordFile`), or anything inside a leaf's value (an image's, a `json` field's).
+ *
+ * @param {Object} schema - a normalized data schema
+ * @param {*} record - the record, as its file holds it
+ * @returns {Array<{ path: string, declared: string[] }>} `declared` — the names the schema
+ *   has where the key was written: the fields there, and the child sections
+ */
+export function undeclaredFields(schema, record) {
+  const layout = recordLayout(schema)
+  if (!layout || !isPlainObject(record)) return []
+  const out = []
+  if (schema.fields) {
+    undeclaredInRecord(schema.fields, null, record, '', { top: true }, out)
+    return out
+  }
+  if (layout.flat) {
+    const section = layout.sections[0][1]
+    undeclaredInRecord(section.fields, section.sections, record, '', { top: true }, out)
+    return out
+  }
+  const names = new Set(layout.sections.map(([n]) => n))
+  const misplaced = new Set(misplacedFields(schema, record).map((m) => m.key))
+  const declared = layout.sections.map(([n]) => n)
+  for (const [key, value] of Object.entries(record)) {
+    if (key.startsWith('$') || RECORD_OWN_KEYS.has(key) || misplaced.has(key)) continue
+    if (names.has(key)) undeclaredInSection(schema.sections[key], value, key, out)
+    else out.push({ path: key, declared })
+  }
+  return out
+}
+
+// One record of a section or an `object` field: each key a field or a child section, a field
+// that holds records read the same way. `top` — the record itself, whose own keys are not
+// fields; `reserved` — the one key a tree list's records nest under.
+function undeclaredInRecord(fields, sections, record, prefix, { top = false, reserved = null } = {}, out) {
+  const fieldMap = fields || {}
+  const sectionMap = sections || {}
+  const declared = [...Object.keys(fieldMap), ...Object.keys(sectionMap)]
+  for (const [key, value] of Object.entries(record)) {
+    if (key.startsWith('$') || key === reserved || (top && RECORD_OWN_KEYS.has(key))) continue
+    const path = `${prefix}${key}`
+    if (Object.prototype.hasOwnProperty.call(fieldMap, key)) undeclaredInField(asFieldDef(fieldMap[key]), value, path, out)
+    else if (Object.prototype.hasOwnProperty.call(sectionMap, key)) undeclaredInSection(sectionMap[key], value, path, out)
+    else out.push({ path, declared })
+  }
+}
+
+// A section's value: a record for a single one, a list of records for a `many` one, an object of
+// child sections for a binder. A value of the wrong shape is `validateRecordFile`'s to report.
+function undeclaredInSection(section, value, path, out) {
+  if (!section || typeof section !== 'object') return
+  if (section.kind === 'multi') {
+    undeclaredInList(section.fields, section.sections, section.nestable === true, value, path, out)
+    return
+  }
+  if (!isPlainObject(value)) return
+  if (section.kind === 'binder') {
+    undeclaredInRecord(null, section.sections, value, `${path}.`, {}, out)
+    return
+  }
+  undeclaredInRecord(section.fields, section.sections, value, `${path}.`, {}, out)
+}
+
+// A field whose value holds records — an `object`, or a list of objects — the way a push lowers
+// it, to a section. Any other field is a leaf, and what its value holds is not a key of the record.
+function undeclaredInField(def, value, path, out) {
+  if (def.type === 'object' && def.fields) {
+    if (isPlainObject(value)) undeclaredInRecord(def.fields, null, value, `${path}.`, {}, out)
+    return
+  }
+  const items = def.type === 'array' && def.items !== undefined ? asFieldDef(def.items) : null
+  if (items?.type === 'object' && items.fields) undeclaredInList(items.fields, null, def.nestable === true, value, path, out)
+}
+
+function undeclaredInList(fields, sections, nests, value, path, out) {
+  if (!Array.isArray(value)) return
+  value.forEach((item, i) => {
+    if (!isPlainObject(item)) return
+    const at = `${path}[${i}]`
+    undeclaredInRecord(fields, sections, item, `${at}.`, { reserved: nests ? TREE_CHILDREN_KEY : null }, out)
+    if (nests) undeclaredInList(fields, sections, true, item[TREE_CHILDREN_KEY], `${at}.${TREE_CHILDREN_KEY}`, out)
+  })
+}
+
+/**
  * The field map of a DELIVERED record — the brief's fields at the top, each other
  * top-level section as one field under its name (an object for a single section, a list
  * of objects for a `many` one). A flat schema's fields as they are. Starter content reads it

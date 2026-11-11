@@ -99,7 +99,46 @@ function normalizeSelf(self, scope, strict) {
   const data = normalizeData(self.data, { scope, strict, owner: 'the foundation (main.js)' })
   if (data === undefined) delete out.data
   else out.data = data
+  if (self.placeholders !== undefined) {
+    const placeholders = normalizePlaceholders(self.placeholders, { scope, strict })
+    if (placeholders === undefined) delete out.placeholders
+    else out.placeholders = placeholders
+  }
   return out
+}
+
+/**
+ * The site values a foundation reads, as `main.js` declares them in `placeholders:` (carried at
+ * `_self.placeholders`): ONE field map, in the shape an inline `data:` map takes, a data schema's
+ * `fields`. It is normalized exactly as such a map is, to `{ kind: 'fields', fields }`, so an
+ * editor reads it through the path a data block's inline schema takes. A site holds the values
+ * in `site.yml` `placeholders:`; a page reads them at `website.config.placeholders`, and nothing
+ * fills a declared `default` there: it is what an editor offers, as a data field's is.
+ *
+ * @param {*} placeholders - the declaration as written, or format 3's `{ kind: 'fields', … }`
+ * @param {Object} [options]
+ * @param {string} [options.scope] - the foundation's scope, for a `@/x` ref inside a field
+ * @param {boolean} [options.strict=true] - throw for a declaration that cannot be normalized;
+ *   `false` keeps what it can and says why in `problems`
+ * @returns {object|undefined} `{ kind: 'fields', fields, … }`, or undefined when none is declared
+ */
+export function normalizePlaceholders(placeholders, { scope, strict = true } = {}) {
+  if (placeholders === undefined || placeholders === null) return undefined
+  const where = 'the foundation (main.js): placeholders'
+  if (!isPlainObject(placeholders)) {
+    const message = `${where} is a field map — { currency: { type: 'string', label: 'Currency' } } — got ${JSON.stringify(placeholders)}.`
+    if (strict) throw new Error(message)
+    return { kind: 'fields', fields: {}, problems: [message] }
+  }
+  // Already format 3: normalized again, which changes nothing but an unqualified ref.
+  if (placeholders.kind === 'fields') return renormalize(placeholders, { scope, strict, where })
+  if (Object.keys(placeholders).length === 0) return undefined
+  try {
+    return { kind: 'fields', ...qualifyFieldRefs(validateAndNormalizeSchema({ fields: placeholders }, '@/inline'), scope) }
+  } catch (err) {
+    if (strict) throw new Error(`${where} is not a valid field map: ${schemaMessage(err)}`)
+    return { kind: 'fields', ...qualifyFieldRefs(fieldByField(placeholders), scope) }
+  }
 }
 
 /**

@@ -4,6 +4,7 @@ import {
   normalizeFoundationSchema,
   normalizeData,
   normalizeParams,
+  normalizePlaceholders,
   qualifyRef,
   schemaDeclarationOf,
 } from '../src/foundation.js'
@@ -442,5 +443,46 @@ describe("a section type's underHeader and height", () => {
   test('strict refuses a value no type may declare, naming the type', () => {
     expect(() => normalizeFoundationSchema({ _self: {}, Hero: { name: 'Hero', underHeader: 'yes' } })).toThrow(/^Hero: Invalid 'underHeader'/)
     expect(() => normalizeFoundationSchema({ _self: {}, Header: { name: 'Header', height: '4rem; x' } })).toThrow(/^Header: Invalid 'height'/)
+  })
+})
+
+// `_self.placeholders` — the site values a foundation reads, declared in `main.js`: one field map in
+// the shape an inline `data:` map takes, normalized as one is, so an editor reads it through the
+// same path (agreed with frontend, 2026-11-11).
+describe('placeholders a foundation reads', () => {
+  const currency = {
+    type: 'string',
+    label: 'Currency',
+    enum: [{ value: 'USD', label: 'US dollar ($)' }, { value: 'GBP', label: 'Pound sterling (£)' }],
+    default: 'USD',
+  }
+
+  test('normalize to the fields an inline data map gives, picklist labels and nesting kept', () => {
+    const out = normalizePlaceholders({ currency, vendor: { type: 'object', fields: { email: { type: 'string', label: 'Vendor email' } } } })
+    expect(out.kind).toBe('fields')
+    expect(out.fields.currency).toMatchObject({ type: 'string', label: 'Currency', default: 'USD' })
+    expect(out.fields.currency.enum).toEqual(currency.enum)
+    expect(out.fields.vendor.fields.email).toMatchObject({ type: 'string', label: 'Vendor email' })
+    expect(normalizePlaceholders({ currency })).toEqual(normalizeData({ x: { currency } }).x)
+  })
+
+  test('ride _self through format 3, and normalizing twice changes nothing', () => {
+    const once = normalizeFoundationSchema({ _self: { name: '@acme/shop', placeholders: { currency } } })
+    expect(once._self.placeholders).toEqual(normalizePlaceholders({ currency }))
+    expect(normalizeFoundationSchema(once)._self.placeholders).toEqual(once._self.placeholders)
+  })
+
+  test('refuse a map that is not a valid field map, and read mode keeps what it can', () => {
+    expect(() => normalizePlaceholders({ currency: { type: 'money' } })).toThrow(/placeholders is not a valid field map: field 'currency' has unknown type 'money'/)
+    expect(() => normalizePlaceholders('currency')).toThrow(/placeholders is a field map/)
+    const loose = normalizePlaceholders({ currency: { type: 'money' }, note: { type: 'string' } }, { strict: false })
+    expect(loose.problems).toHaveLength(1)
+    expect(loose.fields.note).toMatchObject({ type: 'string' })
+  })
+
+  test('CONTROL — none declared is none', () => {
+    expect(normalizePlaceholders(undefined)).toBeUndefined()
+    expect(normalizePlaceholders({})).toBeUndefined()
+    expect(normalizeFoundationSchema({ _self: { name: '@acme/shop' } })._self).not.toHaveProperty('placeholders')
   })
 })

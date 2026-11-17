@@ -215,3 +215,6 @@ export function validate(data, schema) {
 
 // Default export
 export default schemas
+
+// How long a rich text is, as `max_length` on a rich-text field counts it (2026-11-17).
+export { richTextLength, isRichTextDocument } from './rich-text-length.js'

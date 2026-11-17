@@ -658,7 +658,7 @@ describe("a field's rules", () => {
 
   it('refuses one on a kind it does not apply to', () => {
     expect(norm({ type: 'string', min: 1 })).toThrow(/'min', which applies to int and decimal values, not string/)
-    expect(norm({ type: 'int', max_length: 3 })).toThrow(/'max_length', which applies to string and text values, not int/)
+    expect(norm({ type: 'int', max_length: 3 })).toThrow(/'max_length', which applies to string, text and richtext values, not int/)
     expect(norm({ options: '@/lists/countries', max_length: 3 })).toThrow(/a field that picks from a list holds a choice from it/)
   })
 

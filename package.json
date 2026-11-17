@@ -14,6 +14,7 @@
     "./locales/*": "./src/locales/*.json",
     "./format": "./src/format.js",
     "./conform": "./src/conform.js",
+    "./rich-text-length": "./src/rich-text-length.js",
     "./pattern": "./src/pattern.js",
     "./content": "./src/content.js",
     "./component": "./src/component.js",

@@ -23,6 +23,7 @@
  * whether they fail a build (CI treats them as errors).
  */
 
+import { richTextLength, isRichTextDocument } from './rich-text-length.js'
 import { SCALAR_KINDS, enumValues } from './format.js'
 import { matchesPattern } from './pattern.js'
 
@@ -149,22 +150,24 @@ export function recordLayout(schema) {
  *
  * @param {Object} schema - a normalized data schema (`{ fields }` or `{ sections }`)
  * @param {*} item - the delivered record
+ * @param {{ readRichText?: (markdown: string) => object }} [options] - `readRichText` reads a
+ *   rich-text field written as markdown into its document, so its `max_length` is counted
  * @returns {Array<{ field: string, rule: string, message: string }>}
  */
-export function validateItem(schema, item) {
+export function validateItem(schema, item, options = {}) {
   const layout = recordLayout(schema)
   if (!layout) return []
-  if (schema.fields) return validateFields(schema.fields, item, '')
+  if (schema.fields) return validateFields(schema.fields, item, '', options)
   const record = isPlainObject(item) ? item : {}
-  if (layout.flat) return validateSectionRecord(layout.sections[0][1], record, '')
+  if (layout.flat) return validateSectionRecord(layout.sections[0][1], record, '', options)
   const out = []
   for (const [name, section] of layout.sections) {
     if (name === layout.brief) {
-      out.push(...validateSectionRecord(section, record, ''))
+      out.push(...validateSectionRecord(section, record, '', options))
       continue
     }
     if (record[name] == null) continue
-    out.push(...validateSection(section, record[name], name))
+    out.push(...validateSection(section, record[name], name, options))
   }
   return out
 }
@@ -182,14 +185,17 @@ export function validateItem(schema, item) {
  * @param {Object} schema - a normalized data schema
  * @param {*} record - the record, as its file holds it (a markdown body already in its
  *   content body field)
+ * @param {{ readRichText?: (markdown: string) => object }} [options] - `readRichText` reads a
+ *   rich-text field written as markdown into its document (content-reader's
+ *   `markdownToProseMirror`), so its `max_length` is counted as a push would send it
  * @returns {Array<{ field: string, rule: string, message: string }>}
  */
-export function validateRecordFile(schema, record) {
+export function validateRecordFile(schema, record, options = {}) {
   const layout = recordLayout(schema)
   if (!layout) return []
-  if (schema.fields) return validateFields(schema.fields, record, '')
+  if (schema.fields) return validateFields(schema.fields, record, '', options)
   const rec = isPlainObject(record) ? record : {}
-  if (layout.flat) return validateSectionRecord(layout.sections[0][1], rec, '')
+  if (layout.flat) return validateSectionRecord(layout.sections[0][1], rec, '', options)
   const out = []
   for (const { key, sections } of misplacedFields(schema, rec)) {
     out.push(
@@ -202,7 +208,7 @@ export function validateRecordFile(schema, record) {
   }
   for (const [name, section] of layout.sections) {
     if (name !== layout.brief && rec[name] == null) continue
-    out.push(...validateSection(section, rec[name], name))
+    out.push(...validateSection(section, rec[name], name, options))
   }
   return out
 }
@@ -692,13 +698,13 @@ function sectionAsField(section) {
 // A section's value in a record written by section. An absent single section is an
 // empty record — its `required` fields are still owed; an absent list or binder is
 // an empty one.
-function validateSection(section, value, path) {
+function validateSection(section, value, path, options = {}) {
   if (section.kind === 'multi') {
     if (value == null) return []
     if (!Array.isArray(value)) {
       return [violation(path, 'type', `expected a list of records, got ${typeName(value)}`)]
     }
-    return validateRecords(section, value, path)
+    return validateRecords(section, value, path, options)
   }
   if (value != null && !isPlainObject(value)) {
     const expected = section.kind === 'binder' ? 'an object of sections' : 'a record'
@@ -707,20 +713,20 @@ function validateSection(section, value, path) {
   if (section.kind === 'binder') {
     const out = []
     for (const [name, child] of Object.entries(section.sections || {})) {
-      out.push(...validateSection(child, value?.[name], `${path}.${name}`))
+      out.push(...validateSection(child, value?.[name], `${path}.${name}`, options))
     }
     return out
   }
-  return validateSectionRecord(section, value || {}, path)
+  return validateSectionRecord(section, value || {}, path, options)
 }
 
 // One record of a section: its own fields, and each child section under its key —
 // "a nested section is an inline field on the parent's records"
 // (docs/reference/entity-content.md).
-function validateSectionRecord(section, record, path) {
-  const out = validateFields(section.fields || {}, record, path)
+function validateSectionRecord(section, record, path, options = {}) {
+  const out = validateFields(section.fields || {}, record, path, options)
   for (const [name, child] of Object.entries(section.sections || {})) {
-    out.push(...validateSection(child, isPlainObject(record) ? record[name] : undefined, `${path}.${name}`))
+    out.push(...validateSection(child, isPlainObject(record) ? record[name] : undefined, `${path}.${name}`, options))
   }
   return out
 }
@@ -873,11 +879,11 @@ const TREE_CHILDREN_KEY = 'children'
  * just an undeclared field, and undeclared fields are ignored — the same
  * tolerance every other record gets.
  */
-function validateRecords(section, records, prefix) {
+function validateRecords(section, records, prefix, options = {}) {
   const out = []
   records.forEach((record, i) => {
     const path = `${prefix}[${i}]`
-    out.push(...validateSectionRecord(section, record, path))
+    out.push(...validateSectionRecord(section, record, path, options))
 
     if (!section.nestable || !isPlainObject(record)) return
     const children = record[TREE_CHILDREN_KEY]
@@ -888,7 +894,7 @@ function validateRecords(section, records, prefix) {
       out.push(violation(childPath, 'type', `expected array, got ${typeName(children)}`))
       return
     }
-    out.push(...validateRecords(section, children, childPath))
+    out.push(...validateRecords(section, children, childPath, options))
   })
   return out
 }
@@ -1003,7 +1009,10 @@ export function flatRecordFields(schema) {
   return Object.keys(out).length ? out : null
 }
 
-function validateFields(fields, obj, prefix) {
+/** A rich-text field: `json` with `format: richtext`, or the friendly `richtext`. */
+const isRichText = (def) => def?.type === 'richtext' || (def?.type === 'json' && def?.format === 'richtext')
+
+function validateFields(fields, obj, prefix, options = {}) {
   const out = []
   const record = isPlainObject(obj) ? obj : {}
   for (const [name, rawDef] of Object.entries(fields)) {
@@ -1019,12 +1028,12 @@ function validateFields(fields, obj, prefix) {
     }
     if (!has) continue
 
-    out.push(...validateValue(def, record[name], path))
+    out.push(...validateValue(def, record[name], path, options))
   }
   return out
 }
 
-function validateValue(def, value, path) {
+function validateValue(def, value, path, options = {}) {
   const out = []
   const kind = def.type
 
@@ -1053,7 +1062,7 @@ function validateValue(def, value, path) {
     if (!isPlainObject(value)) {
       out.push(violation(path, 'type', `expected object, got ${typeName(value)}`))
     } else if (def.fields) {
-      out.push(...validateFields(def.fields, value, path))
+      out.push(...validateFields(def.fields, value, path, options))
     }
     return out
   }
@@ -1063,7 +1072,7 @@ function validateValue(def, value, path) {
       out.push(violation(path, 'type', `expected array, got ${typeName(value)}`))
     } else if (def.items !== undefined) {
       const itemDef = asFieldDef(def.items)
-      value.forEach((el, i) => out.push(...validateValue(itemDef, el, `${path}[${i}]`)))
+      value.forEach((el, i) => out.push(...validateValue(itemDef, el, `${path}[${i}]`, options)))
     }
     return out
   }
@@ -1130,8 +1139,19 @@ function validateValue(def, value, path) {
 
   // A field's rules (`FIELD_RULES` in ./format.js) — what a registry checks on every write.
   // `max_length` counts characters, as a registry does: code points, not UTF-16 units.
-  if (typeof value === 'string' && def.max_length !== undefined && [...value].length > def.max_length) {
+  if (typeof value === 'string' && !isRichText(def) && def.max_length !== undefined && [...value].length > def.max_length) {
     out.push(violation(path, 'max_length', `${fmt(value)} is ${[...value].length} characters — at most ${def.max_length}`))
+  }
+  // On a rich text, the characters a reader sees (`./rich-text-length.js`), whether the value is a
+  // document or, in a record's file, the markdown a push reads into one — with the reader the caller
+  // hands in (`options.readRichText`, content-reader's `markdownToProseMirror`), since this package
+  // has no dependencies. Markdown with no reader is not counted.
+  if (isRichText(def) && def.max_length !== undefined) {
+    const doc = typeof value === 'string' ? options.readRichText?.(value) : value
+    const length = isRichTextDocument(doc) ? richTextLength(doc) : null
+    if (length !== null && length > def.max_length) {
+      out.push(violation(path, 'max_length', `the text is ${length} characters — at most ${def.max_length}`))
+    }
   }
   if (typeof value === 'number') {
     if (def.min !== undefined && value < def.min) out.push(violation(path, 'min', `${value} is below ${def.min}`))

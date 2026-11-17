@@ -103,12 +103,13 @@ export const FORMAT_TYPES = new Set(['url', 'email', 'markdown', 'richtext'])
  * field's own keys, each on the kinds it applies to (2026-10-15). The lowering carries them as
  * they are written (`@uniweb/build`, `uwx/data-schema.js`), and `./conform.js` checks a value
  * against them before it is sent. `max_length` counts characters, and for a translatable value
- * each language's on its own; `max_size` is in bytes; `mime_types` lists what a file may be
+ * each language's on its own — on a rich text (`richtext`, a `json` field with `format:
+ * richtext`), the characters a reader sees (`./rich-text-length.js`, 2026-11-17); `max_size` is in bytes; `mime_types` lists what a file may be
  * (`image/*`, `application/pdf`); `pattern` is a regular expression the whole value matches, in
  * the syntax a registry reads (`./pattern.js`).
  */
 export const FIELD_RULES = Object.freeze({
-  max_length: ['string', 'text'],
+  max_length: ['string', 'text', 'richtext'],
   min: ['int', 'decimal'],
   max: ['int', 'decimal'],
   mime_types: ['file'],
@@ -185,6 +186,9 @@ function refuseUnknownFieldKeys(field, ref, path) {
     )
   }
 }
+
+/** `string`, `text` and `richtext` — a list the way a sentence says it. */
+const andList = (items) => (items.length < 3 ? items.join(' and ') : `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`)
 
 // A rule's value, checked: a whole number above zero for a length or a size, a number for a
 // bound (a whole one on an `int`), a list of media types for `mime_types`.
@@ -1094,12 +1098,14 @@ function normalizeField(field, ref, path) {
     }
   }
 
-  // A field's rules (`FIELD_RULES`), each on the kinds it applies to.
+  // A field's rules (`FIELD_RULES`), each on the kinds it applies to — a rich text named as its
+  // own kind, `richtext`, since a `json` field takes none of them otherwise.
+  const ruleKind = out.type === 'json' && out.format === 'richtext' ? 'richtext' : out.type
   for (const [key, kinds] of Object.entries(FIELD_RULES)) {
     if (field[key] === undefined) continue
-    if (!kinds.includes(out.type) || field.options !== undefined) {
+    if (!kinds.includes(ruleKind) || field.options !== undefined) {
       throw new Error(
-        `Data schema '${ref}': field '${path}' declares '${key}', which applies to ${kinds.join(' and ')} values` +
+        `Data schema '${ref}': field '${path}' declares '${key}', which applies to ${andList(kinds)} values` +
           `${field.options !== undefined ? ' — a field that picks from a list holds a choice from it' : `, not ${out.type}`}.`
       )
     }

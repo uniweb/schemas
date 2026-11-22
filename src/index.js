@@ -56,6 +56,7 @@ import nav from './standard/nav.js'
 import scene from './standard/scene.js'
 import form from './standard/form.js'
 import service from './standard/service.js'
+import location from './standard/location.js'
 import product from './standard/product.js'
 import testimonial from './standard/testimonial.js'
 import position from './standard/position.js'
@@ -157,6 +158,7 @@ export const schemas = {
   scene,
   form,
   service,
+  location,
   product,
   testimonial,
   position,

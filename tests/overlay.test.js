@@ -50,6 +50,24 @@ describe('@std/overlay', () => {
     expect(paths(validate({ labels: [{ text: 'A', x: 120, y: -1 }] }, 'overlay'))).toEqual(['labels[0].x:max', 'labels[0].y:min'])
   })
 
+  it('takes the picture’s colors, for every label and for one, and for its dark version', () => {
+    const colored = {
+      ...stack,
+      color: '#232d42',
+      dark: { color: '#d6d9de', ground: '#0a1123' },
+      labels: [
+        { text: 'YOU', x: 20.9, y: 14.65, role: 'title', ground: '#fbfcff' },
+        { text: 'NEW', x: 50, y: 50, color: '#fff', ground: '#2f6bff80', dark: { ground: '#1d3f99' } },
+      ],
+    }
+    expect(validate(colored, 'overlay')).toEqual({ valid: true, errors: [] })
+  })
+
+  it('names a color that is not a hex value', () => {
+    const odd = { color: 'navy', dark: { ground: '#12345' }, labels: [{ text: 'A', x: 1, y: 1, ground: 'rgb(0,0,0)' }] }
+    expect(paths(validate(odd, 'overlay'))).toEqual(['color:pattern', 'dark.ground:pattern', 'labels[0].ground:pattern'])
+  })
+
   it('offers only the words for translation', () => {
     const { fields } = overlay
     expect(fields.baked.translatable).toBe(false)
@@ -57,5 +75,8 @@ describe('@std/overlay', () => {
     expect(fields.labels.fields.align.enum).toEqual(OVERLAY_ALIGNS)
     expect(fields.sizes.fields).toHaveProperty('title')
     expect(Object.keys(fields.sizes.fields)).toEqual(OVERLAY_ROLES)
+    for (const scope of [fields, fields.dark.fields, fields.labels.fields, fields.labels.fields.dark.fields]) {
+      expect([scope.color.translatable, scope.ground.translatable]).toEqual([false, false])
+    }
   })
 })

@@ -43,9 +43,21 @@
  * drawn; a page in any other covers the picture's words with the labels. A picture made without
  * words has no `baked`, and shows its labels in every language.
  *
+ * ⭐ The picture's colors are the picture's too. A label's words are drawn in the foundation's ink by
+ * default, on its ground where they cover the picture's own (`--label-ink`, `--label-ground`), which
+ * suits a picture made for the site. A picture made elsewhere has colors of its own, which no
+ * foundation knows, so the overlay can give them: `color` for the words and `ground` for what is
+ * behind them, as the picture shows them, for every label and, where one differs, on the label.
+ * `dark` gives the same for the picture's dark version, shown where the page is dark. A color is a
+ * hex value (`#232d42`), measured from the picture as its places and sizes are.
+ *
+ *     color: "#232d42"
+ *     dark: { color: "#d6d9de", ground: "#0a1123" }
+ *     labels:
+ *       - { text: "YOU", x: 20.9, y: 14.65, w: 8.8, h: 7.3, role: title, ground: "#fbfcff" }
+ *
  * Kept out on purpose, each addable later as an optional field without breaking what is stored:
- * a color for one label (words of one role in several colors), rotation (a chart's vertical axis
- * title), a link on a label.
+ * rotation (a chart's vertical axis title) and a link on a label.
  */
 
 /** What the words of a label are, in the picture. */
@@ -59,6 +71,23 @@ const percent = (description, extra = {}) => ({ type: 'number', min: 0, max: 100
 
 /** A size, in percent of the picture's width. */
 const size = (description) => ({ type: 'number', min: 0, description })
+
+/** A color as the picture shows it, in hex: `#232d42`, `#fff`, or `#00000080` with its opacity. */
+export const OVERLAY_COLOR = '#[0-9A-Fa-f]{3}|#[0-9A-Fa-f]{6}|#[0-9A-Fa-f]{8}'
+const color = (description) => ({ type: 'string', pattern: OVERLAY_COLOR, translatable: false, description })
+
+/** The words' color, and the ground's where a label covers the picture's own, for a scope. */
+const colors = (whose) => ({
+  color: color(`The color of ${whose} words, as the picture shows them`),
+  ground: color(`The color behind ${whose} words, where a label covers the picture's own`),
+})
+
+/** The same, for the picture's dark version. */
+const dark = (whose) => ({
+  type: 'object',
+  description: `${whose[0].toUpperCase()}${whose.slice(1)} colors in the picture's dark version, shown where the page is dark`,
+  fields: colors(whose),
+})
 
 export default {
   name: 'overlay',
@@ -86,6 +115,8 @@ export default {
         note: size('The size of small print'),
       },
     },
+    ...colors("its labels'"),
+    dark: dark("its labels'"),
     labels: {
       type: 'object',
       many: true,
@@ -111,6 +142,8 @@ export default {
           description: 'The side of its box it keeps: center, or left for text in a frame, unless given',
         },
         size: size("Its own size, in percent of the picture's width, over its role's"),
+        ...colors('its'),
+        dark: dark('its'),
       },
     },
   },

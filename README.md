@@ -501,6 +501,8 @@ Reach for one of these before inventing your own, the same way you'd pull a well
 > - **`sizes`** gives each role's size, and a label's own `size` overrides it, in percent of the picture's width, since how large a picture's words are belongs to the picture.
 >
 > `baked` lists the languages whose picture shows its words itself. A page in one of them shows the picture as drawn, and a page in any other language covers the picture's words with the labels. A picture made without words has no `baked`, and shows its labels in every language.
+>
+> The picture's colors are the picture's too, so an overlay may give them, as hex values: `color` for the words and `ground` for what covers the picture's own, for every label and on a label where it differs, and `dark` for the same in the picture's dark version. With none, the foundation's style colors the labels.
 
 ---
 

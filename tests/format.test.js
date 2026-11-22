@@ -458,6 +458,12 @@ describe('access a schema may declare (2026-10-14)', () => {
     expect(() => validateAndNormalizeSchema({ name: 'x', grantable: 'no', fields: { a: 'string' } }, '@/x')).toThrow(/must be a boolean/)
   })
 
+  it('`open_to_members` is a boolean on the schema', () => {
+    expect(validateAndNormalizeSchema({ name: 'x', open_to_members: false, fields: { a: 'string' } }, '@/x').openToMembers).toBe(false)
+    expect(validateAndNormalizeSchema({ name: 'x', fields: { a: 'string' } }, '@/x')).not.toHaveProperty('openToMembers')
+    expect(() => validateAndNormalizeSchema({ name: 'x', open_to_members: 'no', fields: { a: 'string' } }, '@/x')).toThrow(/'open_to_members' must be a boolean/)
+  })
+
   it('`readable_with` is a level, on a reference or a list of them', () => {
     const out = validateAndNormalizeSchema(
       { name: 'submission', fields: { course: { ref: '@/course', readable_with: 'edit' }, peers: { ref: '@/person', many: true, readable_with: 'read' } } },

@@ -398,7 +398,7 @@ export const SECTION_KINDS = new Set(['single', 'multi', 'binder'])
  */
 const MODEL_KEYS = new Set([
   'name', 'version', 'label', 'plural', 'icon', 'description', 'source_locale', 'sourceLocale',
-  'linkable', 'grantable', 'sort_date', 'sortDate',
+  'linkable', 'grantable', 'open_to_members', 'sort_date', 'sortDate',
   'fields', 'sections', 'constraints', 'i18n'
 ])
 
@@ -724,6 +724,20 @@ export function validateAndNormalizeSchema(schema, ref) {
       )
     }
     out.grantable = schema.grantable
+  }
+
+  // `open_to_members` — `false` keeps an organization's members from reaching this Model's
+  // entries just by belonging to it: an entry is its owner's, and others reach it when it is
+  // shared with them, like any entry. For what a person keeps to themselves in a shared
+  // workspace, such as their conversations with an AI agent. Omitted, it is true; the producer
+  // sends only an authored `false` (2026-11-21).
+  if (schema.open_to_members !== undefined) {
+    if (typeof schema.open_to_members !== 'boolean') {
+      throw new Error(
+        `Data schema '${ref}': 'open_to_members' must be a boolean, got ${typeof schema.open_to_members}.`
+      )
+    }
+    out.openToMembers = schema.open_to_members
   }
 
   // `i18n` — the schema's labels in other languages, each language a map of a label's path to

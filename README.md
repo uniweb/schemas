@@ -478,10 +478,29 @@ A schema whose root is a list, such as `@std/nav`, describes the whole value of 
 | `nav` | `@std/nav` | Navigation menus (a nestable list) |
 | `scene` | `@std/scene` | Visual scene composition (rendered by `@uniweb/scene`) |
 | `form` | `@std/form` | A form **designed by an author** — a list of the controls a visitor will be asked to fill |
+| `overlay` | `@std/overlay` | The words drawn over a picture, so it reads in the page's language (kit's `LabeledImage` draws them) |
 
 Reach for one of these before inventing your own, the same way you'd pull a well-known type off the shelf.
 
 > **`@std/form` describes a form *definition*, not a *submission*.** A component that renders an authored form is the inverse of every other component: it doesn't declare the fields, it *receives* them and draws whatever it's given. So it can't declare the author's control names — it declares `data: { form: '@std/form' }`, which asks the only answerable question: *is this a well-formed form?* The block carries the controls and nothing else; a form's heading and intro are the section's own markdown. What a visitor actually answers arrives at runtime and is not knowable when the foundation is written.
+
+> **`@std/overlay` puts a picture's words in the page's language.** A diagram, a screenshot or a map often holds words. Drawn over it as text instead, they are translated with the page, so a site in five languages needs one picture. A section gives them in a ```` ```yaml:overlay ```` block, and its type declares the key, as one record (`single`), since a block holds one overlay: `data: { overlay: { schema: '@std/overlay', single: true } }`:
+>
+> ```yaml
+> baked: [en]
+> sizes: { title: 4.3, label: 1 }
+> labels:
+>   - { text: "YOU", x: 20.9, y: 14.65, w: 8.8, h: 7.3, role: title }
+>   - { text: "NAT Gateway", x: 87.5, y: 24.5, w: 8.6, h: 5 }
+> ```
+>
+> Only `text` is words. `x` and `y` are the center of a label's box, and `w` and `h` its size, in percent of the picture's width and height. What a label is comes from a short list, so an editor can offer a choice and a foundation can style each one:
+>
+> - **`role`:** `title` (a heading in the picture), `label` (the name of a thing, the default), `text` (words in a frame: they wrap within `w`, and a longer translation grows downward) or `note` (small print).
+> - **`align`:** `left`, `center` or `right`. It names the side of its box a label keeps while a longer translation grows it, and its lines align to that side. The default is `center`, or `left` for `text`. It is a side of the picture, which doesn't mirror in a language written right to left.
+> - **`sizes`** gives each role's size, and a label's own `size` overrides it, in percent of the picture's width, since how large a picture's words are belongs to the picture.
+>
+> `baked` lists the languages whose picture shows its words itself. A page in one of them shows the picture as drawn, and a page in any other language covers the picture's words with the labels. A picture made without words has no `baked`, and shows its labels in every language.
 
 ---
 

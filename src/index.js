@@ -60,6 +60,7 @@ import product from './standard/product.js'
 import testimonial from './standard/testimonial.js'
 import position from './standard/position.js'
 import qualification from './standard/qualification.js'
+import overlay from './standard/overlay.js'
 
 // Section families — also at the `@uniweb/schemas/families` subpath
 export {
@@ -79,7 +80,7 @@ export { SITE_TAGS, getSiteTag, isSiteTag, resolveSiteTags } from './site-tags.j
 import { validateAgainstSchema } from './utils/validate.js'
 
 // Export individual schemas
-export { person, article, event, project, opportunity, publication, nav, scene, form }
+export { person, article, event, project, opportunity, publication, nav, scene, form, overlay }
 
 // A foundation schema in its normalized form, format 3 — also the
 // `@uniweb/schemas/foundation` subpath, which `@uniweb/build`'s `register` imports.
@@ -160,6 +161,7 @@ export const schemas = {
   testimonial,
   position,
   qualification,
+  overlay,
 }
 
 /**

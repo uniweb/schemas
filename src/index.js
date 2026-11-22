@@ -57,6 +57,7 @@ import scene from './standard/scene.js'
 import form from './standard/form.js'
 import service from './standard/service.js'
 import location from './standard/location.js'
+import session from './standard/session.js'
 import product from './standard/product.js'
 import testimonial from './standard/testimonial.js'
 import position from './standard/position.js'
@@ -159,6 +160,7 @@ export const schemas = {
   form,
   service,
   location,
+  session,
   product,
   testimonial,
   position,

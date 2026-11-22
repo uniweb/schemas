@@ -471,6 +471,8 @@ A schema whose root is a list, such as `@std/nav`, describes the whole value of 
 | `opportunity` | `@std/opportunity` | Jobs, grants, calls for proposals |
 | `publication` | `@std/publication` | Academic papers, research documents |
 | `service` | `@std/service` | Services a business offers — a card and a page each |
+| `location` | `@std/location` | A place a business is found at, such as a shop or an office, or an area it serves |
+| `session` | `@std/session` | Something held every week at a set time: a class, a lesson, a service or office hours |
 | `product` | `@std/product` | Things a business sells — a card and a page each |
 | `testimonial` | `@std/testimonial` | What a customer, client or patient said |
 | `position` | `@std/position` | A role someone held — the entries of a CV's experience |

@@ -39,3 +39,35 @@ describe('an enum of `{ value, label }` entries', () => {
     expect(sampleRecord(schema).status).toBe('draft')
   })
 })
+
+// A registry takes an entry as a value or `{ value, label }`, its label a plain string in the
+// schema's source locale, and refuses anything else at register, naming the field. The build
+// refuses the same, so an author meets it at their own screen [backend, 2026-11-23].
+describe('what an entry may be', () => {
+  const lower = (entries) => () =>
+    validateAndNormalizeSchema({ name: 'post', fields: { status: { type: 'string', enum: entries } } }, '@/post')
+
+  it('a value, or { value, label }, mixed — a number or a boolean as a value too', () => {
+    expect(lower(['a', { value: 'b', label: 'B' }, { value: 'c' }, 1, { value: true, label: 'Yes' }])).not.toThrow()
+  })
+
+  it('refuses a label in several languages, saying where another language goes', () => {
+    expect(lower([{ value: 'open', label: { en: 'Open', fr: 'Ouvert' } }])).toThrow(
+      /field 'status' 'enum' entry 'open' has a label that is not a plain string.*'i18n', at section\.<path>\.field\.<key>\.option\.open\.label/
+    )
+  })
+
+  it('refuses an entry with no value, or with a key of its own', () => {
+    expect(lower([{ label: 'Open' }])).toThrow(/entry \{"label":"Open"\} has no value/)
+    expect(lower([{ value: 'open', label: 'Open', icon: 'lu-door-open' }])).toThrow(/entry holds 'icon'/)
+    expect(lower([['open']])).toThrow(/holds a list/)
+  })
+
+  it('refuses a value listed twice in a set with labels', () => {
+    expect(lower([{ value: 'open', label: 'Open' }, { value: 'open', label: 'Opened' }])).toThrow(/lists "open" twice/)
+  })
+
+  it('CONTROL — a set of bare values is as before, a repeat included', () => {
+    expect(lower(['a', 'b', 'a'])).not.toThrow()
+  })
+})

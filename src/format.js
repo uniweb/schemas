@@ -592,6 +592,48 @@ function normalizeSectionFlags(node, ref, path, isRecordList) {
  * `enum` and `options` — unlike a rule that merely reflects what the registry has
  * no slot for.
  */
+/**
+ * A closed set's entries, as a registry takes them: each a value (a string, a number or a
+ * boolean), or `{ value, label }`, its label a plain string in the schema's source locale, like
+ * every other label. A choice's label in another language goes in the schema's `i18n`, at
+ * `section.<path>.field.<key>.option.<value>.label`. In a set with a label, a value comes once.
+ * Refused here as a registry refuses it, naming the field, so the author meets it at build
+ * [backend, 2026-11-23].
+ */
+function assertEnumEntries(entries, ref, path) {
+  const isValue = (v) => typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean'
+  const fail = (why) => {
+    throw new Error(`Data schema '${ref}': field '${path}' 'enum' ${why}`)
+  }
+  let labelled = false
+  for (const entry of entries) {
+    if (isValue(entry)) continue
+    if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+      fail(`holds ${Array.isArray(entry) ? 'a list' : String(entry)}: an entry is a value, or { value, label }.`)
+    }
+    const extra = Object.keys(entry).filter((k) => k !== 'value' && k !== 'label')
+    if (extra.length) fail(`entry holds ${extra.map((k) => `'${k}'`).join(', ')}: an entry is a value, or { value, label }.`)
+    if (!isValue(entry.value)) fail(`entry ${JSON.stringify(entry)} has no value: give it a string, a number or a boolean.`)
+    if (entry.label !== undefined) {
+      if (typeof entry.label !== 'string') {
+        fail(
+          `entry '${entry.value}' has a label that is not a plain string. Write it once, in the schema's ` +
+            `source locale, and another language's in 'i18n', at ` +
+            `section.<path>.field.<key>.option.${JSON.stringify(entry.value).replace(/^"|"$/g, '')}.label.`
+        )
+      }
+      labelled = true
+    }
+  }
+  if (!labelled) return
+  const seen = new Set()
+  for (const value of enumValues(entries)) {
+    const key = JSON.stringify(value)
+    if (seen.has(key)) fail(`lists ${key} twice.`)
+    seen.add(key)
+  }
+}
+
 function assertProseStrings(node, ref, path, keys = ['label', 'description']) {
   for (const k of keys) {
     if (node[k] !== undefined && typeof node[k] !== 'string') {
@@ -1141,6 +1183,7 @@ function normalizeField(field, ref, path) {
           `which holds no value of its own to check — an enum belongs on a value.`
       )
     }
+    assertEnumEntries(field.enum, ref, path)
     out.enum = field.enum
   }
   if (field.options !== undefined) {

@@ -481,8 +481,11 @@ A schema whose root is a list, such as `@std/nav`, describes the whole value of 
 | `scene` | `@std/scene` | Visual scene composition (rendered by `@uniweb/scene`) |
 | `form` | `@std/form` | A form **designed by an author** — a list of the controls a visitor will be asked to fill |
 | `overlay` | `@std/overlay` | The words drawn over a picture, so it reads in the page's language (kit's `LabeledImage` draws them) |
+| `conversation` | `@std/conversation` | A person's conversation with an AI agent: what they asked, what it answered and what its tools returned |
 
 Reach for one of these before inventing your own, the same way you'd pull a well-known type off the shelf.
+
+> **`@std/conversation` is written by an agent, never authored.** An agent keeps a person's conversation on a backend as it goes, so the conversation can be shown and resumed: it only grows, each message and part holds its place (`index`), and in an organization it is its person's and its administrators', not every member's (`open_to_members: false`). A site holds no records of it.
 
 > **`@std/form` describes a form *definition*, not a *submission*.** A component that renders an authored form is the inverse of every other component: it doesn't declare the fields, it *receives* them and draws whatever it's given. So it can't declare the author's control names — it declares `data: { form: '@std/form' }`, which asks the only answerable question: *is this a well-formed form?* The block carries the controls and nothing else; a form's heading and intro are the section's own markdown. What a visitor actually answers arrives at runtime and is not knowable when the foundation is written.
 

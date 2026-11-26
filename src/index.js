@@ -63,6 +63,7 @@ import testimonial from './standard/testimonial.js'
 import position from './standard/position.js'
 import qualification from './standard/qualification.js'
 import overlay from './standard/overlay.js'
+import conversation from './standard/conversation.js'
 
 // Section families — also at the `@uniweb/schemas/families` subpath
 export {
@@ -166,6 +167,7 @@ export const schemas = {
   position,
   qualification,
   overlay,
+  conversation,
 }
 
 /**
